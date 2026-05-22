@@ -152,6 +152,25 @@ function initDB() {
   if (settingsCount.c === 0) {
     db.prepare('INSERT INTO business_settings (id) VALUES (1)').run();
   }
+
+  // Seed initial cash balance of SGD 2,000 (Owner's investment) if no entries exist yet
+  const entryCount = db.prepare('SELECT COUNT(*) as c FROM journal_entries').get();
+  if (entryCount.c === 0) {
+    const today = new Date().toISOString().split('T')[0];
+    const entry = db.prepare(
+      `INSERT INTO journal_entries (date, reference, description, currency, exchange_rate, entry_type)
+       VALUES (?, 'INIT-001', 'Initial cash balance - Owner investment', 'SGD', 1.0, 'regular')`
+    ).run(today);
+    const entryId = entry.lastInsertRowid;
+    const cash    = db.prepare("SELECT id FROM accounts WHERE code = '1000'").get();
+    const capital = db.prepare("SELECT id FROM accounts WHERE code = '3000'").get();
+    const line    = db.prepare(
+      `INSERT INTO journal_lines (entry_id, account_id, debit, credit, base_debit, base_credit)
+       VALUES (?, ?, ?, ?, ?, ?)`
+    );
+    line.run(entryId, cash.id,    2000, 0,    2000, 0);
+    line.run(entryId, capital.id, 0,    2000, 0,    2000);
+  }
 }
 
 function seedAccounts(db) {

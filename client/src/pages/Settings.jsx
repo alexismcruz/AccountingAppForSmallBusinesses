@@ -54,13 +54,13 @@ export default function Settings() {
               <label className="form-label">Registration Number</label>
               <input className="form-input" value={form.registration_number || ''}
                 onChange={e => setForm(f => ({ ...f, registration_number: e.target.value }))}
-                placeholder="DTI / SEC / Corp. number" />
+                placeholder="Business Registration Number / SEC Registration / Corp Registration" />
             </div>
             <div className="form-group">
               <label className="form-label">Tax Identification Number (TIN)</label>
               <input className="form-input" value={form.tax_id || ''}
                 onChange={e => setForm(f => ({ ...f, tax_id: e.target.value }))}
-                placeholder="Your TIN" />
+                placeholder="Tax Identification Number" />
             </div>
           </div>
           <div className="form-group">
