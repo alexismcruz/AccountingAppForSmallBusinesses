@@ -7,7 +7,13 @@ const { initDB } = require('./db/database');
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-initDB();
+try {
+  initDB();
+  console.log('✅ Database initialised at', process.env.DB_PATH || 'accounting.db (local)');
+} catch (err) {
+  console.error('❌ Database init failed:', err.message);
+  process.exit(1);
+}
 
 // Trust Railway's reverse proxy so secure cookies work over HTTPS
 app.set('trust proxy', 1);

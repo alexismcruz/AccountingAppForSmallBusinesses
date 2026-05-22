@@ -1,7 +1,15 @@
 const { DatabaseSync } = require('node:sqlite');
 const path = require('path');
+const fs = require('fs');
 
 const DB_PATH = process.env.DB_PATH || path.join(__dirname, '..', 'accounting.db');
+
+// Ensure the directory exists (important when Railway Volume is mounted at /data)
+const DB_DIR = path.dirname(DB_PATH);
+if (!fs.existsSync(DB_DIR)) {
+  fs.mkdirSync(DB_DIR, { recursive: true });
+}
+
 let db;
 
 function getDB() {
