@@ -2,6 +2,155 @@ const express = require('express');
 const router = express.Router();
 const { getDB, runTransaction } = require('../db/database');
 
+// ── CSV helpers ──────────────────────────────────────────────────────────────
+
+function csvEsc(val) {
+  if (val === null || val === undefined) return '';
+  const s = String(val);
+  return (s.includes(',') || s.includes('"') || s.includes('\n'))
+    ? '"' + s.replace(/"/g, '""') + '"' : s;
+}
+
+function parseCSVText(text) {
+  const lines = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n').trim().split('\n').filter(Boolean);
+  if (lines.length < 2) return [];
+  const headers = parseCSVRow(lines[0]);
+  return lines.slice(1).map(line => {
+    const vals = parseCSVRow(line);
+    const obj = {};
+    headers.forEach((h, i) => { obj[h.trim()] = (vals[i] || '').trim(); });
+    return obj;
+  });
+}
+
+function parseCSVRow(line) {
+  const result = [];
+  let cur = '', inQ = false;
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i];
+    if (c === '"' && !inQ) { inQ = true; continue; }
+    if (c === '"' && inQ) { if (line[i+1] === '"') { cur += '"'; i++; continue; } inQ = false; continue; }
+    if (c === ',' && !inQ) { result.push(cur); cur = ''; continue; }
+    cur += c;
+  }
+  result.push(cur);
+  return result;
+}
+
+// ── RECEIVABLES — Export / Import / Template ─────────────────────────────────
+
+router.get('/receivables/export/csv', (req, res) => {
+  const db = getDB();
+  const rows = db.prepare('SELECT * FROM receivables ORDER BY due_date, created_at').all();
+  const cols = ['customer_name','invoice_number','description','amount','currency','exchange_rate','due_date','scheduled_date','status','paid_amount'];
+  const csv  = [cols.join(','), ...rows.map(r => cols.map(c => csvEsc(r[c])).join(','))].join('\n');
+  const today = new Date().toISOString().split('T')[0];
+  res.setHeader('Content-Type', 'text/csv');
+  res.setHeader('Content-Disposition', `attachment; filename="receivables-${today}.csv"`);
+  res.send(csv);
+});
+
+router.get('/receivables/import/template', (req, res) => {
+  const sample = [
+    'customer_name,invoice_number,description,amount,currency,exchange_rate,due_date,scheduled_date',
+    'John Santos,INV-001,Website design services,5000,USD,1,2026-02-28,2026-02-15',
+    'ABC Company,INV-002,Monthly retainer,2000,SGD,1,2026-03-01,',
+  ].join('\n');
+  res.setHeader('Content-Type', 'text/csv');
+  res.setHeader('Content-Disposition', 'attachment; filename="receivables-template.csv"');
+  res.send(sample);
+});
+
+router.post('/receivables/import/csv', (req, res) => {
+  const db = getDB();
+  const { csv, dryRun } = req.body;
+  if (!csv) return res.status(400).json({ error: 'No CSV data provided' });
+  const rows = parseCSVText(csv);
+  if (!rows.length) return res.status(400).json({ error: 'CSV has no data rows' });
+
+  const errors = [];
+  rows.forEach((r, i) => {
+    if (!r.customer_name) errors.push(`Row ${i+2}: missing customer_name`);
+    if (!r.amount || isNaN(parseFloat(r.amount))) errors.push(`Row ${i+2}: invalid amount`);
+  });
+  if (errors.length) return res.status(400).json({ error: 'Validation errors', details: errors });
+  if (dryRun) return res.json({ ok: true, count: rows.length });
+
+  const stmt = db.prepare(`
+    INSERT INTO receivables (customer_name, invoice_number, description, amount, currency, exchange_rate, due_date, scheduled_date)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+  `);
+  const imported = [], skipped = [];
+  for (const r of rows) {
+    try {
+      stmt.run(r.customer_name, r.invoice_number || `INV-${Date.now()}-${Math.random().toString(36).slice(2,6)}`,
+        r.description || '', parseFloat(r.amount), r.currency || 'USD',
+        parseFloat(r.exchange_rate) || 1.0, r.due_date || null, r.scheduled_date || null);
+      imported.push(r.invoice_number || r.customer_name);
+    } catch (e) {
+      skipped.push(`${r.invoice_number || r.customer_name} — ${e.message.includes('UNIQUE') ? 'invoice number already exists' : e.message}`);
+    }
+  }
+  res.json({ ok: true, imported: imported.length, skipped: skipped.length, skippedRefs: skipped });
+});
+
+// ── PAYABLES — Export / Import / Template ────────────────────────────────────
+
+router.get('/payables/export/csv', (req, res) => {
+  const db = getDB();
+  const rows = db.prepare('SELECT * FROM payables ORDER BY due_date, created_at').all();
+  const cols = ['supplier_name','reference_number','description','amount','currency','exchange_rate','due_date','scheduled_date','status','paid_amount'];
+  const csv  = [cols.join(','), ...rows.map(r => cols.map(c => csvEsc(r[c])).join(','))].join('\n');
+  const today = new Date().toISOString().split('T')[0];
+  res.setHeader('Content-Type', 'text/csv');
+  res.setHeader('Content-Disposition', `attachment; filename="payables-${today}.csv"`);
+  res.send(csv);
+});
+
+router.get('/payables/import/template', (req, res) => {
+  const sample = [
+    'supplier_name,reference_number,description,amount,currency,exchange_rate,due_date,scheduled_date',
+    'Office Supplies Co,PO-001,Monthly office supplies,800,USD,1,2026-02-15,2026-02-10',
+    'Cloud Host Ltd,PO-002,Server hosting Q1,1200,USD,1,2026-03-31,',
+  ].join('\n');
+  res.setHeader('Content-Type', 'text/csv');
+  res.setHeader('Content-Disposition', 'attachment; filename="payables-template.csv"');
+  res.send(sample);
+});
+
+router.post('/payables/import/csv', (req, res) => {
+  const db = getDB();
+  const { csv, dryRun } = req.body;
+  if (!csv) return res.status(400).json({ error: 'No CSV data provided' });
+  const rows = parseCSVText(csv);
+  if (!rows.length) return res.status(400).json({ error: 'CSV has no data rows' });
+
+  const errors = [];
+  rows.forEach((r, i) => {
+    if (!r.supplier_name) errors.push(`Row ${i+2}: missing supplier_name`);
+    if (!r.amount || isNaN(parseFloat(r.amount))) errors.push(`Row ${i+2}: invalid amount`);
+  });
+  if (errors.length) return res.status(400).json({ error: 'Validation errors', details: errors });
+  if (dryRun) return res.json({ ok: true, count: rows.length });
+
+  const stmt = db.prepare(`
+    INSERT INTO payables (supplier_name, reference_number, description, amount, currency, exchange_rate, due_date, scheduled_date)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+  `);
+  const imported = [], skipped = [];
+  for (const r of rows) {
+    try {
+      stmt.run(r.supplier_name, r.reference_number || '', r.description || '',
+        parseFloat(r.amount), r.currency || 'USD', parseFloat(r.exchange_rate) || 1.0,
+        r.due_date || null, r.scheduled_date || null);
+      imported.push(r.supplier_name);
+    } catch (e) {
+      skipped.push(`${r.supplier_name} — ${e.message}`);
+    }
+  }
+  res.json({ ok: true, imported: imported.length, skipped: skipped.length, skippedRefs: skipped });
+});
+
 // ── RECEIVABLES (Incoming / Accounts Receivable) ─────────────────────────
 
 router.get('/receivables', (req, res) => {

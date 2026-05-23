@@ -21,6 +21,134 @@ const TEMPLATES = [
 
 const emptyLine = () => ({ accountId: '', debit: '', credit: '', notes: '' });
 
+// ── CSV download helper ───────────────────────────────────────────────────────
+function triggerDownload(url, filename) {
+  fetch(url, { credentials: 'include' })
+    .then(r => r.text())
+    .then(text => {
+      const blob = new Blob([text], { type: 'text/csv' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(a.href);
+    });
+}
+
+// ── Import modal ──────────────────────────────────────────────────────────────
+function ImportModal({ onClose, onImported }) {
+  const [phase, setPhase]   = useState('pick'); // pick → preview → result
+  const [csvText, setCsvText] = useState('');
+  const [preview, setPreview] = useState(null);
+  const [result, setResult]  = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError]    = useState('');
+
+  const handleFile = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = async (ev) => {
+      const text = ev.target.result;
+      setCsvText(text);
+      setError('');
+      setLoading(true);
+      try {
+        const res = await fetch('/api/entries/import/csv', {
+          method: 'POST', credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ csv: text, dryRun: true }),
+        });
+        const data = await res.json();
+        if (!res.ok) { setError(data.details ? data.details.join('\n') : data.error); }
+        else { setPreview(data); setPhase('preview'); }
+      } catch { setError('Network error.'); }
+      finally { setLoading(false); }
+    };
+    reader.readAsText(file);
+  };
+
+  const handleConfirm = async () => {
+    setLoading(true); setError('');
+    try {
+      const res = await fetch('/api/entries/import/csv', {
+        method: 'POST', credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ csv: csvText }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setError(data.details ? data.details.join('\n') : data.error); }
+      else { setResult(data); setPhase('result'); onImported(); }
+    } catch { setError('Network error.'); }
+    finally { setLoading(false); }
+  };
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal" onClick={e => e.stopPropagation()}>
+        <div className="modal-header">
+          <div className="modal-title">📥 Import Journal Entries</div>
+          <button className="btn btn-ghost btn-icon" onClick={onClose}>✕</button>
+        </div>
+        <div className="modal-body">
+          {phase === 'pick' && (
+            <>
+              <div className="alert alert-info mb-16">
+                Upload a CSV file with your journal entries. Each row is one debit or credit line.
+                Rows with the same <strong>reference</strong> are grouped into one entry.
+              </div>
+              {error && <div className="alert alert-error mb-16" style={{ whiteSpace: 'pre-line' }}>⚠ {error}</div>}
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
+                <button className="btn btn-ghost btn-sm"
+                  onClick={() => triggerDownload('/api/entries/import/template', 'journal-entries-template.csv')}>
+                  📄 Download Template
+                </button>
+              </div>
+              <label style={{ display: 'block', border: '2px dashed var(--border)', borderRadius: 8,
+                padding: 32, textAlign: 'center', cursor: 'pointer', color: 'var(--text-muted)',
+                transition: 'border-color 0.15s' }}
+                onDragOver={e => e.preventDefault()}
+                onDrop={e => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f) handleFile({ target: { files: [f] } }); }}>
+                {loading ? '⏳ Validating…' : '📂 Click to choose CSV file or drag & drop here'}
+                <input type="file" accept=".csv,text/csv" style={{ display: 'none' }} onChange={handleFile} />
+              </label>
+            </>
+          )}
+          {phase === 'preview' && preview && (
+            <>
+              <div className="alert alert-success mb-16">
+                ✓ File is valid — <strong>{preview.count} journal entr{preview.count !== 1 ? 'ies' : 'y'}</strong> ready to import.
+              </div>
+              <div className="text-muted text-sm">Existing entries with the same reference number will be skipped (not duplicated).</div>
+            </>
+          )}
+          {phase === 'result' && result && (
+            <>
+              <div className="alert alert-success mb-16">
+                ✓ Import complete — <strong>{result.imported}</strong> entr{result.imported !== 1 ? 'ies' : 'y'} imported.
+                {result.skipped > 0 && ` ${result.skipped} skipped (already exist).`}
+              </div>
+              {result.skippedRefs?.length > 0 && (
+                <div className="text-muted text-sm">Skipped: {result.skippedRefs.join(', ')}</div>
+              )}
+            </>
+          )}
+        </div>
+        <div className="modal-footer">
+          {phase === 'pick'    && <button className="btn btn-ghost" onClick={onClose}>Cancel</button>}
+          {phase === 'preview' && <>
+            <button className="btn btn-ghost" onClick={() => setPhase('pick')}>← Back</button>
+            <button className="btn btn-primary" onClick={handleConfirm} disabled={loading}>
+              {loading ? 'Importing…' : `✓ Import ${preview?.count} Entr${preview?.count !== 1 ? 'ies' : 'y'}`}
+            </button>
+          </>}
+          {phase === 'result'  && <button className="btn btn-primary" onClick={onClose}>Done</button>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function JournalEntries() {
   const { fmt, settings } = useSettings();
   const baseCurrency = settings.currency || 'USD';
@@ -28,6 +156,7 @@ export default function JournalEntries() {
   const [accounts, setAccounts] = useState([]);
   const [showForm, setShowForm] = useState(false);
   const [showTemplates, setShowTemplates] = useState(false);
+  const [showImport, setShowImport] = useState(false);
   const [expandedId, setExpandedId] = useState(null);
   const [expandedData, setExpandedData] = useState({});
   const [loading, setLoading] = useState(false);
@@ -171,13 +300,25 @@ export default function JournalEntries() {
 
   return (
     <div>
+      {showImport && <ImportModal onClose={() => setShowImport(false)} onImported={loadEntries} />}
       <div className="page-header">
         <div>
           <div className="page-title">Journal Entries</div>
           <div className="page-subtitle">Double-entry accounting records</div>
         </div>
-        <div style={{ display: 'flex', gap: 8 }}>
-          {!showForm && <button className="btn btn-primary" onClick={() => { setShowForm(true); setMsg(null); }}>+ New Entry</button>}
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <button className="btn btn-ghost btn-sm"
+            onClick={() => triggerDownload(`/api/entries/export/csv${filters.from || filters.to ? `?from=${filters.from}&to=${filters.to}` : ''}`, `journal-entries-${new Date().toISOString().split('T')[0]}.csv`)}>
+            ⬇ Export CSV
+          </button>
+          <button className="btn btn-ghost btn-sm" onClick={() => setShowImport(true)}>
+            ⬆ Import CSV
+          </button>
+          {!showForm && (
+            <button className="btn btn-primary" onClick={() => { setShowForm(true); setMsg(null); }}>
+              + New Entry
+            </button>
+          )}
         </div>
       </div>
 

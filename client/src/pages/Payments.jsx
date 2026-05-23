@@ -2,6 +2,136 @@ import { useState, useEffect } from 'react';
 import { useSettings } from '../context/SettingsContext.jsx';
 import CurrencySelect from '../components/CurrencySelect.jsx';
 
+// ── CSV download helper ───────────────────────────────────────────────────────
+function triggerDownload(url, filename) {
+  fetch(url, { credentials: 'include' })
+    .then(r => r.text())
+    .then(text => {
+      const blob = new Blob([text], { type: 'text/csv' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(a.href);
+    });
+}
+
+// ── Import modal ──────────────────────────────────────────────────────────────
+function ImportModal({ type, onClose, onImported }) {
+  const isAR = type === 'incoming';
+  const endpoint = isAR ? '/api/payments/receivables' : '/api/payments/payables';
+  const templateFile = isAR ? 'receivables-template.csv' : 'payables-template.csv';
+
+  const [phase, setPhase]   = useState('pick');
+  const [csvText, setCsvText] = useState('');
+  const [preview, setPreview] = useState(null);
+  const [result, setResult]  = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError]    = useState('');
+
+  const handleFile = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = async (ev) => {
+      const text = ev.target.result;
+      setCsvText(text);
+      setError('');
+      setLoading(true);
+      try {
+        const res = await fetch(`${endpoint}/import/csv`, {
+          method: 'POST', credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ csv: text, dryRun: true }),
+        });
+        const data = await res.json();
+        if (!res.ok) { setError(data.details ? data.details.join('\n') : data.error); }
+        else { setPreview(data); setPhase('preview'); }
+      } catch { setError('Network error.'); }
+      finally { setLoading(false); }
+    };
+    reader.readAsText(file);
+  };
+
+  const handleConfirm = async () => {
+    setLoading(true); setError('');
+    try {
+      const res = await fetch(`${endpoint}/import/csv`, {
+        method: 'POST', credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ csv: csvText }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setError(data.details ? data.details.join('\n') : data.error); }
+      else { setResult(data); setPhase('result'); onImported(); }
+    } catch { setError('Network error.'); }
+    finally { setLoading(false); }
+  };
+
+  const label = isAR ? 'Invoices (Receivables)' : 'Bills (Payables)';
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal" onClick={e => e.stopPropagation()}>
+        <div className="modal-header">
+          <div className="modal-title">📥 Import {label}</div>
+          <button className="btn btn-ghost btn-icon" onClick={onClose}>✕</button>
+        </div>
+        <div className="modal-body">
+          {phase === 'pick' && (
+            <>
+              <div className="alert alert-info mb-16">
+                Upload a CSV file to bulk-import {isAR ? 'customer invoices' : 'supplier bills'}.
+                Only <strong>pending</strong> records are imported — paid status must be updated manually.
+              </div>
+              {error && <div className="alert alert-error mb-16" style={{ whiteSpace: 'pre-line' }}>⚠ {error}</div>}
+              <div style={{ marginBottom: 16 }}>
+                <button className="btn btn-ghost btn-sm"
+                  onClick={() => triggerDownload(`${endpoint}/import/template`, templateFile)}>
+                  📄 Download Template
+                </button>
+              </div>
+              <label style={{ display: 'block', border: '2px dashed var(--border)', borderRadius: 8,
+                padding: 32, textAlign: 'center', cursor: 'pointer', color: 'var(--text-muted)' }}
+                onDragOver={e => e.preventDefault()}
+                onDrop={e => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f) handleFile({ target: { files: [f] } }); }}>
+                {loading ? '⏳ Validating…' : '📂 Click to choose CSV file or drag & drop here'}
+                <input type="file" accept=".csv,text/csv" style={{ display: 'none' }} onChange={handleFile} />
+              </label>
+            </>
+          )}
+          {phase === 'preview' && preview && (
+            <div className="alert alert-success">
+              ✓ File is valid — <strong>{preview.count} record{preview.count !== 1 ? 's' : ''}</strong> ready to import.
+            </div>
+          )}
+          {phase === 'result' && result && (
+            <>
+              <div className="alert alert-success mb-16">
+                ✓ Import complete — <strong>{result.imported}</strong> record{result.imported !== 1 ? 's' : ''} imported.
+                {result.skipped > 0 && ` ${result.skipped} skipped.`}
+              </div>
+              {result.skippedRefs?.length > 0 && (
+                <div className="text-muted text-sm">Skipped: {result.skippedRefs.join(', ')}</div>
+              )}
+            </>
+          )}
+        </div>
+        <div className="modal-footer">
+          {phase === 'pick'    && <button className="btn btn-ghost" onClick={onClose}>Cancel</button>}
+          {phase === 'preview' && <>
+            <button className="btn btn-ghost" onClick={() => setPhase('pick')}>← Back</button>
+            <button className="btn btn-primary" onClick={handleConfirm} disabled={loading}>
+              {loading ? 'Importing…' : `✓ Import ${preview?.count} Record${preview?.count !== 1 ? 's' : ''}`}
+            </button>
+          </>}
+          {phase === 'result'  && <button className="btn btn-primary" onClick={onClose}>Done</button>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 const statusBadge = (status, dueDate) => {
   const today = new Date().toISOString().split('T')[0];
   if (status === 'paid') return <span className="badge badge-success">Paid</span>;
@@ -188,6 +318,7 @@ export default function Payments({ tab }) {
   const isAR = tab === 'incoming';
   const [records, setRecords] = useState([]);
   const [showAdd, setShowAdd] = useState(false);
+  const [showImport, setShowImport] = useState(false);
   const [payRecord, setPayRecord] = useState(null);
   const [msg, setMsg] = useState(null);
 
@@ -210,8 +341,12 @@ export default function Payments({ tab }) {
   const overdue = pending.filter(r => r.due_date && r.due_date < today);
   const totalOverdue = overdue.reduce((s, r) => s + (r.amount - r.paid_amount), 0);
 
+  const exportUrl  = isAR ? '/api/payments/receivables/export/csv' : '/api/payments/payables/export/csv';
+  const exportFile = isAR ? `receivables-${new Date().toISOString().split('T')[0]}.csv` : `payables-${new Date().toISOString().split('T')[0]}.csv`;
+
   return (
     <div>
+      {showImport && <ImportModal type={tab} onClose={() => setShowImport(false)} onImported={loadRecords} />}
       <div className="page-header">
         <div>
           <div className="page-title">{isAR ? 'Incoming Payments' : 'Pending Payments'}</div>
@@ -219,9 +354,17 @@ export default function Payments({ tab }) {
             {isAR ? 'Money customers owe you (Accounts Receivable)' : 'Money you owe suppliers (Accounts Payable)'}
           </div>
         </div>
-        <button className="btn btn-primary" onClick={() => setShowAdd(true)}>
-          {isAR ? '+ Add Invoice' : '+ Add Bill'}
-        </button>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <button className="btn btn-ghost btn-sm" onClick={() => triggerDownload(exportUrl, exportFile)}>
+            ⬇ Export CSV
+          </button>
+          <button className="btn btn-ghost btn-sm" onClick={() => setShowImport(true)}>
+            ⬆ Import CSV
+          </button>
+          <button className="btn btn-primary" onClick={() => setShowAdd(true)}>
+            {isAR ? '+ Add Invoice' : '+ Add Bill'}
+          </button>
+        </div>
       </div>
 
       <div className="grid-3 mb-20">
