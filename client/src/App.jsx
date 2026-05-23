@@ -12,6 +12,8 @@ import Reports from './pages/Reports.jsx';
 import Settings from './pages/Settings.jsx';
 import FiscalYear from './pages/FiscalYear.jsx';
 import PaymentSchedule from './pages/PaymentSchedule.jsx';
+import Approvals from './pages/Approvals.jsx';
+import Logs from './pages/Logs.jsx';
 
 export default function App() {
   const [authChecked, setAuthChecked] = useState(false);
@@ -52,6 +54,8 @@ export default function App() {
             <Route path="/reports/ledger"           element={<Reports type="ledger" />} />
             <Route path="/fiscal"                   element={<FiscalYear />} />
             <Route path="/settings"                 element={<Settings />} />
+            <Route path="/approvals"                element={<Approvals />} />
+            <Route path="/logs"                     element={<Logs />} />
             <Route path="*"                         element={<Navigate to="/" replace />} />
           </Routes>
         </Layout>

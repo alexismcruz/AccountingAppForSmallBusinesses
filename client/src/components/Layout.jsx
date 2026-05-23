@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { useSettings } from '../context/SettingsContext.jsx';
 import { useUser } from '../context/UserContext.jsx';
@@ -11,7 +11,7 @@ const ROLE_COLORS = {
   super_admin: '#ea580c',
 };
 
-function NavItem({ to, icon, label, sub, onNavigate }) {
+function NavItem({ to, icon, label, sub, onNavigate, badge }) {
   return (
     <NavLink
       to={to}
@@ -20,7 +20,15 @@ function NavItem({ to, icon, label, sub, onNavigate }) {
       style={sub ? { paddingLeft: 36 } : undefined}
     >
       {!sub && <span className="nav-icon">{icon}</span>}
-      {label}
+      <span style={{ flex: 1 }}>{label}</span>
+      {badge > 0 && (
+        <span style={{
+          background: 'var(--danger)', color: '#fff', borderRadius: 10,
+          padding: '1px 6px', fontSize: 10, fontWeight: 700, marginLeft: 4,
+        }}>
+          {badge}
+        </span>
+      )}
     </NavLink>
   );
 }
@@ -29,11 +37,26 @@ export default function Layout({ children, onLogout }) {
   const { settings } = useSettings();
   const { user, can } = useUser();
   const location = useLocation();
-  const [reportsOpen, setReportsOpen]   = useState(location.pathname.startsWith('/reports'));
+  const [reportsOpen,  setReportsOpen]  = useState(location.pathname.startsWith('/reports'));
   const [paymentsOpen, setPaymentsOpen] = useState(location.pathname.startsWith('/payments'));
-  const [sidebarOpen, setSidebarOpen]   = useState(false);
+  const [sidebarOpen,  setSidebarOpen]  = useState(false);
+  const [pendingCount, setPendingCount] = useState(0);
 
   const closeSidebar = () => setSidebarOpen(false);
+
+  // Fetch pending approvals count for badge
+  useEffect(() => {
+    const fetchCount = () => {
+      fetch('/api/approvals/pending-count', { credentials: 'include' })
+        .then(r => r.json())
+        .then(d => setPendingCount(d.count || 0))
+        .catch(() => {});
+    };
+    fetchCount();
+    // Refresh every 60 s so the badge stays current
+    const id = setInterval(fetchCount, 60000);
+    return () => clearInterval(id);
+  }, []);
 
   const PAGE_TITLES = {
     '/':                         'Dashboard',
@@ -48,6 +71,8 @@ export default function Layout({ children, onLogout }) {
     '/reports/ledger':           'General Ledger',
     '/fiscal':                   'Fiscal Year Management',
     '/settings':                 'Business Settings',
+    '/approvals':                'Approvals',
+    '/logs':                     'Audit Logs',
   };
 
   return (
@@ -113,8 +138,15 @@ export default function Layout({ children, onLogout }) {
         </div>
 
         <div className="nav-section">
-          <NavItem to="/fiscal" icon="📅" label="Fiscal Year" onNavigate={closeSidebar} />
+          <NavItem to="/fiscal"    icon="📅" label="Fiscal Year" onNavigate={closeSidebar} />
+          <NavItem to="/approvals" icon="✅" label="Approvals"   onNavigate={closeSidebar} badge={pendingCount} />
         </div>
+
+        {can('finance') && (
+          <div className="nav-section">
+            <NavItem to="/logs" icon="📋" label="Audit Logs" onNavigate={closeSidebar} />
+          </div>
+        )}
 
         {can('admin') && (
           <div className="nav-section" style={{ marginTop: 'auto' }}>

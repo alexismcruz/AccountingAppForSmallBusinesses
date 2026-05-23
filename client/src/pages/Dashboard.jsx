@@ -18,14 +18,20 @@ function StatCard({ label, value, sub, color, icon, onClick }) {
 export default function Dashboard() {
   const { fmt, settings } = useSettings();
   const navigate = useNavigate();
-  const [data, setData] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [data,           setData]           = useState(null);
+  const [loading,        setLoading]        = useState(true);
+  const [pendingApprove, setPendingApprove] = useState(0);
 
   useEffect(() => {
     fetch('/api/reports/dashboard')
       .then(r => r.json())
       .then(d => { setData(d); setLoading(false); })
       .catch(() => setLoading(false));
+
+    fetch('/api/approvals/pending-count', { credentials: 'include' })
+      .then(r => r.json())
+      .then(d => setPendingApprove(d.count || 0))
+      .catch(() => {});
   }, []);
 
   if (loading) return <div className="text-muted text-center" style={{ padding: 60 }}>Loading…</div>;
@@ -63,6 +69,14 @@ export default function Dashboard() {
 
       {/* Alerts row */}
       <div style={{ display: 'flex', gap: 12, marginBottom: 24, flexWrap: 'wrap' }}>
+        {pendingApprove > 0 && (
+          <div className="alert alert-warning" style={{ flex: 1, minWidth: 240, cursor: 'pointer' }}
+            onClick={() => navigate('/approvals')}>
+            ✅ <span>
+              <strong>{pendingApprove} approval{pendingApprove !== 1 ? 's' : ''}</strong> waiting for your review — click to open
+            </span>
+          </div>
+        )}
         {data.lowStock > 0 && (
           <div className="alert alert-warning" style={{ flex: 1, minWidth: 240, cursor: 'pointer' }}
             onClick={() => navigate('/inventory')}>
@@ -81,7 +95,7 @@ export default function Dashboard() {
             📤 <span><strong>{data.overdueAP} overdue bill{data.overdueAP > 1 ? 's' : ''}</strong> — you owe suppliers money</span>
           </div>
         )}
-        {data.lowStock === 0 && data.overdueAR === 0 && data.overdueAP === 0 && (
+        {pendingApprove === 0 && data.lowStock === 0 && data.overdueAR === 0 && data.overdueAP === 0 && (
           <div className="alert alert-success" style={{ flex: 1 }}>
             ✓ Everything looks good — no alerts at this time.
           </div>

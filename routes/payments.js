@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { getDB, runTransaction } = require('../db/database');
+const { logAction } = require('../utils/auditLog');
 
 // ── CSV helpers ──────────────────────────────────────────────────────────────
 
@@ -234,9 +235,22 @@ router.patch('/receivables/:id/schedule', (req, res) => {
 });
 
 router.delete('/receivables/:id', (req, res) => {
-  const db = getDB();
-  db.prepare('DELETE FROM receivables WHERE id = ?').run(req.params.id);
-  res.json({ success: true });
+  const db   = getDB();
+  const user = req.session.user;
+  const rec  = db.prepare('SELECT * FROM receivables WHERE id = ?').get(req.params.id);
+  if (!rec) return res.status(404).json({ error: 'Receivable not found' });
+  if (rec.pending_deletion) return res.status(400).json({ error: 'A deletion request is already pending' });
+
+  const { deletion_note } = req.body;
+  db.prepare('UPDATE receivables SET pending_deletion = 1 WHERE id = ?').run(rec.id);
+  db.prepare(`
+    INSERT INTO approval_requests
+      (type, entity_id, entity_ref, entity_snapshot, submitted_by_email, submitted_by_name, submitted_by_role, submitter_note)
+    VALUES ('delete_receivable', ?, ?, ?, ?, ?, ?, ?)
+  `).run(rec.id, rec.invoice_number, JSON.stringify(rec), user.email, user.name || user.email, user.role, deletion_note || null);
+
+  logAction(user, 'REQUEST_RECEIVABLE_DELETION', 'receivable', rec.id, rec.invoice_number);
+  res.json({ success: true, action: 'deletion_requested' });
 });
 
 // ── PAYABLES (Pending / Accounts Payable) ────────────────────────────────
@@ -318,9 +332,22 @@ router.patch('/payables/:id/schedule', (req, res) => {
 });
 
 router.delete('/payables/:id', (req, res) => {
-  const db = getDB();
-  db.prepare('DELETE FROM payables WHERE id = ?').run(req.params.id);
-  res.json({ success: true });
+  const db   = getDB();
+  const user = req.session.user;
+  const pay  = db.prepare('SELECT * FROM payables WHERE id = ?').get(req.params.id);
+  if (!pay) return res.status(404).json({ error: 'Payable not found' });
+  if (pay.pending_deletion) return res.status(400).json({ error: 'A deletion request is already pending' });
+
+  const { deletion_note } = req.body;
+  db.prepare('UPDATE payables SET pending_deletion = 1 WHERE id = ?').run(pay.id);
+  db.prepare(`
+    INSERT INTO approval_requests
+      (type, entity_id, entity_ref, entity_snapshot, submitted_by_email, submitted_by_name, submitted_by_role, submitter_note)
+    VALUES ('delete_payable', ?, ?, ?, ?, ?, ?, ?)
+  `).run(pay.id, pay.reference_number || String(pay.id), JSON.stringify(pay), user.email, user.name || user.email, user.role, deletion_note || null);
+
+  logAction(user, 'REQUEST_PAYABLE_DELETION', 'payable', pay.id, pay.reference_number);
+  res.json({ success: true, action: 'deletion_requested' });
 });
 
 // ── UNIFIED PAYMENT SCHEDULE ─────────────────────────────────────────────

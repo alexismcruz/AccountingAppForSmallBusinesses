@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { getDB, runTransaction } = require('../db/database');
+const { logAction } = require('../utils/auditLog');
 
 // ── CSV helpers ──────────────────────────────────────────────────────────────
 
@@ -213,10 +214,15 @@ router.get('/:id', (req, res) => {
 });
 
 // ── Create new journal entry ─────────────────────────────────────────────────
+// Body: { date, reference, description, lines, currency, exchange_rate,
+//         entry_type, submit: bool, submitter_note: string }
+// submit=false  → status: 'draft'
+// submit=true   → status: 'pending_approval' + creates approval_request
 
 router.post('/', (req, res) => {
   const db = getDB();
-  const { date, reference, description, lines, currency, exchange_rate, entry_type } = req.body;
+  const { date, reference, description, lines, currency, exchange_rate, entry_type, submit, submitter_note } = req.body;
+  const user = req.session.user;
 
   if (!date || !reference || !description)
     return res.status(400).json({ error: 'date, reference, and description are required' });
@@ -230,11 +236,19 @@ router.post('/', (req, res) => {
   if (Math.abs(totalDebit - totalCredit) > 0.005)
     return res.status(400).json({ error: `Entry is not balanced. Debits: ${totalDebit.toFixed(2)}, Credits: ${totalCredit.toFixed(2)}` });
 
+  // super_admin can post directly; everyone else goes through approval
+  const isSuperAdmin = user?.role === 'super_admin';
+  const entryStatus  = isSuperAdmin ? 'posted' : (submit ? 'pending_approval' : 'draft');
+
   try {
     const entryId = runTransaction((db) => {
       const result = db.prepare(
-        'INSERT INTO journal_entries (date, reference, description, status, currency, exchange_rate, entry_type) VALUES (?, ?, ?, ?, ?, ?, ?)'
-      ).run(date, reference, description, 'posted', cur, rate, entry_type || 'regular');
+        `INSERT INTO journal_entries
+           (date, reference, description, status, currency, exchange_rate, entry_type,
+            created_by_email, created_by_name, created_by_role)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      ).run(date, reference, description, entryStatus, cur, rate, entry_type || 'regular',
+            user?.email || 'system', user?.name || 'System', user?.role || 'admin');
       const id = result.lastInsertRowid;
       const lineStmt = db.prepare(
         'INSERT INTO journal_lines (entry_id, account_id, debit, credit, notes, base_debit, base_credit) VALUES (?, ?, ?, ?, ?, ?, ?)'
@@ -244,8 +258,20 @@ router.post('/', (req, res) => {
         const credit = parseFloat(line.credit) || 0;
         lineStmt.run(id, line.account_id, debit, credit, line.notes || null, debit / rate, credit / rate);
       }
+      // Create approval request when submitting
+      if (submit && !isSuperAdmin) {
+        db.prepare(`
+          INSERT INTO approval_requests
+            (type, entity_id, entity_ref, submitted_by_email, submitted_by_name, submitted_by_role, submitter_note)
+          VALUES ('create_entry', ?, ?, ?, ?, ?, ?)
+        `).run(id, reference, user?.email || 'system', user?.name || 'System', user?.role || 'staff', submitter_note || null);
+      }
       return id;
     });
+
+    logAction(user, submit ? 'SUBMIT_ENTRY_FOR_APPROVAL' : 'CREATE_ENTRY_DRAFT',
+      'journal_entry', entryId, reference);
+
     const entry = db.prepare('SELECT * FROM journal_entries WHERE id = ?').get(entryId);
     entry.lines = db.prepare(`
       SELECT jl.*, a.code, a.name as account_name
@@ -259,12 +285,105 @@ router.post('/', (req, res) => {
   }
 });
 
-// ── Delete entry ─────────────────────────────────────────────────────────────
+// ── Submit a draft entry for approval ────────────────────────────────────────
+router.post('/:id/submit', (req, res) => {
+  const db    = getDB();
+  const user  = req.session.user;
+  const entry = db.prepare('SELECT * FROM journal_entries WHERE id = ?').get(req.params.id);
+  if (!entry) return res.status(404).json({ error: 'Entry not found' });
+  if (entry.status !== 'draft') return res.status(400).json({ error: 'Only draft entries can be submitted' });
+
+  const { submitter_note } = req.body;
+  runTransaction((db) => {
+    db.prepare("UPDATE journal_entries SET status = 'pending_approval' WHERE id = ?").run(entry.id);
+    db.prepare(`
+      INSERT INTO approval_requests
+        (type, entity_id, entity_ref, submitted_by_email, submitted_by_name, submitted_by_role, submitter_note)
+      VALUES ('create_entry', ?, ?, ?, ?, ?, ?)
+    `).run(entry.id, entry.reference, user?.email, user?.name || user?.email, user?.role, submitter_note || null);
+  });
+
+  logAction(user, 'SUBMIT_ENTRY_FOR_APPROVAL', 'journal_entry', entry.id, entry.reference);
+  res.json({ ok: true });
+});
+
+// ── Recall a pending entry back to draft ─────────────────────────────────────
+router.post('/:id/recall', (req, res) => {
+  const db    = getDB();
+  const user  = req.session.user;
+  const entry = db.prepare('SELECT * FROM journal_entries WHERE id = ?').get(req.params.id);
+  if (!entry) return res.status(404).json({ error: 'Entry not found' });
+  if (entry.status !== 'pending_approval') return res.status(400).json({ error: 'Only pending entries can be recalled' });
+
+  db.prepare("UPDATE journal_entries SET status = 'draft' WHERE id = ?").run(entry.id);
+  db.prepare("UPDATE approval_requests SET status = 'rejected', reviewer_note = 'Recalled by submitter', reviewed_at = datetime('now') WHERE entity_id = ? AND type = 'create_entry' AND status = 'pending'")
+    .run(entry.id);
+
+  logAction(user, 'RECALL_ENTRY', 'journal_entry', entry.id, entry.reference);
+  res.json({ ok: true });
+});
+
+// ── Delete / request deletion ─────────────────────────────────────────────────
+// Draft entries: deleted immediately (if owner or super_admin)
+// Posted entries: creates a deletion approval request
+// Pending-deletion entries: already waiting, error
 
 router.delete('/:id', (req, res) => {
-  const db = getDB();
-  db.prepare('DELETE FROM journal_entries WHERE id = ?').run(req.params.id);
-  res.json({ success: true });
+  const db    = getDB();
+  const user  = req.session.user;
+  const entry = db.prepare('SELECT * FROM journal_entries WHERE id = ?').get(req.params.id);
+  if (!entry) return res.status(404).json({ error: 'Entry not found' });
+
+  // Draft — delete immediately (owner or super_admin only)
+  if (entry.status === 'draft') {
+    const isOwner = entry.created_by_email === user.email;
+    if (!isOwner && user.role !== 'super_admin') {
+      return res.status(403).json({ error: 'Only the creator or Super Admin can delete a draft entry' });
+    }
+    db.prepare('DELETE FROM journal_entries WHERE id = ?').run(entry.id);
+    logAction(user, 'DELETE_ENTRY_DRAFT', 'journal_entry', entry.id, entry.reference);
+    return res.json({ success: true, action: 'deleted' });
+  }
+
+  // Already awaiting deletion
+  if (entry.status === 'pending_deletion') {
+    return res.status(400).json({ error: 'A deletion request is already pending for this entry' });
+  }
+
+  // Pending-approval entry — submitter can cancel it
+  if (entry.status === 'pending_approval') {
+    const isOwner = entry.created_by_email === user.email;
+    if (!isOwner && user.role !== 'super_admin') {
+      return res.status(403).json({ error: 'Only the creator or Super Admin can cancel a pending entry' });
+    }
+    db.prepare('DELETE FROM journal_entries WHERE id = ?').run(entry.id);
+    db.prepare("UPDATE approval_requests SET status = 'rejected', reviewer_note = 'Cancelled by submitter', reviewed_at = datetime('now') WHERE entity_id = ? AND type = 'create_entry' AND status = 'pending'")
+      .run(entry.id);
+    logAction(user, 'CANCEL_PENDING_ENTRY', 'journal_entry', entry.id, entry.reference);
+    return res.json({ success: true, action: 'cancelled' });
+  }
+
+  // Posted — super_admin can delete directly (bypasses approval workflow)
+  if (user.role === 'super_admin') {
+    runTransaction((db) => {
+      db.prepare('DELETE FROM journal_lines WHERE entry_id = ?').run(entry.id);
+      db.prepare('DELETE FROM journal_entries WHERE id = ?').run(entry.id);
+    });
+    logAction(user, 'DELETE_POSTED_ENTRY', 'journal_entry', entry.id, entry.reference);
+    return res.json({ success: true, action: 'deleted' });
+  }
+
+  // Posted — create deletion request (all other roles)
+  const { deletion_note } = req.body;
+  db.prepare("UPDATE journal_entries SET status = 'pending_deletion' WHERE id = ?").run(entry.id);
+  db.prepare(`
+    INSERT INTO approval_requests
+      (type, entity_id, entity_ref, entity_snapshot, submitted_by_email, submitted_by_name, submitted_by_role, submitter_note)
+    VALUES ('delete_entry', ?, ?, ?, ?, ?, ?, ?)
+  `).run(entry.id, entry.reference, JSON.stringify(entry), user.email, user.name || user.email, user.role, deletion_note || null);
+
+  logAction(user, 'REQUEST_ENTRY_DELETION', 'journal_entry', entry.id, entry.reference);
+  res.json({ success: true, action: 'deletion_requested' });
 });
 
 module.exports = router;

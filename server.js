@@ -31,12 +31,11 @@ app.use(session({
 }));
 
 // ── Role levels ───────────────────────────────────────────────────────────────
-const ROLE_LEVELS = { staff: 1, manager: 2, finance: 3, admin: 4, super_admin: 5 };
+const ROLE_LEVELS = { staff: 1, manager: 2, finance: 3, admin: 2, super_admin: 5 };
+// Note: admin is view-only for accounting data; treated as level 2 for read access
 
-function userLevel(req) {
-  const role = req.session.user?.role || 'admin';
-  return ROLE_LEVELS[role] || 0;
-}
+function userRole(req)  { return req.session.user?.role  || 'staff'; }
+function userLevel(req) { return ROLE_LEVELS[userRole(req)] || 0; }
 
 // ── UAM validation helper ─────────────────────────────────────────────────────
 async function validateViaUAM(email, password, clientSlug) {
@@ -69,10 +68,13 @@ app.post('/api/auth/login', async (req, res) => {
       }
       req.session.authenticated = true;
       req.session.user = {
-        email:    result.user.email,
-        name:     result.user.full_name || result.user.email,
-        role:     result.user.role,
+        id:    result.user.id,
+        email: result.user.email,
+        name:  result.user.full_name || result.user.email,
+        role:  result.user.role,
       };
+      const { logAction } = require('./utils/auditLog');
+      logAction(req.session.user, 'LOGIN', 'auth', null, null, { mode: 'uam' });
       return res.json({ success: true, user: req.session.user });
     } catch (err) {
       console.error('UAM validation error:', err.message);
@@ -113,38 +115,31 @@ app.use('/api', (req, res, next) => {
 
 // ── Role-based route guards ───────────────────────────────────────────────────
 app.use('/api', (req, res, next) => {
-  const level  = userLevel(req);
-  const p      = req.path;   // relative to /api
+  const role   = userRole(req);
+  const p      = req.path;
   const method = req.method;
+  const WRITE  = ['POST', 'PUT', 'PATCH', 'DELETE'];
 
-  // Admin+: delete journal entries, delete payments, delete inventory, change settings
-  if (method === 'DELETE' && p.startsWith('/entries/')) {
-    if (level < ROLE_LEVELS.admin) return res.status(403).json({ error: 'Admin access required to delete journal entries' });
+  // Admin is view-only for accounting data (cannot create/edit/delete entries, payments, inventory)
+  if (role === 'admin' && WRITE.includes(method)) {
+    const restricted = ['/entries', '/payments', '/inventory'];
+    if (restricted.some(r => p.startsWith(r))) {
+      return res.status(403).json({ error: 'Admin role is view-only — changes require Staff, Manager, or Finance access' });
+    }
   }
-  if (method === 'DELETE' && (p.startsWith('/payments/receivables/') || p.startsWith('/payments/payables/'))) {
-    if (level < ROLE_LEVELS.admin) return res.status(403).json({ error: 'Admin access required to delete payments' });
-  }
-  if (method === 'DELETE' && p.startsWith('/inventory/')) {
-    if (level < ROLE_LEVELS.admin) return res.status(403).json({ error: 'Admin access required to delete inventory items' });
-  }
+
+  // Settings: Finance, Admin, Super Admin
   if (method === 'PUT' && p === '/settings') {
-    if (level < ROLE_LEVELS.admin) return res.status(403).json({ error: 'Admin access required to change settings' });
+    if (!['finance', 'admin', 'super_admin'].includes(role)) {
+      return res.status(403).json({ error: 'Finance role or above required to change settings' });
+    }
   }
 
-  // Finance+: post journal entries, import CSV
-  if (method === 'POST' && p === '/entries') {
-    if (level < ROLE_LEVELS.finance) return res.status(403).json({ error: 'Finance role required to post journal entries' });
-  }
+  // Journal entry CSV import: Finance+
   if (method === 'POST' && p === '/entries/import/csv') {
-    if (level < ROLE_LEVELS.finance) return res.status(403).json({ error: 'Finance role required to import journal entries' });
-  }
-
-  // Manager+: create/edit payments and inventory
-  if ((method === 'POST' || method === 'PUT') && p.startsWith('/payments/')) {
-    if (level < ROLE_LEVELS.manager) return res.status(403).json({ error: 'Manager role required to manage payments' });
-  }
-  if ((method === 'POST' || method === 'PUT') && p.startsWith('/inventory')) {
-    if (level < ROLE_LEVELS.manager) return res.status(403).json({ error: 'Manager role required to manage inventory' });
+    if (!['finance', 'super_admin'].includes(role)) {
+      return res.status(403).json({ error: 'Finance role required to import journal entries' });
+    }
   }
 
   next();
@@ -159,6 +154,8 @@ app.use('/api/reports',       require('./routes/reports'));
 app.use('/api/settings',      require('./routes/settings'));
 app.use('/api/fiscal',        require('./routes/fiscal'));
 app.use('/api/exchange-rate', require('./routes/exchangeRate'));
+app.use('/api/approvals',     require('./routes/approvals'));
+app.use('/api/logs',          require('./routes/logs'));
 
 // ── Serve built React app in production ──────────────────────────────────────
 if (process.env.NODE_ENV === 'production') {

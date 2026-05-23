@@ -135,11 +135,12 @@ function ImportModal({ type, onClose, onImported }) {
   );
 }
 
-const statusBadge = (status, dueDate) => {
+const statusBadge = (rec) => {
+  if (rec.pending_deletion) return <span className="badge badge-warning">Pending Deletion</span>;
   const today = new Date().toISOString().split('T')[0];
-  if (status === 'paid') return <span className="badge badge-success">Paid</span>;
-  if (status === 'partial') return <span className="badge badge-blue">Partial</span>;
-  if (dueDate && dueDate < today) return <span className="badge badge-danger">Overdue</span>;
+  if (rec.status === 'paid')    return <span className="badge badge-success">Paid</span>;
+  if (rec.status === 'partial') return <span className="badge badge-blue">Partial</span>;
+  if (rec.due_date && rec.due_date < today) return <span className="badge badge-danger">Overdue</span>;
   return <span className="badge badge-warning">Pending</span>;
 };
 
@@ -327,28 +328,78 @@ function PayModal({ record, type, onClose, onSaved }) {
   );
 }
 
+// ── Deletion-request modal ────────────────────────────────────────────────────
+function DeletionModal({ rec, isAR, onClose, onDone }) {
+  const name   = isAR ? rec.customer_name : rec.supplier_name;
+  const ref    = rec.invoice_number || rec.reference_number || '—';
+  const [note,   setNote]   = useState('');
+  const [saving, setSaving] = useState(false);
+  const [error,  setError]  = useState('');
+
+  const handleRequest = async () => {
+    setSaving(true); setError('');
+    try {
+      const res  = await fetch(`/api/payments/${isAR ? 'receivables' : 'payables'}/${rec.id}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ deletion_note: note || null }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setError(data.error); return; }
+      onDone('Deletion request submitted — awaiting approval.');
+      onClose();
+    } catch { setError('Network error.'); }
+    finally { setSaving(false); }
+  };
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal" style={{ maxWidth: 440 }} onClick={e => e.stopPropagation()}>
+        <div className="modal-header">
+          <div className="modal-title">🗑 Request Record Deletion</div>
+          <button className="btn btn-ghost btn-icon" onClick={onClose}>✕</button>
+        </div>
+        <div className="modal-body">
+          <div className="alert alert-warning mb-16">
+            Requesting deletion of <strong>{ref}</strong> ({name}).
+            An approver must review this before the record is permanently removed.
+          </div>
+          {error && <div className="alert alert-error mb-12">⚠ {error}</div>}
+          <div className="form-group">
+            <label className="form-label">Reason for Deletion <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>(optional)</span></label>
+            <textarea className="form-textarea" rows={3} value={note}
+              onChange={e => setNote(e.target.value)}
+              placeholder="Why should this record be deleted?" />
+          </div>
+        </div>
+        <div className="modal-footer">
+          <button className="btn btn-ghost" onClick={onClose}>Cancel</button>
+          <button className="btn btn-danger" onClick={handleRequest} disabled={saving}>
+            {saving ? 'Submitting…' : '🗑 Submit Deletion Request'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function Payments({ tab }) {
   const { fmt, settings } = useSettings();
-  const { can } = useUser();
+  const { can, user }     = useUser();
   const baseCurrency = settings.currency || 'USD';
   const isAR = tab === 'incoming';
-  const [records, setRecords] = useState([]);
-  const [showAdd, setShowAdd] = useState(false);
-  const [showImport, setShowImport] = useState(false);
-  const [payRecord, setPayRecord] = useState(null);
-  const [msg, setMsg] = useState(null);
+  const [records,       setRecords]       = useState([]);
+  const [showAdd,       setShowAdd]       = useState(false);
+  const [showImport,    setShowImport]    = useState(false);
+  const [payRecord,     setPayRecord]     = useState(null);
+  const [deletionModal, setDeletionModal] = useState(null);
+  const [msg,           setMsg]           = useState(null);
 
   useEffect(() => { loadRecords(); }, [tab]);
 
   const loadRecords = () => {
     const endpoint = isAR ? '/api/payments/receivables' : '/api/payments/payables';
     fetch(endpoint).then(r => r.json()).then(setRecords).catch(() => {});
-  };
-
-  const handleDelete = async (id) => {
-    if (!window.confirm('Delete this record?')) return;
-    await fetch(`/api/payments/${isAR ? 'receivables' : 'payables'}/${id}`, { method: 'DELETE' });
-    loadRecords();
   };
 
   const today = new Date().toISOString().split('T')[0];
@@ -362,6 +413,13 @@ export default function Payments({ tab }) {
 
   return (
     <div>
+      {deletionModal && (
+        <DeletionModal
+          rec={deletionModal} isAR={isAR}
+          onClose={() => setDeletionModal(null)}
+          onDone={text => { setMsg({ type: 'success', text }); loadRecords(); }}
+        />
+      )}
       {showImport && <ImportModal type={tab} onClose={() => setShowImport(false)} onImported={loadRecords} />}
       <div className="page-header">
         <div>
@@ -459,17 +517,19 @@ export default function Payments({ tab }) {
                           ? <>📅 {new Date(rec.scheduled_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</>
                           : <span style={{ color: 'var(--text-light)' }}>—</span>}
                       </td>
-                      <td>{statusBadge(rec.status, rec.due_date)}</td>
+                      <td>{statusBadge(rec)}</td>
                       <td>
                         <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end' }}>
-                          {rec.status !== 'paid' && can('manager') && (
+                          {rec.status !== 'paid' && !rec.pending_deletion && can('manager') && (
                             <button className="btn btn-success btn-sm" onClick={() => setPayRecord(rec)}>
                               ✓ Pay
                             </button>
                           )}
-                          {can('admin') && (
-                            <button className="btn btn-ghost btn-sm" style={{ color: 'var(--danger)', borderColor: 'transparent' }}
-                              onClick={() => handleDelete(rec.id)}>🗑</button>
+                          {!rec.pending_deletion && user?.role !== 'admin' && (
+                            <button className="btn btn-ghost btn-sm"
+                              style={{ color: 'var(--danger)', borderColor: 'transparent' }}
+                              title="Request deletion"
+                              onClick={() => setDeletionModal(rec)}>🗑</button>
                           )}
                         </div>
                       </td>

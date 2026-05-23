@@ -125,6 +125,43 @@ function initDB() {
     );
   `);
 
+  // ── Approval requests ────────────────────────────────────────────────────────
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS approval_requests (
+      id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+      type                TEXT NOT NULL,       -- create_entry | delete_entry | delete_receivable | delete_payable
+      entity_id           INTEGER NOT NULL,    -- journal_entries.id / receivables.id / payables.id
+      entity_ref          TEXT,                -- human-readable ref e.g. JE-0001 / INV-001
+      entity_snapshot     TEXT,                -- JSON snapshot of the entity for display
+      submitted_by_email  TEXT NOT NULL,
+      submitted_by_name   TEXT,
+      submitted_by_role   TEXT NOT NULL,
+      submitter_note      TEXT,
+      status              TEXT NOT NULL DEFAULT 'pending',  -- pending | approved | rejected
+      reviewed_by_email   TEXT,
+      reviewed_by_name    TEXT,
+      reviewer_note       TEXT DEFAULT '',
+      reviewed_at         TEXT,
+      created_at          TEXT DEFAULT (datetime('now'))
+    );
+  `);
+
+  // ── Audit logs ───────────────────────────────────────────────────────────────
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS audit_logs (
+      id          INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_email  TEXT NOT NULL,
+      user_name   TEXT,
+      user_role   TEXT,
+      action      TEXT NOT NULL,
+      entity_type TEXT,
+      entity_id   INTEGER,
+      entity_ref  TEXT,
+      details     TEXT,
+      created_at  TEXT DEFAULT (datetime('now'))
+    );
+  `);
+
   // Migrations — safe to run on existing databases (errors from "already exists" are swallowed)
   const migrations = [
     "ALTER TABLE journal_entries ADD COLUMN currency TEXT DEFAULT 'USD'",
@@ -138,6 +175,12 @@ function initDB() {
     "ALTER TABLE payables ADD COLUMN currency TEXT DEFAULT 'USD'",
     "ALTER TABLE payables ADD COLUMN exchange_rate REAL DEFAULT 1.0",
     "ALTER TABLE payables ADD COLUMN scheduled_date TEXT",
+    // Approval workflow columns
+    "ALTER TABLE journal_entries ADD COLUMN created_by_email TEXT DEFAULT 'system'",
+    "ALTER TABLE journal_entries ADD COLUMN created_by_name  TEXT DEFAULT 'System'",
+    "ALTER TABLE journal_entries ADD COLUMN created_by_role  TEXT DEFAULT 'admin'",
+    "ALTER TABLE receivables ADD COLUMN pending_deletion INTEGER DEFAULT 0",
+    "ALTER TABLE payables   ADD COLUMN pending_deletion INTEGER DEFAULT 0",
   ];
   for (const sql of migrations) {
     try { db.exec(sql); } catch (_) { /* column already exists */ }
