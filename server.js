@@ -2,8 +2,6 @@ const express = require('express');
 const cors    = require('cors');
 const path    = require('path');
 const session = require('express-session');
-const https   = require('https');
-const http    = require('http');
 const { initDB } = require('./db/database');
 
 const app  = express();
@@ -41,34 +39,18 @@ function userLevel(req) {
 }
 
 // ── UAM validation helper ─────────────────────────────────────────────────────
-function validateViaUAM(email, password, clientSlug) {
-  return new Promise((resolve, reject) => {
-    const uamUrl = new URL(`${process.env.UAM_URL}/api/validate`);
-    const body   = JSON.stringify({ email, password, client_slug: clientSlug });
-    const lib    = uamUrl.protocol === 'https:' ? https : http;
-
-    const req = lib.request({
-      hostname: uamUrl.hostname,
-      port:     uamUrl.port || (uamUrl.protocol === 'https:' ? 443 : 80),
-      path:     uamUrl.pathname,
-      method:   'POST',
-      headers: {
-        'Content-Type':  'application/json',
-        'Content-Length': Buffer.byteLength(body),
-        'X-API-Key':     process.env.UAM_API_SECRET || '',
-      },
-    }, (res) => {
-      let data = '';
-      res.on('data', chunk => { data += chunk; });
-      res.on('end', () => {
-        try { resolve(JSON.parse(data)); }
-        catch { reject(new Error('Invalid UAM response')); }
-      });
-    });
-    req.on('error', reject);
-    req.write(body);
-    req.end();
+async function validateViaUAM(email, password, clientSlug) {
+  const uamBase = process.env.UAM_URL.replace(/\/$/, ''); // strip trailing slash
+  const res  = await fetch(`${uamBase}/api/validate`, {
+    method:  'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-API-Key':    process.env.UAM_API_SECRET || '',
+    },
+    body:   JSON.stringify({ email, password, client_slug: clientSlug }),
+    signal: AbortSignal.timeout(15000), // 15 s timeout
   });
+  return res.json();
 }
 
 // ── Auth routes (public) ──────────────────────────────────────────────────────
