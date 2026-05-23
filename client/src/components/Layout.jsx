@@ -92,6 +92,7 @@ export default function Layout({ children, onLogout }) {
 
         <div className="nav-section">
           <NavItem to="/"          icon="🏠" label="Dashboard"       onNavigate={closeSidebar} />
+          <NavItem to="/approvals" label="↳ Approvals" sub          onNavigate={closeSidebar} badge={pendingCount} />
           <NavItem to="/journal"   icon="📝" label="Journal Entries"  onNavigate={closeSidebar} />
           <NavItem to="/inventory" icon="📦" label="Inventory"        onNavigate={closeSidebar} />
         </div>
@@ -138,8 +139,7 @@ export default function Layout({ children, onLogout }) {
         </div>
 
         <div className="nav-section">
-          <NavItem to="/fiscal"    icon="📅" label="Fiscal Year" onNavigate={closeSidebar} />
-          <NavItem to="/approvals" icon="✅" label="Approvals"   onNavigate={closeSidebar} badge={pendingCount} />
+          <NavItem to="/fiscal" icon="📅" label="Fiscal Year" onNavigate={closeSidebar} />
         </div>
 
         {can('finance') && (

@@ -3,8 +3,12 @@ import { useState, useEffect, useCallback } from 'react';
 const TYPE_LABELS = {
   create_entry:       '📝 New Journal Entry',
   delete_entry:       '🗑 Delete Journal Entry',
+  create_receivable:  '📥 New Invoice (AR)',
   delete_receivable:  '🗑 Delete Receivable (AR)',
+  create_payable:     '📤 New Bill (AP)',
   delete_payable:     '🗑 Delete Payable (AP)',
+  create_inventory:   '📦 New Inventory Item',
+  delete_inventory:   '🗑 Delete Inventory Item',
 };
 
 const ROLE_LABELS = {
@@ -73,13 +77,39 @@ function ReviewModal({ request, onClose, onDone }) {
             )}
           </div>
 
+          {/* Snapshot for create requests */}
+          {snapshot && (request.type === 'create_receivable' || request.type === 'create_payable') && (
+            <div style={{ background: '#f0fdf4', border: '1px solid #86efac', borderRadius: 8, padding: '12px 16px', marginBottom: 16, fontSize: 12 }}>
+              <div style={{ fontWeight: 700, color: '#15803d', marginBottom: 8 }}>📋 Record to be created</div>
+              {snapshot.customer_name && <div><strong>Customer:</strong> {snapshot.customer_name}</div>}
+              {snapshot.supplier_name && <div><strong>Supplier:</strong> {snapshot.supplier_name}</div>}
+              {snapshot.invoice_number && <div><strong>Invoice #:</strong> {snapshot.invoice_number}</div>}
+              {snapshot.reference_number && <div><strong>Reference #:</strong> {snapshot.reference_number}</div>}
+              {snapshot.description && <div><strong>Description:</strong> {snapshot.description}</div>}
+              {snapshot.amount != null && <div><strong>Amount:</strong> {parseFloat(snapshot.amount).toLocaleString('en-US', { minimumFractionDigits: 2 })} {snapshot.currency || ''}</div>}
+              {snapshot.due_date && <div><strong>Due Date:</strong> {snapshot.due_date}</div>}
+            </div>
+          )}
+          {snapshot && request.type === 'create_inventory' && (
+            <div style={{ background: '#f0fdf4', border: '1px solid #86efac', borderRadius: 8, padding: '12px 16px', marginBottom: 16, fontSize: 12 }}>
+              <div style={{ fontWeight: 700, color: '#15803d', marginBottom: 8 }}>📋 Item to be added</div>
+              {snapshot.sku && <div><strong>SKU:</strong> {snapshot.sku}</div>}
+              {snapshot.name && <div><strong>Name:</strong> {snapshot.name}</div>}
+              {snapshot.category && <div><strong>Category:</strong> {snapshot.category}</div>}
+              {snapshot.unit && <div><strong>Unit:</strong> {snapshot.unit}</div>}
+              {snapshot.quantity != null && <div><strong>Opening Qty:</strong> {snapshot.quantity}</div>}
+              {snapshot.unit_cost != null && <div><strong>Unit Cost:</strong> {parseFloat(snapshot.unit_cost).toLocaleString('en-US', { minimumFractionDigits: 2 })}</div>}
+            </div>
+          )}
           {/* Snapshot for delete requests */}
-          {snapshot && (request.type === 'delete_entry' || request.type === 'delete_receivable' || request.type === 'delete_payable') && (
+          {snapshot && (request.type === 'delete_entry' || request.type === 'delete_receivable' || request.type === 'delete_payable' || request.type === 'delete_inventory') && (
             <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 8, padding: '12px 16px', marginBottom: 16, fontSize: 12 }}>
               <div style={{ fontWeight: 700, color: '#dc2626', marginBottom: 8 }}>⚠ Record to be deleted</div>
               {snapshot.description && <div><strong>Description:</strong> {snapshot.description}</div>}
               {snapshot.customer_name && <div><strong>Customer:</strong> {snapshot.customer_name}</div>}
               {snapshot.supplier_name && <div><strong>Supplier:</strong> {snapshot.supplier_name}</div>}
+              {snapshot.name && <div><strong>Item:</strong> {snapshot.name}</div>}
+              {snapshot.sku && <div><strong>SKU:</strong> {snapshot.sku}</div>}
               {snapshot.amount != null && <div><strong>Amount:</strong> {parseFloat(snapshot.amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}</div>}
               {snapshot.date && <div><strong>Date:</strong> {snapshot.date}</div>}
             </div>

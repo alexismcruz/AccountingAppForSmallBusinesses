@@ -179,8 +179,22 @@ function initDB() {
     "ALTER TABLE journal_entries ADD COLUMN created_by_email TEXT DEFAULT 'system'",
     "ALTER TABLE journal_entries ADD COLUMN created_by_name  TEXT DEFAULT 'System'",
     "ALTER TABLE journal_entries ADD COLUMN created_by_role  TEXT DEFAULT 'admin'",
-    "ALTER TABLE receivables ADD COLUMN pending_deletion INTEGER DEFAULT 0",
-    "ALTER TABLE payables   ADD COLUMN pending_deletion INTEGER DEFAULT 0",
+    "ALTER TABLE receivables ADD COLUMN pending_deletion  INTEGER DEFAULT 0",
+    "ALTER TABLE payables   ADD COLUMN pending_deletion  INTEGER DEFAULT 0",
+    // Approval workflow for new payments + inventory
+    "ALTER TABLE receivables ADD COLUMN pending_approval  INTEGER DEFAULT 0",
+    "ALTER TABLE receivables ADD COLUMN created_by_email  TEXT DEFAULT 'system'",
+    "ALTER TABLE receivables ADD COLUMN created_by_name   TEXT DEFAULT 'System'",
+    "ALTER TABLE receivables ADD COLUMN created_by_role   TEXT DEFAULT 'admin'",
+    "ALTER TABLE payables    ADD COLUMN pending_approval  INTEGER DEFAULT 0",
+    "ALTER TABLE payables    ADD COLUMN created_by_email  TEXT DEFAULT 'system'",
+    "ALTER TABLE payables    ADD COLUMN created_by_name   TEXT DEFAULT 'System'",
+    "ALTER TABLE payables    ADD COLUMN created_by_role   TEXT DEFAULT 'admin'",
+    "ALTER TABLE inventory_items ADD COLUMN pending_approval  INTEGER DEFAULT 0",
+    "ALTER TABLE inventory_items ADD COLUMN pending_deletion  INTEGER DEFAULT 0",
+    "ALTER TABLE inventory_items ADD COLUMN created_by_email  TEXT DEFAULT 'system'",
+    "ALTER TABLE inventory_items ADD COLUMN created_by_name   TEXT DEFAULT 'System'",
+    "ALTER TABLE inventory_items ADD COLUMN created_by_role   TEXT DEFAULT 'admin'",
   ];
   for (const sql of migrations) {
     try { db.exec(sql); } catch (_) { /* column already exists */ }

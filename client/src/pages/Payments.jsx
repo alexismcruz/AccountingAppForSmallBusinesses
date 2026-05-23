@@ -136,6 +136,7 @@ function ImportModal({ type, onClose, onImported }) {
 }
 
 const statusBadge = (rec) => {
+  if (rec.pending_approval) return <span className="badge badge-info">Pending Approval</span>;
   if (rec.pending_deletion) return <span className="badge badge-warning">Pending Deletion</span>;
   const today = new Date().toISOString().split('T')[0];
   if (rec.status === 'paid')    return <span className="badge badge-success">Paid</span>;
@@ -151,6 +152,7 @@ function AddModal({ type, onClose, onSaved }) {
   const [form, setForm] = useState({
     customer_name: '', supplier_name: '', invoice_number: '', reference_number: '',
     description: '', amount: '', due_date: '', scheduled_date: '', currency: baseCurrency, exchange_rate: '1',
+    submitter_note: '',
   });
   const [msg, setMsg] = useState(null);
   const [saving, setSaving] = useState(false);
@@ -162,8 +164,8 @@ function AddModal({ type, onClose, onSaved }) {
     try {
       const endpoint = isAR ? '/api/payments/receivables' : '/api/payments/payables';
       const body = isAR
-        ? { customer_name: form.customer_name, invoice_number: form.invoice_number || `INV-${Date.now()}`, description: form.description, amount: form.amount, due_date: form.due_date || null, scheduled_date: form.scheduled_date || null, currency: form.currency, exchange_rate: parseFloat(form.exchange_rate) || 1 }
-        : { supplier_name: form.supplier_name, reference_number: form.reference_number, description: form.description, amount: form.amount, due_date: form.due_date || null, scheduled_date: form.scheduled_date || null, currency: form.currency, exchange_rate: parseFloat(form.exchange_rate) || 1 };
+        ? { customer_name: form.customer_name, invoice_number: form.invoice_number || `INV-${Date.now()}`, description: form.description, amount: form.amount, due_date: form.due_date || null, scheduled_date: form.scheduled_date || null, currency: form.currency, exchange_rate: parseFloat(form.exchange_rate) || 1, submitter_note: form.submitter_note || null }
+        : { supplier_name: form.supplier_name, reference_number: form.reference_number, description: form.description, amount: form.amount, due_date: form.due_date || null, scheduled_date: form.scheduled_date || null, currency: form.currency, exchange_rate: parseFloat(form.exchange_rate) || 1, submitter_note: form.submitter_note || null };
       const res = await fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
       const data = await res.json();
       if (!res.ok) { setMsg(data.error); return; }
@@ -240,11 +242,17 @@ function AddModal({ type, onClose, onSaved }) {
                 onRateChange={val => setForm(f => ({ ...f, exchange_rate: val }))}
               />
             </div>
+            <div className="form-group" style={{ gridColumn: '1/-1' }}>
+              <label className="form-label">Note to Approver <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>(optional)</span></label>
+              <textarea className="form-textarea" rows={2} value={form.submitter_note}
+                onChange={e => setForm(f => ({ ...f, submitter_note: e.target.value }))}
+                placeholder="Any context for the reviewer…" />
+            </div>
           </div>
         </div>
         <div className="modal-footer">
           <button className="btn btn-ghost" onClick={onClose}>Cancel</button>
-          <button className="btn btn-primary" onClick={handleSave} disabled={saving}>{saving ? 'Saving…' : 'Save'}</button>
+          <button className="btn btn-primary" onClick={handleSave} disabled={saving}>{saving ? 'Submitting…' : 'Submit for Approval'}</button>
         </div>
       </div>
     </div>
@@ -402,6 +410,17 @@ export default function Payments({ tab }) {
     fetch(endpoint).then(r => r.json()).then(setRecords).catch(() => {});
   };
 
+  const handleRecall = async (rec) => {
+    const endpoint = `/api/payments/${isAR ? 'receivables' : 'payables'}/${rec.id}/recall`;
+    try {
+      const res  = await fetch(endpoint, { method: 'POST', credentials: 'include' });
+      const data = await res.json();
+      if (!res.ok) { setMsg({ type: 'error', text: data.error }); return; }
+      setMsg({ type: 'success', text: 'Submission recalled.' });
+      loadRecords();
+    } catch { setMsg({ type: 'error', text: 'Network error.' }); }
+  };
+
   const today = new Date().toISOString().split('T')[0];
   const pending = records.filter(r => r.status !== 'paid');
   const totalOutstanding = pending.reduce((s, r) => s + (r.amount - r.paid_amount), 0);
@@ -439,7 +458,7 @@ export default function Payments({ tab }) {
               ⬆ Import CSV
             </button>
           )}
-          {can('manager') && (
+          {user?.role !== 'admin' && (
             <button className="btn btn-primary" onClick={() => setShowAdd(true)}>
               {isAR ? '+ Add Invoice' : '+ Add Bill'}
             </button>
@@ -520,12 +539,17 @@ export default function Payments({ tab }) {
                       <td>{statusBadge(rec)}</td>
                       <td>
                         <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end' }}>
-                          {rec.status !== 'paid' && !rec.pending_deletion && can('manager') && (
+                          {rec.pending_approval && (rec.created_by_email === user?.email || user?.role === 'super_admin') && (
+                            <button className="btn btn-ghost btn-sm" onClick={() => handleRecall(rec)} title="Recall submission">
+                              ↩ Recall
+                            </button>
+                          )}
+                          {rec.status !== 'paid' && !rec.pending_deletion && !rec.pending_approval && can('manager') && (
                             <button className="btn btn-success btn-sm" onClick={() => setPayRecord(rec)}>
                               ✓ Pay
                             </button>
                           )}
-                          {!rec.pending_deletion && user?.role !== 'admin' && (
+                          {!rec.pending_deletion && !rec.pending_approval && user?.role !== 'admin' && (
                             <button className="btn btn-ghost btn-sm"
                               style={{ color: 'var(--danger)', borderColor: 'transparent' }}
                               title="Request deletion"

@@ -162,21 +162,61 @@ router.get('/receivables', (req, res) => {
 });
 
 router.post('/receivables', (req, res) => {
-  const db = getDB();
-  const { customer_name, invoice_number, description, amount, due_date, scheduled_date, currency, exchange_rate } = req.body;
-  if (!customer_name || !invoice_number || !amount) {
-    return res.status(400).json({ error: 'customer_name, invoice_number, and amount are required' });
+  const db   = getDB();
+  const user = req.session.user;
+  const { customer_name, invoice_number, description, amount, due_date, scheduled_date,
+          currency, exchange_rate, submitter_note } = req.body;
+  if (!customer_name || !amount) {
+    return res.status(400).json({ error: 'customer_name and amount are required' });
   }
+  const isSuperAdmin   = user?.role === 'super_admin';
+  const pendingApproval = isSuperAdmin ? 0 : 1;
+  const invNum         = invoice_number || `INV-${Date.now()}`;
   try {
     const result = db.prepare(`
-      INSERT INTO receivables (customer_name, invoice_number, description, amount, due_date, scheduled_date, currency, exchange_rate)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(customer_name, invoice_number, description || '', parseFloat(amount), due_date || null,
-           scheduled_date || null, currency || 'USD', parseFloat(exchange_rate) || 1.0);
-    res.json(db.prepare('SELECT * FROM receivables WHERE id = ?').get(result.lastInsertRowid));
+      INSERT INTO receivables
+        (customer_name, invoice_number, description, amount, due_date, scheduled_date,
+         currency, exchange_rate, pending_approval, created_by_email, created_by_name, created_by_role)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(customer_name, invNum, description || '', parseFloat(amount), due_date || null,
+           scheduled_date || null, currency || 'USD', parseFloat(exchange_rate) || 1.0,
+           pendingApproval, user?.email || 'system', user?.name || 'System', user?.role || 'staff');
+    const rec = db.prepare('SELECT * FROM receivables WHERE id = ?').get(result.lastInsertRowid);
+
+    if (!isSuperAdmin) {
+      db.prepare(`
+        INSERT INTO approval_requests
+          (type, entity_id, entity_ref, entity_snapshot, submitted_by_email, submitted_by_name, submitted_by_role, submitter_note)
+        VALUES ('create_receivable', ?, ?, ?, ?, ?, ?, ?)
+      `).run(rec.id, invNum, JSON.stringify(rec),
+             user?.email, user?.name || user?.email, user?.role, submitter_note || null);
+    }
+    logAction(user, isSuperAdmin ? 'CREATE_RECEIVABLE' : 'SUBMIT_RECEIVABLE_FOR_APPROVAL',
+      'receivable', rec.id, invNum);
+    res.json(rec);
   } catch (e) {
     res.status(400).json({ error: 'Invoice number already exists' });
   }
+});
+
+// Recall a pending-approval receivable (owner or super_admin only)
+router.post('/receivables/:id/recall', (req, res) => {
+  const db   = getDB();
+  const user = req.session.user;
+  const rec  = db.prepare('SELECT * FROM receivables WHERE id = ?').get(req.params.id);
+  if (!rec) return res.status(404).json({ error: 'Record not found' });
+  if (!rec.pending_approval) return res.status(400).json({ error: 'This record is not pending approval' });
+  if (rec.created_by_email !== user.email && user.role !== 'super_admin') {
+    return res.status(403).json({ error: 'Only the creator or Super Admin can recall this submission' });
+  }
+  runTransaction((db) => {
+    db.prepare('DELETE FROM receivables WHERE id = ?').run(rec.id);
+    db.prepare(`UPDATE approval_requests SET status = 'rejected', reviewer_note = 'Recalled by submitter',
+      reviewed_at = datetime('now') WHERE entity_id = ? AND type = 'create_receivable' AND status = 'pending'`)
+      .run(rec.id);
+  });
+  logAction(user, 'RECALL_RECEIVABLE', 'receivable', rec.id, rec.invoice_number);
+  res.json({ ok: true });
 });
 
 // Record payment received from customer
@@ -184,6 +224,7 @@ router.post('/receivables/:id/pay', (req, res) => {
   const db = getDB();
   const rec = db.prepare('SELECT * FROM receivables WHERE id = ?').get(req.params.id);
   if (!rec) return res.status(404).json({ error: 'Record not found' });
+  if (rec.pending_approval) return res.status(400).json({ error: 'This invoice is still pending approval and cannot be paid yet' });
 
   const { amount, date, reference, notes, currency, exchange_rate } = req.body;
   const payAmount = parseFloat(amount) || rec.amount - rec.paid_amount;
@@ -263,17 +304,55 @@ router.get('/payables', (req, res) => {
 });
 
 router.post('/payables', (req, res) => {
-  const db = getDB();
-  const { supplier_name, reference_number, description, amount, due_date, scheduled_date, currency, exchange_rate } = req.body;
+  const db   = getDB();
+  const user = req.session.user;
+  const { supplier_name, reference_number, description, amount, due_date, scheduled_date,
+          currency, exchange_rate, submitter_note } = req.body;
   if (!supplier_name || !amount) {
     return res.status(400).json({ error: 'supplier_name and amount are required' });
   }
+  const isSuperAdmin    = user?.role === 'super_admin';
+  const pendingApproval = isSuperAdmin ? 0 : 1;
   const result = db.prepare(`
-    INSERT INTO payables (supplier_name, reference_number, description, amount, due_date, scheduled_date, currency, exchange_rate)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-  `).run(supplier_name, reference_number || '', description || '', parseFloat(amount), due_date || null,
-         scheduled_date || null, currency || 'USD', parseFloat(exchange_rate) || 1.0);
-  res.json(db.prepare('SELECT * FROM payables WHERE id = ?').get(result.lastInsertRowid));
+    INSERT INTO payables (supplier_name, reference_number, description, amount, due_date, scheduled_date,
+                          currency, exchange_rate, pending_approval, created_by_email, created_by_name, created_by_role)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(supplier_name, reference_number || '', description || '', parseFloat(amount),
+         due_date || null, scheduled_date || null, currency || 'USD', parseFloat(exchange_rate) || 1.0,
+         pendingApproval, user?.email || 'system', user?.name || 'System', user?.role || 'staff');
+  const pay = db.prepare('SELECT * FROM payables WHERE id = ?').get(result.lastInsertRowid);
+
+  if (!isSuperAdmin) {
+    db.prepare(`
+      INSERT INTO approval_requests
+        (type, entity_id, entity_ref, entity_snapshot, submitted_by_email, submitted_by_name, submitted_by_role, submitter_note)
+      VALUES ('create_payable', ?, ?, ?, ?, ?, ?, ?)
+    `).run(pay.id, pay.reference_number || String(pay.id), JSON.stringify(pay),
+           user?.email, user?.name || user?.email, user?.role, submitter_note || null);
+  }
+  logAction(user, isSuperAdmin ? 'CREATE_PAYABLE' : 'SUBMIT_PAYABLE_FOR_APPROVAL',
+    'payable', pay.id, pay.reference_number || String(pay.id));
+  res.json(pay);
+});
+
+// Recall a pending-approval payable (owner or super_admin only)
+router.post('/payables/:id/recall', (req, res) => {
+  const db   = getDB();
+  const user = req.session.user;
+  const pay  = db.prepare('SELECT * FROM payables WHERE id = ?').get(req.params.id);
+  if (!pay) return res.status(404).json({ error: 'Record not found' });
+  if (!pay.pending_approval) return res.status(400).json({ error: 'This record is not pending approval' });
+  if (pay.created_by_email !== user.email && user.role !== 'super_admin') {
+    return res.status(403).json({ error: 'Only the creator or Super Admin can recall this submission' });
+  }
+  runTransaction((db) => {
+    db.prepare('DELETE FROM payables WHERE id = ?').run(pay.id);
+    db.prepare(`UPDATE approval_requests SET status = 'rejected', reviewer_note = 'Recalled by submitter',
+      reviewed_at = datetime('now') WHERE entity_id = ? AND type = 'create_payable' AND status = 'pending'`)
+      .run(pay.id);
+  });
+  logAction(user, 'RECALL_PAYABLE', 'payable', pay.id, pay.reference_number);
+  res.json({ ok: true });
 });
 
 // Record payment made to supplier
@@ -281,6 +360,7 @@ router.post('/payables/:id/pay', (req, res) => {
   const db = getDB();
   const payable = db.prepare('SELECT * FROM payables WHERE id = ?').get(req.params.id);
   if (!payable) return res.status(404).json({ error: 'Record not found' });
+  if (payable.pending_approval) return res.status(400).json({ error: 'This bill is still pending approval and cannot be paid yet' });
 
   const { amount, date, reference, notes, currency, exchange_rate } = req.body;
   const payAmount = parseFloat(amount) || payable.amount - payable.paid_amount;

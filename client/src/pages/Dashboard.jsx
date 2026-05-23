@@ -67,40 +67,46 @@ export default function Dashboard() {
         />
       </div>
 
-      {/* Alerts row */}
-      <div style={{ display: 'flex', gap: 12, marginBottom: 24, flexWrap: 'wrap' }}>
-        {pendingApprove > 0 && (
-          <div className="alert alert-warning" style={{ flex: 1, minWidth: 240, cursor: 'pointer' }}
-            onClick={() => navigate('/approvals')}>
-            ✅ <span>
-              <strong>{pendingApprove} approval{pendingApprove !== 1 ? 's' : ''}</strong> waiting for your review — click to open
-            </span>
-          </div>
-        )}
-        {data.lowStock > 0 && (
-          <div className="alert alert-warning" style={{ flex: 1, minWidth: 240, cursor: 'pointer' }}
-            onClick={() => navigate('/inventory')}>
-            📦 <span><strong>{data.lowStock} item{data.lowStock > 1 ? 's' : ''}</strong> at or below reorder point — check inventory</span>
-          </div>
-        )}
-        {data.overdueAR > 0 && (
-          <div className="alert alert-warning" style={{ flex: 1, minWidth: 240, cursor: 'pointer' }}
-            onClick={() => navigate('/payments/incoming')}>
-            📥 <span><strong>{data.overdueAR} overdue invoice{data.overdueAR > 1 ? 's' : ''}</strong> — customers owe you money</span>
-          </div>
-        )}
-        {data.overdueAP > 0 && (
-          <div className="alert alert-danger" style={{ flex: 1, minWidth: 240, cursor: 'pointer' }}
-            onClick={() => navigate('/payments/pending')}>
-            📤 <span><strong>{data.overdueAP} overdue bill{data.overdueAP > 1 ? 's' : ''}</strong> — you owe suppliers money</span>
-          </div>
-        )}
-        {pendingApprove === 0 && data.lowStock === 0 && data.overdueAR === 0 && data.overdueAP === 0 && (
-          <div className="alert alert-success" style={{ flex: 1 }}>
-            ✓ Everything looks good — no alerts at this time.
-          </div>
-        )}
+      {/* Approvals tile */}
+      <div style={{ marginBottom: 24 }}>
+        <StatCard
+          label="Pending Approvals"
+          value={pendingApprove}
+          sub={pendingApprove > 0 ? 'Action required — click to review' : 'No pending approvals'}
+          color={pendingApprove > 0 ? '#ea580c' : '#64748b'}
+          icon="✅"
+          onClick={() => navigate('/approvals')}
+        />
       </div>
+
+      {/* Alerts row */}
+      {(data.lowStock > 0 || data.overdueAR > 0 || data.overdueAP > 0) && (
+        <div style={{ display: 'flex', gap: 12, marginBottom: 24, flexWrap: 'wrap' }}>
+          {data.lowStock > 0 && (
+            <div className="alert alert-warning" style={{ flex: 1, minWidth: 240, cursor: 'pointer' }}
+              onClick={() => navigate('/inventory')}>
+              📦 <span><strong>{data.lowStock} item{data.lowStock > 1 ? 's' : ''}</strong> at or below reorder point — check inventory</span>
+            </div>
+          )}
+          {data.overdueAR > 0 && (
+            <div className="alert alert-warning" style={{ flex: 1, minWidth: 240, cursor: 'pointer' }}
+              onClick={() => navigate('/payments/incoming')}>
+              📥 <span><strong>{data.overdueAR} overdue invoice{data.overdueAR > 1 ? 's' : ''}</strong> — customers owe you money</span>
+            </div>
+          )}
+          {data.overdueAP > 0 && (
+            <div className="alert alert-danger" style={{ flex: 1, minWidth: 240, cursor: 'pointer' }}
+              onClick={() => navigate('/payments/pending')}>
+              📤 <span><strong>{data.overdueAP} overdue bill{data.overdueAP > 1 ? 's' : ''}</strong> — you owe suppliers money</span>
+            </div>
+          )}
+        </div>
+      )}
+      {data.lowStock === 0 && data.overdueAR === 0 && data.overdueAP === 0 && (
+        <div className="alert alert-success" style={{ marginBottom: 24 }}>
+          ✓ Everything looks good — no alerts at this time.
+        </div>
+      )}
 
       {/* Recent Entries */}
       <div className="card">

@@ -98,6 +98,14 @@ router.post('/:id/approve', (req, res) => {
         db.prepare('DELETE FROM receivables WHERE id = ?').run(request.entity_id);
       } else if (request.type === 'delete_payable') {
         db.prepare('DELETE FROM payables WHERE id = ?').run(request.entity_id);
+      } else if (request.type === 'create_receivable') {
+        db.prepare('UPDATE receivables SET pending_approval = 0 WHERE id = ?').run(request.entity_id);
+      } else if (request.type === 'create_payable') {
+        db.prepare('UPDATE payables SET pending_approval = 0 WHERE id = ?').run(request.entity_id);
+      } else if (request.type === 'create_inventory') {
+        db.prepare('UPDATE inventory_items SET pending_approval = 0 WHERE id = ?').run(request.entity_id);
+      } else if (request.type === 'delete_inventory') {
+        db.prepare('UPDATE inventory_items SET is_active = 0, pending_deletion = 0 WHERE id = ?').run(request.entity_id);
       }
 
       // Mark request as approved
@@ -109,7 +117,8 @@ router.post('/:id/approve', (req, res) => {
       `).run(user.email, user.name || user.email, note.trim(), request.id);
     });
 
-    logAction(user, `APPROVE_${request.type.toUpperCase()}`, request.type.includes('entry') ? 'journal_entry' : request.type.replace('delete_', ''),
+    const entityType = request.type.includes('entry') ? 'journal_entry' : request.type.replace(/^(create|delete)_/, '');
+    logAction(user, `APPROVE_${request.type.toUpperCase()}`, entityType,
       request.entity_id, request.entity_ref, { note: note.trim(), request_id: request.id });
 
     res.json({ ok: true });
@@ -141,6 +150,14 @@ router.post('/:id/reject', (req, res) => {
     db.prepare('UPDATE receivables SET pending_deletion = 0 WHERE id = ?').run(request.entity_id);
   } else if (request.type === 'delete_payable') {
     db.prepare('UPDATE payables SET pending_deletion = 0 WHERE id = ?').run(request.entity_id);
+  } else if (request.type === 'create_receivable') {
+    db.prepare('DELETE FROM receivables WHERE id = ?').run(request.entity_id);
+  } else if (request.type === 'create_payable') {
+    db.prepare('DELETE FROM payables WHERE id = ?').run(request.entity_id);
+  } else if (request.type === 'create_inventory') {
+    db.prepare('DELETE FROM inventory_items WHERE id = ?').run(request.entity_id);
+  } else if (request.type === 'delete_inventory') {
+    db.prepare('UPDATE inventory_items SET pending_deletion = 0 WHERE id = ?').run(request.entity_id);
   }
 
   db.prepare(`
@@ -150,7 +167,8 @@ router.post('/:id/reject', (req, res) => {
     WHERE id = ?
   `).run(user.email, user.name || user.email, note.trim(), request.id);
 
-  logAction(user, `REJECT_${request.type.toUpperCase()}`, request.type.includes('entry') ? 'journal_entry' : request.type.replace('delete_', ''),
+  const entityType = request.type.includes('entry') ? 'journal_entry' : request.type.replace(/^(create|delete)_/, '');
+  logAction(user, `REJECT_${request.type.toUpperCase()}`, entityType,
     request.entity_id, request.entity_ref, { note: note.trim(), request_id: request.id });
 
   res.json({ ok: true });
