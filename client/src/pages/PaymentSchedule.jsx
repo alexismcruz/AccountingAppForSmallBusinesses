@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useSettings } from '../context/SettingsContext.jsx';
+import AmountInput from '../components/AmountInput.jsx';
 
 function addDays(dateStr, n) {
   const d = new Date(dateStr + 'T00:00:00');
@@ -62,9 +63,11 @@ function PayModal({ item, onClose, onSaved }) {
           <div className="grid-2 gap-16">
             <div className="form-group">
               <label className="form-label">Amount to Record</label>
-              <input type="number" className="form-input" value={form.amount}
-                onChange={e => setForm(f => ({ ...f, amount: e.target.value }))}
-                min="0.01" step="0.01" />
+              <AmountInput
+                value={form.amount}
+                onChange={val => setForm(f => ({ ...f, amount: val }))}
+                placeholder="0.00"
+              />
               <div className="text-muted text-sm mt-8">Balance: {fmt(remaining)}</div>
             </div>
             <div className="form-group">

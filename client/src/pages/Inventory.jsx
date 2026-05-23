@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useSettings } from '../context/SettingsContext.jsx';
 import CurrencySelect from '../components/CurrencySelect.jsx';
+import AmountInput from '../components/AmountInput.jsx';
 
 const emptyForm = { sku: '', name: '', category: '', unit: 'pcs', quantity: '', unit_cost: '', reorder_point: '10', notes: '' };
 const makeEmptyReplenish = (baseCurrency) => ({ qty: '', unit_cost: '', payment_method: 'cash', notes: '', date: new Date().toISOString().split('T')[0], reference: '', currency: baseCurrency, exchange_rate: '1' });
@@ -214,7 +215,11 @@ export default function Inventory() {
                 )}
                 <div className="form-group">
                   <label className="form-label">Unit Cost</label>
-                  <input type="number" className="form-input" value={form.unit_cost} onChange={e => setForm(f => ({ ...f, unit_cost: e.target.value }))} min="0" step="0.01" placeholder="0.00" />
+                  <AmountInput
+                    value={form.unit_cost}
+                    onChange={val => setForm(f => ({ ...f, unit_cost: val }))}
+                    placeholder="0.00"
+                  />
                 </div>
                 <div className="form-group">
                   <label className="form-label">Reorder Point</label>
@@ -255,8 +260,11 @@ export default function Inventory() {
                 </div>
                 <div className="form-group">
                   <label className="form-label">Unit Cost</label>
-                  <input type="number" className="form-input" value={repForm.unit_cost}
-                    onChange={e => setRepForm(f => ({ ...f, unit_cost: e.target.value }))} min="0" step="0.01" />
+                  <AmountInput
+                    value={repForm.unit_cost}
+                    onChange={val => setRepForm(f => ({ ...f, unit_cost: val }))}
+                    placeholder="0.00"
+                  />
                 </div>
                 <div className="form-group">
                   <label className="form-label">Payment Method</label>

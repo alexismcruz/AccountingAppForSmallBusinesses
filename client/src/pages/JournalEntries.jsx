@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import AccountSelect from '../components/AccountSelect.jsx';
 import CurrencySelect from '../components/CurrencySelect.jsx';
+import AmountInput from '../components/AmountInput.jsx';
+import CharCount from '../components/CharCount.jsx';
 import { useSettings } from '../context/SettingsContext.jsx';
 
 const TEMPLATES = [
@@ -366,12 +368,16 @@ export default function JournalEntries() {
             <div className="form-group">
               <label className="form-label">Reference No. *</label>
               <input type="text" className="form-input" value={form.reference} placeholder="JE-0001"
+                maxLength={50}
                 onChange={e => setForm(f => ({ ...f, reference: e.target.value }))} />
+              <CharCount value={form.reference} max={50} />
             </div>
             <div className="form-group">
               <label className="form-label">Description *</label>
               <input type="text" className="form-input" value={form.description} placeholder="What is this entry for?"
+                maxLength={255}
                 onChange={e => setForm(f => ({ ...f, description: e.target.value }))} />
+              <CharCount value={form.description} max={255} />
             </div>
           </div>
 
@@ -417,19 +423,27 @@ export default function JournalEntries() {
                       />
                     </td>
                     <td>
-                      <input type="text" className="form-input" style={{ fontSize: 12 }}
-                        value={line.notes} placeholder="Add a note…"
-                        onChange={e => updateLine(i, 'notes', e.target.value)} />
+                      <div>
+                        <input type="text" className="form-input" style={{ fontSize: 12 }}
+                          value={line.notes} placeholder="Add a note…"
+                          maxLength={150}
+                          onChange={e => updateLine(i, 'notes', e.target.value)} />
+                        <CharCount value={line.notes} max={150} />
+                      </div>
                     </td>
                     <td>
-                      <input type="number" className="form-input" style={{ textAlign: 'right' }}
-                        value={line.debit} placeholder="0.00" min="0" step="0.01"
-                        onChange={e => updateLine(i, 'debit', e.target.value)} />
+                      <AmountInput
+                        value={line.debit}
+                        onChange={val => updateLine(i, 'debit', val)}
+                        placeholder="0.00"
+                      />
                     </td>
                     <td>
-                      <input type="number" className="form-input" style={{ textAlign: 'right' }}
-                        value={line.credit} placeholder="0.00" min="0" step="0.01"
-                        onChange={e => updateLine(i, 'credit', e.target.value)} />
+                      <AmountInput
+                        value={line.credit}
+                        onChange={val => updateLine(i, 'credit', val)}
+                        placeholder="0.00"
+                      />
                     </td>
                     <td>
                       <button className="btn btn-icon" style={{ color: 'var(--text-light)', background: 'none', border: 'none', fontSize: 16 }}

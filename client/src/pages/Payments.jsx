@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useSettings } from '../context/SettingsContext.jsx';
 import CurrencySelect from '../components/CurrencySelect.jsx';
+import AmountInput from '../components/AmountInput.jsx';
+import CharCount from '../components/CharCount.jsx';
 
 // ── CSV download helper ───────────────────────────────────────────────────────
 function triggerDownload(url, filename) {
@@ -183,20 +185,27 @@ function AddModal({ type, onClose, onSaved }) {
               <label className="form-label">{isAR ? 'Customer Name *' : 'Supplier Name *'}</label>
               <input className="form-input"
                 value={isAR ? form.customer_name : form.supplier_name}
+                maxLength={100}
                 onChange={e => setForm(f => ({ ...f, [isAR ? 'customer_name' : 'supplier_name']: e.target.value }))}
                 placeholder={isAR ? 'Who owes you?' : 'Who do you owe?'} />
+              <CharCount value={isAR ? form.customer_name : form.supplier_name} max={100} />
             </div>
             <div className="form-group">
               <label className="form-label">{isAR ? 'Invoice Number' : 'Reference Number'}</label>
               <input className="form-input"
                 value={isAR ? form.invoice_number : form.reference_number}
+                maxLength={50}
                 onChange={e => setForm(f => ({ ...f, [isAR ? 'invoice_number' : 'reference_number']: e.target.value }))}
                 placeholder={isAR ? 'INV-001 (auto if blank)' : 'Optional PO or ref #'} />
+              <CharCount value={isAR ? form.invoice_number : form.reference_number} max={50} />
             </div>
             <div className="form-group">
               <label className="form-label">Amount *</label>
-              <input type="number" className="form-input" value={form.amount}
-                onChange={e => setForm(f => ({ ...f, amount: e.target.value }))} min="0" step="0.01" placeholder="0.00" />
+              <AmountInput
+                value={form.amount}
+                onChange={val => setForm(f => ({ ...f, amount: val }))}
+                placeholder="0.00"
+              />
             </div>
             <div className="form-group">
               <label className="form-label">Due Date <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>(invoice terms)</span></label>
@@ -216,8 +225,10 @@ function AddModal({ type, onClose, onSaved }) {
             <div className="form-group" style={{ gridColumn: '1/-1' }}>
               <label className="form-label">Description</label>
               <input className="form-input" value={form.description}
+                maxLength={255}
                 onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
                 placeholder="What is this for?" />
+              <CharCount value={form.description} max={255} />
             </div>
             <div style={{ gridColumn: '1/-1' }}>
               <CurrencySelect
@@ -282,8 +293,11 @@ function PayModal({ record, type, onClose, onSaved }) {
           <div className="grid-2 gap-16">
             <div className="form-group">
               <label className="form-label">Amount to Record</label>
-              <input type="number" className="form-input" value={form.amount}
-                onChange={e => setForm(f => ({ ...f, amount: e.target.value }))} min="0.01" step="0.01" max={remaining} />
+              <AmountInput
+                value={form.amount}
+                onChange={val => setForm(f => ({ ...f, amount: val }))}
+                placeholder="0.00"
+              />
               <div className="text-muted text-sm mt-8">Remaining: {remaining.toLocaleString('en-US', { minimumFractionDigits: 2 })}</div>
             </div>
             <div className="form-group">

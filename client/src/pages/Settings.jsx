@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useSettings } from '../context/SettingsContext.jsx';
 import { CURRENCIES } from '../data/currencies.js';
+import CharCount from '../components/CharCount.jsx';
 
 export default function Settings() {
   const { settings, setSettings } = useSettings();
@@ -46,28 +47,38 @@ export default function Settings() {
           <div className="form-group">
             <label className="form-label">Business Name *</label>
             <input className="form-input" value={form.business_name || ''}
+              maxLength={100}
               onChange={e => setForm(f => ({ ...f, business_name: e.target.value }))}
               placeholder="Your business name" />
+            <CharCount value={form.business_name} max={100} />
           </div>
           <div className="grid-2 gap-16">
             <div className="form-group">
               <label className="form-label">Registration Number</label>
               <input className="form-input" value={form.registration_number || ''}
+                maxLength={50}
                 onChange={e => setForm(f => ({ ...f, registration_number: e.target.value }))}
                 placeholder="Business Registration Number / SEC Registration / Corp Registration" />
+              <CharCount value={form.registration_number} max={50} />
             </div>
             <div className="form-group">
               <label className="form-label">Tax Identification Number (TIN)</label>
               <input className="form-input" value={form.tax_id || ''}
+                maxLength={50}
                 onChange={e => setForm(f => ({ ...f, tax_id: e.target.value }))}
                 placeholder="Tax Identification Number" />
+              <CharCount value={form.tax_id} max={50} />
             </div>
           </div>
           <div className="form-group">
             <label className="form-label">Business Address</label>
             <textarea className="form-textarea" value={form.address || ''}
+              maxLength={600}
               onChange={e => setForm(f => ({ ...f, address: e.target.value }))}
-              placeholder="Street, City, Province, Country" rows={3} />
+              placeholder="Street, City, Province, Country"
+              rows={7}
+              style={{ resize: 'vertical' }} />
+            <CharCount value={form.address} max={600} />
           </div>
         </div>
 
