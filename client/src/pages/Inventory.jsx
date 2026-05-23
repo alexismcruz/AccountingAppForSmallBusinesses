@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useSettings } from '../context/SettingsContext.jsx';
+import { useUser } from '../context/UserContext.jsx';
 import CurrencySelect from '../components/CurrencySelect.jsx';
 import AmountInput from '../components/AmountInput.jsx';
 
@@ -8,6 +9,7 @@ const makeEmptyReplenish = (baseCurrency) => ({ qty: '', unit_cost: '', payment_
 
 export default function Inventory() {
   const { fmt, settings } = useSettings();
+  const { can } = useUser();
   const baseCurrency = settings.currency || 'USD';
   const [items, setItems] = useState([]);
   const [search, setSearch] = useState('');
@@ -90,7 +92,7 @@ export default function Inventory() {
           <div className="page-title">Inventory</div>
           <div className="page-subtitle">Track your stock and reorder levels</div>
         </div>
-        <button className="btn btn-primary" onClick={openAdd}>+ Add Item</button>
+        {can('manager') && <button className="btn btn-primary" onClick={openAdd}>+ Add Item</button>}
       </div>
 
       {/* Stats */}
@@ -165,10 +167,12 @@ export default function Inventory() {
                       </td>
                       <td>
                         <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end' }}>
-                          <button className="btn btn-ghost btn-sm" onClick={() => openReplenish(item)} title="Replenish stock">📥 Restock</button>
-                          <button className="btn btn-ghost btn-sm" onClick={() => openEdit(item)} title="Edit item">✏️</button>
-                          <button className="btn btn-ghost btn-sm" onClick={() => handleDelete(item.id)} title="Remove item"
-                            style={{ color: 'var(--danger)', borderColor: 'transparent' }}>🗑</button>
+                          {can('manager') && <button className="btn btn-ghost btn-sm" onClick={() => openReplenish(item)} title="Replenish stock">📥 Restock</button>}
+                          {can('manager') && <button className="btn btn-ghost btn-sm" onClick={() => openEdit(item)} title="Edit item">✏️</button>}
+                          {can('admin') && (
+                            <button className="btn btn-ghost btn-sm" onClick={() => handleDelete(item.id)} title="Remove item"
+                              style={{ color: 'var(--danger)', borderColor: 'transparent' }}>🗑</button>
+                          )}
                         </div>
                       </td>
                     </tr>

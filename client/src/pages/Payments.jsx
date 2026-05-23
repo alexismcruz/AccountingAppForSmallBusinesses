@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useSettings } from '../context/SettingsContext.jsx';
+import { useUser } from '../context/UserContext.jsx';
 import CurrencySelect from '../components/CurrencySelect.jsx';
 import AmountInput from '../components/AmountInput.jsx';
 import CharCount from '../components/CharCount.jsx';
@@ -328,6 +329,7 @@ function PayModal({ record, type, onClose, onSaved }) {
 
 export default function Payments({ tab }) {
   const { fmt, settings } = useSettings();
+  const { can } = useUser();
   const baseCurrency = settings.currency || 'USD';
   const isAR = tab === 'incoming';
   const [records, setRecords] = useState([]);
@@ -369,15 +371,21 @@ export default function Payments({ tab }) {
           </div>
         </div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          <button className="btn btn-ghost btn-sm" onClick={() => triggerDownload(exportUrl, exportFile)}>
-            ⬇ Export CSV
-          </button>
-          <button className="btn btn-ghost btn-sm" onClick={() => setShowImport(true)}>
-            ⬆ Import CSV
-          </button>
-          <button className="btn btn-primary" onClick={() => setShowAdd(true)}>
-            {isAR ? '+ Add Invoice' : '+ Add Bill'}
-          </button>
+          {can('manager') && (
+            <button className="btn btn-ghost btn-sm" onClick={() => triggerDownload(exportUrl, exportFile)}>
+              ⬇ Export CSV
+            </button>
+          )}
+          {can('finance') && (
+            <button className="btn btn-ghost btn-sm" onClick={() => setShowImport(true)}>
+              ⬆ Import CSV
+            </button>
+          )}
+          {can('manager') && (
+            <button className="btn btn-primary" onClick={() => setShowAdd(true)}>
+              {isAR ? '+ Add Invoice' : '+ Add Bill'}
+            </button>
+          )}
         </div>
       </div>
 
@@ -454,13 +462,15 @@ export default function Payments({ tab }) {
                       <td>{statusBadge(rec.status, rec.due_date)}</td>
                       <td>
                         <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end' }}>
-                          {rec.status !== 'paid' && (
+                          {rec.status !== 'paid' && can('manager') && (
                             <button className="btn btn-success btn-sm" onClick={() => setPayRecord(rec)}>
                               ✓ Pay
                             </button>
                           )}
-                          <button className="btn btn-ghost btn-sm" style={{ color: 'var(--danger)', borderColor: 'transparent' }}
-                            onClick={() => handleDelete(rec.id)}>🗑</button>
+                          {can('admin') && (
+                            <button className="btn btn-ghost btn-sm" style={{ color: 'var(--danger)', borderColor: 'transparent' }}
+                              onClick={() => handleDelete(rec.id)}>🗑</button>
+                          )}
                         </div>
                       </td>
                     </tr>

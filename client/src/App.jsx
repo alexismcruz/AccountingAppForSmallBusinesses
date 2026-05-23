@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { SettingsProvider } from './context/SettingsContext.jsx';
+import { UserContext, makeUserContext } from './context/UserContext.jsx';
 import Layout from './components/Layout.jsx';
 import Login from './pages/Login.jsx';
 import Dashboard from './pages/Dashboard.jsx';
@@ -14,28 +15,30 @@ import PaymentSchedule from './pages/PaymentSchedule.jsx';
 
 export default function App() {
   const [authChecked, setAuthChecked] = useState(false);
-  const [loggedIn, setLoggedIn] = useState(false);
+  const [loggedIn, setLoggedIn]       = useState(false);
+  const [user, setUser]               = useState(null);
 
   useEffect(() => {
     fetch('/api/auth/me', { credentials: 'include' })
-      .then(r => {
-        setLoggedIn(r.ok);
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (data?.authenticated) { setLoggedIn(true); setUser(data.user || null); }
         setAuthChecked(true);
       })
       .catch(() => setAuthChecked(true));
   }, []);
 
-  // Blank screen while checking session — avoids flash of login page
   if (!authChecked) return null;
 
   if (!loggedIn) {
-    return <Login onLogin={() => setLoggedIn(true)} />;
+    return <Login onLogin={(u) => { setLoggedIn(true); setUser(u); }} />;
   }
 
   return (
+    <UserContext.Provider value={makeUserContext(user)}>
     <SettingsProvider>
       <BrowserRouter>
-        <Layout onLogout={() => setLoggedIn(false)}>
+        <Layout onLogout={() => { setLoggedIn(false); setUser(null); }}>
           <Routes>
             <Route path="/"                         element={<Dashboard />} />
             <Route path="/journal"                  element={<JournalEntries />} />
@@ -54,5 +57,6 @@ export default function App() {
         </Layout>
       </BrowserRouter>
     </SettingsProvider>
+    </UserContext.Provider>
   );
 }

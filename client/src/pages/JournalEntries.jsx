@@ -4,6 +4,7 @@ import CurrencySelect from '../components/CurrencySelect.jsx';
 import AmountInput from '../components/AmountInput.jsx';
 import CharCount from '../components/CharCount.jsx';
 import { useSettings } from '../context/SettingsContext.jsx';
+import { useUser } from '../context/UserContext.jsx';
 
 const TEMPLATES = [
   { name: 'Owner Investment',      desc: 'Owner puts money into the business',            lines: [{ code: '1010', side: 'debit' }, { code: '3000', side: 'credit' }] },
@@ -153,6 +154,7 @@ function ImportModal({ onClose, onImported }) {
 
 export default function JournalEntries() {
   const { fmt, settings } = useSettings();
+  const { can } = useUser();
   const baseCurrency = settings.currency || 'USD';
   const [entries, setEntries] = useState([]);
   const [accounts, setAccounts] = useState([]);
@@ -309,14 +311,18 @@ export default function JournalEntries() {
           <div className="page-subtitle">Double-entry accounting records</div>
         </div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          <button className="btn btn-ghost btn-sm"
-            onClick={() => triggerDownload(`/api/entries/export/csv${filters.from || filters.to ? `?from=${filters.from}&to=${filters.to}` : ''}`, `journal-entries-${new Date().toISOString().split('T')[0]}.csv`)}>
-            ⬇ Export CSV
-          </button>
-          <button className="btn btn-ghost btn-sm" onClick={() => setShowImport(true)}>
-            ⬆ Import CSV
-          </button>
-          {!showForm && (
+          {can('manager') && (
+            <button className="btn btn-ghost btn-sm"
+              onClick={() => triggerDownload(`/api/entries/export/csv${filters.from || filters.to ? `?from=${filters.from}&to=${filters.to}` : ''}`, `journal-entries-${new Date().toISOString().split('T')[0]}.csv`)}>
+              ⬇ Export CSV
+            </button>
+          )}
+          {can('finance') && (
+            <button className="btn btn-ghost btn-sm" onClick={() => setShowImport(true)}>
+              ⬆ Import CSV
+            </button>
+          )}
+          {can('finance') && !showForm && (
             <button className="btn btn-primary" onClick={() => { setShowForm(true); setMsg(null); }}>
               + New Entry
             </button>
@@ -558,8 +564,10 @@ export default function JournalEntries() {
                         {entry.entry_type === 'closing' ? 'Closing' : 'Posted'}
                       </span></td>
                       <td style={{ display: 'flex', gap: 4, justifyContent: 'flex-end' }}>
-                        <button className="btn btn-ghost btn-sm" title="Delete" onClick={e => { e.stopPropagation(); handleDelete(entry.id); }}
-                          style={{ color: 'var(--danger)', borderColor: 'transparent' }}>🗑</button>
+                        {can('admin') && (
+                          <button className="btn btn-ghost btn-sm" title="Delete" onClick={e => { e.stopPropagation(); handleDelete(entry.id); }}
+                            style={{ color: 'var(--danger)', borderColor: 'transparent' }}>🗑</button>
+                        )}
                         <span style={{ color: 'var(--text-light)', fontSize: 12, padding: '6px 4px' }}>{expandedId === entry.id ? '▲' : '▼'}</span>
                       </td>
                     </tr>

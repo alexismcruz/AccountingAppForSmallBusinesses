@@ -1,6 +1,15 @@
 import { useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { useSettings } from '../context/SettingsContext.jsx';
+import { useUser } from '../context/UserContext.jsx';
+
+const ROLE_COLORS = {
+  staff:       '#64748b',
+  manager:     '#2563eb',
+  finance:     '#16a34a',
+  admin:       '#7c3aed',
+  super_admin: '#ea580c',
+};
 
 function NavItem({ to, icon, label, sub, onNavigate }) {
   return (
@@ -18,6 +27,7 @@ function NavItem({ to, icon, label, sub, onNavigate }) {
 
 export default function Layout({ children, onLogout }) {
   const { settings } = useSettings();
+  const { user, can } = useUser();
   const location = useLocation();
   const [reportsOpen, setReportsOpen]   = useState(location.pathname.startsWith('/reports'));
   const [paymentsOpen, setPaymentsOpen] = useState(location.pathname.startsWith('/payments'));
@@ -106,11 +116,27 @@ export default function Layout({ children, onLogout }) {
           <NavItem to="/fiscal" icon="📅" label="Fiscal Year" onNavigate={closeSidebar} />
         </div>
 
-        <div className="nav-section" style={{ marginTop: 'auto' }}>
-          <NavItem to="/settings" icon="⚙️" label="Settings" onNavigate={closeSidebar} />
-        </div>
+        {can('admin') && (
+          <div className="nav-section" style={{ marginTop: 'auto' }}>
+            <NavItem to="/settings" icon="⚙️" label="Settings" onNavigate={closeSidebar} />
+          </div>
+        )}
 
         <div style={{ padding: '12px 16px', borderTop: '1px solid rgba(255,255,255,0.08)', marginTop: 8 }}>
+          {user && (
+            <div style={{ marginBottom: 8 }}>
+              <div style={{ fontSize: 11, color: '#e2e8f0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {user.name || user.email}
+              </div>
+              <span style={{
+                display: 'inline-block', marginTop: 3,
+                padding: '1px 8px', borderRadius: 999, fontSize: 10, fontWeight: 600,
+                background: ROLE_COLORS[user.role] || '#64748b', color: '#fff',
+              }}>
+                {user.role}
+              </span>
+            </div>
+          )}
           <div style={{ fontSize: 11, color: '#60a5fa', marginBottom: 8 }}>
             {settings.currency || 'USD'} · {new Date().toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
           </div>
