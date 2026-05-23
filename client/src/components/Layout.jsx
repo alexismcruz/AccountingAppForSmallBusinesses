@@ -2,10 +2,14 @@ import { useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { useSettings } from '../context/SettingsContext.jsx';
 
-function NavItem({ to, icon, label, sub }) {
+function NavItem({ to, icon, label, sub, onNavigate }) {
   return (
-    <NavLink to={to} className={({ isActive }) => `nav-item${sub ? '' : ''} ${isActive ? 'active' : ''}`.trim()}
-      style={sub ? { paddingLeft: 36 } : undefined}>
+    <NavLink
+      to={to}
+      onClick={onNavigate}
+      className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`.trim()}
+      style={sub ? { paddingLeft: 36 } : undefined}
+    >
       {!sub && <span className="nav-icon">{icon}</span>}
       {label}
     </NavLink>
@@ -15,37 +19,46 @@ function NavItem({ to, icon, label, sub }) {
 export default function Layout({ children, onLogout }) {
   const { settings } = useSettings();
   const location = useLocation();
-  const [reportsOpen, setReportsOpen] = useState(location.pathname.startsWith('/reports'));
+  const [reportsOpen, setReportsOpen]   = useState(location.pathname.startsWith('/reports'));
   const [paymentsOpen, setPaymentsOpen] = useState(location.pathname.startsWith('/payments'));
+  const [sidebarOpen, setSidebarOpen]   = useState(false);
+
+  const closeSidebar = () => setSidebarOpen(false);
 
   const PAGE_TITLES = {
-    '/': 'Dashboard',
-    '/journal': 'Journal Entries',
-    '/inventory': 'Inventory',
-    '/payments/incoming': 'Incoming Payments',
-    '/payments/pending': 'Pending Payments',
-    '/payments/schedule': 'Payment Schedule',
-    '/reports/balance-sheet': 'Balance Sheet',
+    '/':                         'Dashboard',
+    '/journal':                  'Journal Entries',
+    '/inventory':                'Inventory',
+    '/payments/incoming':        'Incoming Payments',
+    '/payments/pending':         'Pending Payments',
+    '/payments/schedule':        'Payment Schedule',
+    '/reports/balance-sheet':    'Balance Sheet',
     '/reports/income-statement': 'Income Statement',
-    '/reports/trial-balance': 'Trial Balance',
-    '/reports/ledger': 'General Ledger',
-    '/fiscal': 'Fiscal Year Management',
-    '/settings': 'Business Settings',
+    '/reports/trial-balance':    'Trial Balance',
+    '/reports/ledger':           'General Ledger',
+    '/fiscal':                   'Fiscal Year Management',
+    '/settings':                 'Business Settings',
   };
 
   return (
     <div className="app-shell">
+
+      {/* Mobile overlay — tapping it closes the sidebar */}
+      {sidebarOpen && (
+        <div className="sidebar-overlay" onClick={closeSidebar} />
+      )}
+
       {/* Sidebar */}
-      <nav className="sidebar">
+      <nav className={`sidebar${sidebarOpen ? ' sidebar-open' : ''}`}>
         <div className="sidebar-logo">
           <h2>📊 {settings.business_name || 'My Business'}</h2>
           <p>Accounting System</p>
         </div>
 
         <div className="nav-section">
-          <NavItem to="/" icon="🏠" label="Dashboard" />
-          <NavItem to="/journal" icon="📝" label="Journal Entries" />
-          <NavItem to="/inventory" icon="📦" label="Inventory" />
+          <NavItem to="/"          icon="🏠" label="Dashboard"       onNavigate={closeSidebar} />
+          <NavItem to="/journal"   icon="📝" label="Journal Entries"  onNavigate={closeSidebar} />
+          <NavItem to="/inventory" icon="📦" label="Inventory"        onNavigate={closeSidebar} />
         </div>
 
         <div className="nav-section">
@@ -61,9 +74,9 @@ export default function Layout({ children, onLogout }) {
           </div>
           {paymentsOpen && (
             <div>
-              <NavItem to="/payments/schedule"  label="↳ Schedule"      sub />
-              <NavItem to="/payments/incoming"  label="↳ Incoming (AR)" sub />
-              <NavItem to="/payments/pending"   label="↳ Pending (AP)"  sub />
+              <NavItem to="/payments/schedule" label="↳ Schedule"      sub onNavigate={closeSidebar} />
+              <NavItem to="/payments/incoming" label="↳ Incoming (AR)" sub onNavigate={closeSidebar} />
+              <NavItem to="/payments/pending"  label="↳ Pending (AP)"  sub onNavigate={closeSidebar} />
             </div>
           )}
         </div>
@@ -81,20 +94,20 @@ export default function Layout({ children, onLogout }) {
           </div>
           {reportsOpen && (
             <div>
-              <NavItem to="/reports/balance-sheet"    label="↳ Balance Sheet" sub />
-              <NavItem to="/reports/income-statement" label="↳ Income Statement" sub />
-              <NavItem to="/reports/trial-balance"    label="↳ Trial Balance" sub />
-              <NavItem to="/reports/ledger"           label="↳ General Ledger" sub />
+              <NavItem to="/reports/balance-sheet"    label="↳ Balance Sheet"    sub onNavigate={closeSidebar} />
+              <NavItem to="/reports/income-statement" label="↳ Income Statement" sub onNavigate={closeSidebar} />
+              <NavItem to="/reports/trial-balance"    label="↳ Trial Balance"    sub onNavigate={closeSidebar} />
+              <NavItem to="/reports/ledger"           label="↳ General Ledger"   sub onNavigate={closeSidebar} />
             </div>
           )}
         </div>
 
         <div className="nav-section">
-          <NavItem to="/fiscal" icon="📅" label="Fiscal Year" />
+          <NavItem to="/fiscal" icon="📅" label="Fiscal Year" onNavigate={closeSidebar} />
         </div>
 
         <div className="nav-section" style={{ marginTop: 'auto' }}>
-          <NavItem to="/settings" icon="⚙️" label="Settings" />
+          <NavItem to="/settings" icon="⚙️" label="Settings" onNavigate={closeSidebar} />
         </div>
 
         <div style={{ padding: '12px 16px', borderTop: '1px solid rgba(255,255,255,0.08)', marginTop: 8 }}>
@@ -120,15 +133,26 @@ export default function Layout({ children, onLogout }) {
       {/* Main area */}
       <div className="main-area">
         <div className="top-bar">
-          <div>
+          {/* Hamburger button — visible on mobile/tablet only */}
+          <button
+            className="mobile-menu-btn"
+            onClick={() => setSidebarOpen(o => !o)}
+            aria-label="Toggle navigation menu"
+          >
+            {sidebarOpen ? '✕' : '☰'}
+          </button>
+
+          <div style={{ flex: 1 }}>
             <div style={{ fontWeight: 700, fontSize: 15 }}>
               {PAGE_TITLES[location.pathname] || 'Accounting'}
             </div>
           </div>
-          <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+
+          <div className="top-bar-date">
             {new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
           </div>
         </div>
+
         <main className="page-content">
           {children}
         </main>
