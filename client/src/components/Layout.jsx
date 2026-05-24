@@ -3,6 +3,116 @@ import { NavLink, useLocation } from 'react-router-dom';
 import { useSettings } from '../context/SettingsContext.jsx';
 import { useUser } from '../context/UserContext.jsx';
 
+// ── Password rules (mirrors server-side validation) ───────────────────────────
+const PW_RULES = 'Min 8 · Max 20 · At least 1 number · At least 1 special character · No spaces';
+function validatePw(pw) {
+  if (!pw)             return 'Password is required';
+  if (pw.length < 8)   return 'Must be at least 8 characters';
+  if (pw.length > 20)  return 'Must not exceed 20 characters';
+  if (/\s/.test(pw))   return 'Must not contain spaces';
+  if (!/[0-9]/.test(pw)) return 'Must contain at least one number';
+  if (!/[!@#$%^&*()\-_=+\[\]{};:'",.<>/?\\|`~]/.test(pw))
+    return 'Must contain at least one special character (e.g. !@#$%)';
+  return null;
+}
+
+// ── Change Password Modal ─────────────────────────────────────────────────────
+function ChangePasswordModal({ onClose }) {
+  const [form,   setForm]   = useState({ current: '', next: '', confirm: '' });
+  const [show,   setShow]   = useState({ current: false, next: false, confirm: false });
+  const [error,  setError]  = useState('');
+  const [done,   setDone]   = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  const liveErr = form.next ? validatePw(form.next) : null;
+  const mismatch = form.confirm && form.next !== form.confirm;
+
+  const handleSave = async () => {
+    if (liveErr)   { setError(liveErr); return; }
+    if (mismatch)  { setError('Passwords do not match'); return; }
+    setSaving(true); setError('');
+    try {
+      const res  = await fetch('/api/auth/change-password', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body:    JSON.stringify({ current_password: form.current, new_password: form.next, confirm_password: form.confirm }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setError(data.error); return; }
+      setDone(true);
+    } catch { setError('Network error. Please try again.'); }
+    finally { setSaving(false); }
+  };
+
+  const EyeBtn = ({ field }) => (
+    <button type="button" onClick={() => setShow(s => ({ ...s, [field]: !s[field] }))}
+      style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)',
+               background: 'none', border: 'none', cursor: 'pointer', fontSize: 15, color: 'var(--text-muted)' }}>
+      {show[field] ? '🙈' : '👁'}
+    </button>
+  );
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal" style={{ maxWidth: 420 }} onClick={e => e.stopPropagation()}>
+        <div className="modal-header">
+          <div className="modal-title">🔑 Change Password</div>
+          <button className="btn btn-ghost btn-icon" onClick={onClose}>✕</button>
+        </div>
+        <div className="modal-body">
+          {done ? (
+            <div className="alert alert-success">✓ Password changed successfully. Use your new password next time you log in.</div>
+          ) : (
+            <>
+              <div className="alert alert-info mb-16" style={{ fontSize: 12 }}>{PW_RULES}</div>
+              {error && <div className="alert alert-error mb-12">⚠ {error}</div>}
+              {[
+                { field: 'current', label: 'Current Password' },
+                { field: 'next',    label: 'New Password' },
+                { field: 'confirm', label: 'Confirm New Password' },
+              ].map(({ field, label }) => (
+                <div className="form-group" key={field} style={{ position: 'relative' }}>
+                  <label className="form-label">{label}</label>
+                  <div style={{ position: 'relative' }}>
+                    <input
+                      className="form-input"
+                      type={show[field] ? 'text' : 'password'}
+                      value={form[field]}
+                      onChange={e => setForm(f => ({ ...f, [field]: e.target.value }))}
+                      style={{ paddingRight: 36 }}
+                      autoComplete={field === 'current' ? 'current-password' : 'new-password'}
+                    />
+                    <EyeBtn field={field} />
+                  </div>
+                  {field === 'next' && liveErr && form.next && (
+                    <div style={{ fontSize: 11, color: 'var(--danger)', marginTop: 4 }}>⚠ {liveErr}</div>
+                  )}
+                  {field === 'confirm' && mismatch && (
+                    <div style={{ fontSize: 11, color: 'var(--danger)', marginTop: 4 }}>⚠ Passwords do not match</div>
+                  )}
+                </div>
+              ))}
+            </>
+          )}
+        </div>
+        <div className="modal-footer">
+          {done
+            ? <button className="btn btn-primary" onClick={onClose}>Done</button>
+            : <>
+                <button className="btn btn-ghost" onClick={onClose}>Cancel</button>
+                <button className="btn btn-primary" onClick={handleSave}
+                  disabled={saving || !!liveErr || mismatch || !form.current || !form.next || !form.confirm}>
+                  {saving ? 'Saving…' : 'Change Password'}
+                </button>
+              </>
+          }
+        </div>
+      </div>
+    </div>
+  );
+}
+
 const ROLE_COLORS = {
   staff:       '#64748b',
   manager:     '#2563eb',
@@ -37,10 +147,11 @@ export default function Layout({ children, onLogout }) {
   const { settings } = useSettings();
   const { user, can } = useUser();
   const location = useLocation();
-  const [reportsOpen,  setReportsOpen]  = useState(location.pathname.startsWith('/reports'));
-  const [paymentsOpen, setPaymentsOpen] = useState(location.pathname.startsWith('/payments'));
-  const [sidebarOpen,  setSidebarOpen]  = useState(false);
-  const [pendingCount, setPendingCount] = useState(0);
+  const [reportsOpen,     setReportsOpen]     = useState(location.pathname.startsWith('/reports'));
+  const [paymentsOpen,    setPaymentsOpen]    = useState(location.pathname.startsWith('/payments'));
+  const [sidebarOpen,     setSidebarOpen]     = useState(false);
+  const [pendingCount,    setPendingCount]    = useState(0);
+  const [showChangePw,    setShowChangePw]    = useState(false);
 
   const closeSidebar = () => setSidebarOpen(false);
 
@@ -77,6 +188,8 @@ export default function Layout({ children, onLogout }) {
 
   return (
     <div className="app-shell">
+
+      {showChangePw && <ChangePasswordModal onClose={() => setShowChangePw(false)} />}
 
       {/* Mobile overlay — tapping it closes the sidebar */}
       {sidebarOpen && (
@@ -172,6 +285,17 @@ export default function Layout({ children, onLogout }) {
           <div style={{ fontSize: 11, color: '#60a5fa', marginBottom: 8 }}>
             {settings.currency || 'USD'} · {new Date().toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
           </div>
+          <button
+            onClick={() => setShowChangePw(true)}
+            style={{
+              width: '100%', padding: '7px 12px', background: 'rgba(255,255,255,0.08)',
+              border: '1px solid rgba(255,255,255,0.15)', borderRadius: 6,
+              color: '#93c5fd', fontSize: 12, cursor: 'pointer', textAlign: 'left',
+              marginBottom: 6,
+            }}
+          >
+            🔑 Change Password
+          </button>
           <button
             onClick={async () => {
               await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });

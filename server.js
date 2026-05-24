@@ -52,6 +52,19 @@ async function validateViaUAM(email, password, clientSlug) {
   return res.json();
 }
 
+// ── Password strength validation (mirrors UAM rules) ─────────────────────────
+function validatePasswordStrength(password) {
+  if (!password)             return 'Password is required';
+  if (password.length < 8)   return 'Password must be at least 8 characters';
+  if (password.length > 20)  return 'Password must not exceed 20 characters';
+  if (/\s/.test(password))   return 'Password must not contain spaces';
+  if (!/[0-9]/.test(password))
+    return 'Password must contain at least one number';
+  if (!/[!@#$%^&*()\-_=+\[\]{};:'",.<>/?\\|`~]/.test(password))
+    return 'Password must contain at least one special character (e.g. !@#$%)';
+  return null;
+}
+
 // ── Auth routes (public) ──────────────────────────────────────────────────────
 app.post('/api/auth/login', async (req, res) => {
   const { email, password } = req.body;
@@ -143,6 +156,47 @@ app.use('/api', (req, res, next) => {
   }
 
   next();
+});
+
+// ── Change password (authenticated users only) ────────────────────────────────
+app.post('/api/auth/change-password', async (req, res) => {
+  const user = req.session.user;
+  const { current_password, new_password, confirm_password } = req.body;
+
+  if (!current_password || !new_password || !confirm_password) {
+    return res.status(400).json({ error: 'All three fields are required' });
+  }
+  if (new_password !== confirm_password) {
+    return res.status(400).json({ error: 'New password and confirmation do not match' });
+  }
+  if (new_password === current_password) {
+    return res.status(400).json({ error: 'New password must be different from your current password' });
+  }
+
+  const strengthErr = validatePasswordStrength(new_password);
+  if (strengthErr) return res.status(400).json({ error: strengthErr });
+
+  if (!(process.env.UAM_URL && process.env.UAM_API_SECRET)) {
+    return res.status(400).json({ error: 'Password change is not available in single-password mode. Update the APP_PASSWORD environment variable instead.' });
+  }
+
+  try {
+    const uamBase = process.env.UAM_URL.replace(/\/$/, '');
+    const r = await fetch(`${uamBase}/api/validate/change-password`, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json', 'X-API-Key': process.env.UAM_API_SECRET },
+      body:    JSON.stringify({ email: user.email, current_password, new_password }),
+      signal:  AbortSignal.timeout(15000),
+    });
+    const data = await r.json();
+    if (!r.ok) return res.status(r.status).json({ error: data.error });
+    const { logAction } = require('./utils/auditLog');
+    logAction(user, 'CHANGE_PASSWORD', 'auth', null, null);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('UAM change-password error:', err.message);
+    res.status(503).json({ error: 'Authentication service unavailable. Please try again.' });
+  }
 });
 
 // ── API routes ────────────────────────────────────────────────────────────────

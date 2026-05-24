@@ -71,7 +71,7 @@ export default function Dashboard() {
       <div style={{ marginBottom: 24 }}>
         <StatCard
           label="Pending Approvals"
-          value={pendingApprove}
+          value={pendingApprove > 0 ? pendingApprove : '—'}
           sub={pendingApprove > 0 ? 'Action required — click to review' : 'No pending approvals'}
           color={pendingApprove > 0 ? '#ea580c' : '#64748b'}
           icon="✅"
