@@ -58,19 +58,21 @@ const ROLE_COLORS = {
 export default function Logs() {
   const [logs,    setLogs]    = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error,   setError]   = useState('');
   const [filters, setFilters] = useState({ from: '', to: '', search: '' });
 
   const load = () => {
-    setLoading(true);
+    setLoading(true); setError('');
     const q = new URLSearchParams();
     if (filters.from)   q.set('from',   filters.from);
     if (filters.to)     q.set('to',     filters.to);
     if (filters.search) q.set('search', filters.search);
     q.set('limit', '500');
     fetch(`/api/logs?${q}`, { credentials: 'include' })
-      .then(r => r.json())
-      .then(d => { setLogs(Array.isArray(d) ? d : []); setLoading(false); })
-      .catch(() => setLoading(false));
+      .then(r => { if (!r.ok) throw new Error('Server error'); return r.json(); })
+      .then(d => { setLogs(Array.isArray(d) ? d : []); })
+      .catch(() => setError('Failed to load audit logs. Please check your connection and try again.'))
+      .finally(() => setLoading(false));
   };
 
   useEffect(() => { load(); }, []);
@@ -123,11 +125,13 @@ export default function Logs() {
         </div>
       </div>
 
+      {error && <div className="alert alert-error mb-16">⚠ {error}</div>}
+
       {loading ? (
         <div className="card" style={{ textAlign: 'center', padding: 60, color: 'var(--text-muted)' }}>
           Loading…
         </div>
-      ) : logs.length === 0 ? (
+      ) : logs.length === 0 && !error ? (
         <div className="card">
           <div className="empty-state">
             <div className="empty-state-icon">📋</div>

@@ -187,6 +187,12 @@ tbody tr:hover td { background: #f8fafc; }
 .report-table .rt-section td { font-weight: 700; font-size: 13px; padding-top: 16px; color: var(--text); }
 .report-amount { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
 
+/* ── Balance Sheet 2-col layout (collapses on mobile) ───── */
+.report-bs-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; }
+
+/* ── Payment schedule ────────────────────────────────────── */
+.schedule-hint { font-size: 12px; color: var(--text-muted); margin-left: auto; }
+
 /* ── Print ──────────────────────────────────────────────── */
 @media print {
   .no-print { display: none !important; }
@@ -349,6 +355,12 @@ tbody tr:hover td { background: #f8fafc; }
 
   /* ── Report tables ───────────────────────────────────── */
   .report-table td { padding: 5px 8px; font-size: 12px; }
+
+  /* ── Balance Sheet: stack to single column on mobile ─── */
+  .report-bs-grid { grid-template-columns: 1fr; gap: 20px; }
+
+  /* ── Payment Schedule: hide hint text on mobile ──────── */
+  .schedule-hint  { display: none; }
 
   /* ── Empty state ─────────────────────────────────────── */
   .empty-state { padding: 32px 16px; }

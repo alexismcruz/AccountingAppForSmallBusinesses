@@ -16,7 +16,7 @@ export default function FiscalYear() {
     fetch('/api/fiscal/years').then(r => r.json()).then(d => {
       setYears(d.years || []);
       setClosedYears(d.closedYears || []);
-    });
+    }).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -26,14 +26,24 @@ export default function FiscalYear() {
 
   const loadPreview = async () => {
     setPreview(null);
-    const data = await fetch(`/api/fiscal/preview-close?year=${selectedYear}`).then(r => r.json());
-    setPreview(data);
+    try {
+      const data = await fetch(`/api/fiscal/preview-close?year=${selectedYear}`).then(r => r.json());
+      setPreview(data);
+    } catch {
+      setMsg({ type: 'error', text: 'Failed to load closing preview. Please try again.' });
+      setPreview({ lines: [] }); // prevent infinite "Loading preview…" spinner
+    }
   };
 
   const loadOpeningBalances = async () => {
     setOpeningBalances(null);
-    const data = await fetch(`/api/fiscal/opening-balances?year=${selectedYear}`).then(r => r.json());
-    setOpeningBalances(data);
+    try {
+      const data = await fetch(`/api/fiscal/opening-balances?year=${selectedYear}`).then(r => r.json());
+      setOpeningBalances(data);
+    } catch {
+      setMsg({ type: 'error', text: 'Failed to load opening balances. Please try again.' });
+      setOpeningBalances({ balances: [] }); // prevent infinite "Loading…" spinner
+    }
   };
 
   const handleClose = async () => {

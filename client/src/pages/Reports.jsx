@@ -14,11 +14,15 @@ function BalanceSheet({ date, setDate }) {
   const { fmt, settings } = useSettings();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
   const load = () => {
-    setLoading(true);
+    setLoading(true); setError('');
     fetch(`/api/reports/balance-sheet?date=${date}`)
-      .then(r => r.json()).then(setData).finally(() => setLoading(false));
+      .then(r => { if (!r.ok) throw new Error('Server error'); return r.json(); })
+      .then(d => setData(d))
+      .catch(() => setError('Failed to load report. Please check your connection and try again.'))
+      .finally(() => setLoading(false));
   };
 
   useEffect(() => { load(); }, []);
@@ -35,6 +39,7 @@ function BalanceSheet({ date, setDate }) {
       </div>
 
       {loading && <div className="text-muted text-center" style={{ padding: 40 }}>Calculating…</div>}
+      {error && <div className="alert alert-error mb-16">⚠ {error}</div>}
       {data && (
         <div className="card">
           <div style={{ textAlign: 'center', marginBottom: 24 }}>
@@ -48,7 +53,7 @@ function BalanceSheet({ date, setDate }) {
             </div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 40 }}>
+          <div className="report-bs-grid">
             {/* Assets */}
             <div>
               <table className="report-table" style={{ width: '100%' }}>
@@ -142,12 +147,16 @@ function IncomeStatement({ fromDate, toDate, setFromDate, setToDate }) {
   const { settings } = useSettings();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
   const { fmt } = useSettings();
 
   const load = () => {
-    setLoading(true);
+    setLoading(true); setError('');
     fetch(`/api/reports/income-statement?from=${fromDate}&to=${toDate}`)
-      .then(r => r.json()).then(setData).finally(() => setLoading(false));
+      .then(r => { if (!r.ok) throw new Error('Server error'); return r.json(); })
+      .then(d => setData(d))
+      .catch(() => setError('Failed to load report. Please check your connection and try again.'))
+      .finally(() => setLoading(false));
   };
 
   useEffect(() => { load(); }, []);
@@ -168,6 +177,7 @@ function IncomeStatement({ fromDate, toDate, setFromDate, setToDate }) {
       </div>
 
       {loading && <div className="text-muted text-center" style={{ padding: 40 }}>Calculating…</div>}
+      {error && <div className="alert alert-error mb-16">⚠ {error}</div>}
       {data && (
         <div className="card" style={{ maxWidth: 600 }}>
           <div style={{ textAlign: 'center', marginBottom: 24 }}>
@@ -219,11 +229,15 @@ function TrialBalance({ date, setDate }) {
   const { fmt, settings } = useSettings();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
   const load = () => {
-    setLoading(true);
+    setLoading(true); setError('');
     fetch(`/api/reports/trial-balance?date=${date}`)
-      .then(r => r.json()).then(setData).finally(() => setLoading(false));
+      .then(r => { if (!r.ok) throw new Error('Server error'); return r.json(); })
+      .then(d => setData(d))
+      .catch(() => setError('Failed to load report. Please check your connection and try again.'))
+      .finally(() => setLoading(false));
   };
 
   useEffect(() => { load(); }, []);
@@ -239,6 +253,7 @@ function TrialBalance({ date, setDate }) {
         <button className="btn btn-ghost" onClick={() => window.print()}>🖨 Print</button>
       </div>
       {loading && <div className="text-muted text-center" style={{ padding: 40 }}>Calculating…</div>}
+      {error && <div className="alert alert-error mb-16">⚠ {error}</div>}
       {data && (
         <div className="card">
           <div style={{ textAlign: 'center', marginBottom: 20 }}>
@@ -294,6 +309,7 @@ function GeneralLedger({ date }) {
   const [toDate, setToDate] = useState(date);
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
   useEffect(() => {
     fetch('/api/accounts').then(r => r.json()).then(setAccounts).catch(() => {});
@@ -301,9 +317,12 @@ function GeneralLedger({ date }) {
 
   const load = () => {
     if (!accountId) return;
-    setLoading(true);
+    setLoading(true); setError('');
     fetch(`/api/reports/ledger?accountId=${accountId}&from=${fromDate}&to=${toDate}`)
-      .then(r => r.json()).then(setData).finally(() => setLoading(false));
+      .then(r => { if (!r.ok) throw new Error('Server error'); return r.json(); })
+      .then(d => setData(d))
+      .catch(() => setError('Failed to load ledger. Please check your connection and try again.'))
+      .finally(() => setLoading(false));
   };
 
   return (
@@ -336,6 +355,7 @@ function GeneralLedger({ date }) {
         {data && <button className="btn btn-ghost" onClick={() => window.print()}>🖨 Print</button>}
       </div>
       {loading && <div className="text-muted text-center" style={{ padding: 40 }}>Loading…</div>}
+      {error && <div className="alert alert-error mb-16">⚠ {error}</div>}
       {data && (
         <div className="card">
           <div style={{ textAlign: 'center', marginBottom: 20 }}>

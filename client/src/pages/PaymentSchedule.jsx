@@ -108,13 +108,19 @@ export default function PaymentSchedule() {
   const [editDate, setEditDate] = useState('');
   const [payItem, setPayItem] = useState(null);
   const [filter, setFilter] = useState('all'); // 'all' | 'incoming' | 'outgoing'
+  const [error, setError] = useState('');
 
   const loadSchedule = useCallback(async () => {
-    setLoading(true);
-    const data = await fetch('/api/payments/schedule').then(r => r.json());
-    setSchedule(data.schedule || []);
-    setToday(data.today || new Date().toISOString().split('T')[0]);
-    setLoading(false);
+    setLoading(true); setError('');
+    try {
+      const data = await fetch('/api/payments/schedule').then(r => r.json());
+      setSchedule(data.schedule || []);
+      setToday(data.today || new Date().toISOString().split('T')[0]);
+    } catch {
+      setError('Failed to load payment schedule. Please check your connection and try again.');
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   useEffect(() => { loadSchedule(); }, [loadSchedule]);
@@ -123,13 +129,18 @@ export default function PaymentSchedule() {
     const endpoint = direction === 'incoming'
       ? `/api/payments/receivables/${id}/schedule`
       : `/api/payments/payables/${id}/schedule`;
-    await fetch(endpoint, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ scheduled_date: editDate || null }),
-    });
-    setEditingKey(null);
-    loadSchedule();
+    try {
+      const res = await fetch(endpoint, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ scheduled_date: editDate || null }),
+      });
+      if (!res.ok) { setError('Failed to update scheduled date.'); return; }
+      setEditingKey(null);
+      loadSchedule();
+    } catch {
+      setError('Network error. Failed to update scheduled date.');
+    }
   };
 
   const visible = filter === 'all' ? schedule : schedule.filter(i => i.direction === filter);
@@ -166,7 +177,7 @@ export default function PaymentSchedule() {
 
     return (
       <div style={{
-        display: 'flex', alignItems: 'center', gap: 14,
+        display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 12,
         padding: '14px 18px',
         background: 'var(--card)',
         border: '1px solid var(--border)',
@@ -206,7 +217,7 @@ export default function PaymentSchedule() {
         </div>
 
         {/* Date — click to edit */}
-        <div style={{ minWidth: 160, flexShrink: 0 }}>
+        <div style={{ minWidth: 140, flexShrink: 0 }}>
           {isEditing ? (
             <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
               <input type="date" className="form-input" style={{ fontSize: 12, padding: '4px 8px', width: 135 }}
@@ -320,10 +331,12 @@ export default function PaymentSchedule() {
             {label}
           </button>
         ))}
-        <div style={{ marginLeft: 'auto', fontSize: 12, color: 'var(--text-muted)' }}>
+        <div className="schedule-hint">
           Click any date to reschedule · Click <strong>✓ Pay</strong> to record payment
         </div>
       </div>
+
+      {error && <div className="alert alert-error mb-16">⚠ {error}</div>}
 
       {loading ? (
         <div className="card" style={{ textAlign: 'center', padding: 60, color: 'var(--text-muted)' }}>Loading schedule…</div>

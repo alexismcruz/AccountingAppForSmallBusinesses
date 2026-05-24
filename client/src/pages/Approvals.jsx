@@ -170,12 +170,18 @@ export default function Approvals() {
   const [requests, setRequests] = useState([]);
   const [selected, setSelected] = useState(null);
   const [loading,  setLoading]  = useState(true);
+  const [error,    setError]    = useState('');
 
   const load = useCallback(async () => {
-    setLoading(true);
-    const data = await fetch(`/api/approvals?status=${tab}`).then(r => r.json());
-    setRequests(Array.isArray(data) ? data : []);
-    setLoading(false);
+    setLoading(true); setError('');
+    try {
+      const data = await fetch(`/api/approvals?status=${tab}`).then(r => r.json());
+      setRequests(Array.isArray(data) ? data : []);
+    } catch {
+      setError('Failed to load approvals. Please check your connection and try again.');
+    } finally {
+      setLoading(false);
+    }
   }, [tab]);
 
   useEffect(() => { load(); }, [load]);
@@ -211,6 +217,8 @@ export default function Approvals() {
           </button>
         ))}
       </div>
+
+      {error && <div className="alert alert-error mb-16">⚠ {error}</div>}
 
       {loading ? (
         <div className="card" style={{ textAlign: 'center', padding: 60, color: 'var(--text-muted)' }}>Loading…</div>
