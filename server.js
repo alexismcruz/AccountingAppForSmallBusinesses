@@ -210,6 +210,7 @@ app.use('/api/fiscal',        require('./routes/fiscal'));
 app.use('/api/exchange-rate', require('./routes/exchangeRate'));
 app.use('/api/approvals',     require('./routes/approvals'));
 app.use('/api/logs',          require('./routes/logs'));
+app.use('/api/invoices',      require('./routes/invoices'));
 
 // ── Serve built React app in production ──────────────────────────────────────
 if (process.env.NODE_ENV === 'production') {

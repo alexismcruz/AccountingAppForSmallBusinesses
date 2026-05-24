@@ -549,6 +549,13 @@ export default function Payments({ tab }) {
                               ✓ Pay
                             </button>
                           )}
+                          {isAR && !rec.pending_approval && (
+                            <button className="btn btn-ghost btn-sm"
+                              title="Download PDF Invoice"
+                              onClick={() => triggerDownload(`/api/invoices/receivable/${rec.id}`, `Invoice-${rec.invoice_number || rec.id}.pdf`)}>
+                              📄 PDF
+                            </button>
+                          )}
                           {!rec.pending_deletion && !rec.pending_approval && user?.role !== 'admin' && (
                             <button className="btn btn-ghost btn-sm"
                               style={{ color: 'var(--danger)', borderColor: 'transparent' }}
