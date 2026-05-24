@@ -5,14 +5,29 @@ import CurrencySelect from '../components/CurrencySelect.jsx';
 import AmountInput from '../components/AmountInput.jsx';
 import CharCount from '../components/CharCount.jsx';
 
-// ── CSV download helper ───────────────────────────────────────────────────────
+// ── Download helpers ──────────────────────────────────────────────────────────
 function triggerDownload(url, filename) {
+  // For text-based files (CSV) — reads as text to preserve encoding
   fetch(url, { credentials: 'include' })
     .then(r => r.text())
     .then(text => {
       const blob = new Blob([text], { type: 'text/csv' });
       const a = document.createElement('a');
       a.href = URL.createObjectURL(blob);
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(a.href);
+    });
+}
+
+function triggerBinaryDownload(url, filename, mimeType = 'application/pdf') {
+  // For binary files (PDF, images) — must use blob(), not text()
+  fetch(url, { credentials: 'include' })
+    .then(r => r.blob())
+    .then(blob => {
+      const typedBlob = new Blob([blob], { type: mimeType });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(typedBlob);
       a.download = filename;
       a.click();
       URL.revokeObjectURL(a.href);
@@ -552,7 +567,7 @@ export default function Payments({ tab }) {
                           {isAR && !rec.pending_approval && (
                             <button className="btn btn-ghost btn-sm"
                               title="Download PDF Invoice"
-                              onClick={() => triggerDownload(`/api/invoices/receivable/${rec.id}`, `Invoice-${rec.invoice_number || rec.id}.pdf`)}>
+                              onClick={() => triggerBinaryDownload(`/api/invoices/receivable/${rec.id}`, `Invoice-${rec.invoice_number || rec.id}.pdf`)}>
                               📄 PDF
                             </button>
                           )}
