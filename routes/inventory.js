@@ -63,7 +63,8 @@ router.get('/import/template', (req, res) => {
 });
 
 router.post('/import/csv', (req, res) => {
-  const db = getDB();
+  const db   = getDB();
+  const user = req.session.user;
   const { csv, dryRun } = req.body;
   if (!csv) return res.status(400).json({ error: 'No CSV data provided' });
   const rows = parseCSVText(csv);
@@ -79,24 +80,67 @@ router.post('/import/csv', (req, res) => {
   if (errors.length) return res.status(400).json({ error: 'Validation errors', details: errors });
   if (dryRun) return res.json({ ok: true, count: rows.length });
 
-  const stmt = db.prepare(`
-    INSERT INTO inventory_items (sku, name, category, unit, quantity, unit_cost, reorder_point, notes)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+  const isSuperAdmin = user?.role === 'super_admin';
+
+  if (isSuperAdmin) {
+    // ── Direct insert — super_admin bypasses approval ─────────────────────────
+    const stmt = db.prepare(`
+      INSERT INTO inventory_items (sku, name, category, unit, quantity, unit_cost, reorder_point, notes,
+        pending_approval, created_by_email, created_by_name, created_by_role)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?)
+    `);
+    const imported = [], skipped = [];
+    for (const r of rows) {
+      try {
+        stmt.run(r.sku, r.name, r.category || '', r.unit || 'pcs',
+          parseFloat(r.quantity) || 0, parseFloat(r.unit_cost) || 0,
+          parseFloat(r.reorder_point) || 10, r.notes || null,
+          user?.email, user?.name, user?.role);
+        imported.push(r.sku);
+      } catch (e) {
+        skipped.push(`${r.sku} — ${e.message.includes('UNIQUE') ? 'SKU already exists' : e.message}`);
+      }
+    }
+    logAction(user, 'IMPORT_CSV', 'inventory', null, null,
+      { imported: imported.length, skipped: skipped.length, mode: 'direct' });
+    return res.json({ ok: true, imported: imported.length, skipped: skipped.length, skippedRefs: skipped, pendingApproval: false });
+  }
+
+  // ── Approval flow — all other roles ──────────────────────────────────────────
+  const insertItem = db.prepare(`
+    INSERT INTO inventory_items (sku, name, category, unit, quantity, unit_cost, reorder_point, notes,
+      pending_approval, created_by_email, created_by_name, created_by_role)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?)
   `);
-  const imported = [], skipped = [];
+  const insertApproval = db.prepare(`
+    INSERT INTO approval_requests
+      (type, entity_id, entity_ref, entity_snapshot, submitted_by_email, submitted_by_name, submitted_by_role)
+    VALUES ('create_inventory', ?, ?, ?, ?, ?, ?)
+  `);
+  const submitted = [], skipped = [];
   for (const r of rows) {
     try {
-      stmt.run(r.sku, r.name, r.category || '', r.unit || 'pcs',
+      const result = insertItem.run(
+        r.sku, r.name, r.category || '', r.unit || 'pcs',
         parseFloat(r.quantity) || 0, parseFloat(r.unit_cost) || 0,
-        parseFloat(r.reorder_point) || 10, r.notes || null);
-      imported.push(r.sku);
+        parseFloat(r.reorder_point) || 10, r.notes || null,
+        user?.email, user?.name, user?.role
+      );
+      insertApproval.run(
+        result.lastInsertRowid,
+        r.sku,
+        JSON.stringify({ sku: r.sku, name: r.name, category: r.category || '', unit: r.unit || 'pcs',
+                         quantity: r.quantity || 0, unit_cost: r.unit_cost || 0 }),
+        user?.email, user?.name, user?.role
+      );
+      submitted.push(r.sku);
     } catch (e) {
       skipped.push(`${r.sku} — ${e.message.includes('UNIQUE') ? 'SKU already exists' : e.message}`);
     }
   }
-  logAction(req.session.user, 'IMPORT_INVENTORY_CSV', 'inventory', null, null,
-    { imported: imported.length, skipped: skipped.length });
-  res.json({ ok: true, imported: imported.length, skipped: skipped.length, skippedRefs: skipped });
+  logAction(user, 'IMPORT_CSV', 'inventory', null, null,
+    { submitted: submitted.length, skipped: skipped.length, mode: 'pending_approval' });
+  return res.json({ ok: true, imported: submitted.length, skipped: skipped.length, skippedRefs: skipped, pendingApproval: true });
 });
 
 // ── CRUD ─────────────────────────────────────────────────────────────────────

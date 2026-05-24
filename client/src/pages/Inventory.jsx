@@ -22,7 +22,7 @@ function triggerDownload(url, filename) {
 }
 
 // ── Import modal ──────────────────────────────────────────────────────────────
-function ImportModal({ onClose, onImported }) {
+function ImportModal({ onClose, onImported, isSuperAdmin }) {
   const [phase,   setPhase]   = useState('pick');
   const [csvText, setCsvText] = useState('');
   const [preview, setPreview] = useState(null);
@@ -80,7 +80,10 @@ function ImportModal({ onClose, onImported }) {
           {phase === 'pick' && (
             <>
               <div className="alert alert-info mb-16">
-                Upload a CSV file to bulk-import inventory items. Imported items are added directly (Finance bulk-import bypasses approval).
+                Upload a CSV file to bulk-import inventory items.
+                {isSuperAdmin
+                  ? ' Items will be added directly to inventory.'
+                  : ' Each item will be submitted for approval — they will appear once a manager or finance user approves them.'}
               </div>
               {error && <div className="alert alert-error mb-16" style={{ whiteSpace: 'pre-line' }}>⚠ {error}</div>}
               <div style={{ marginBottom: 16 }}>
@@ -100,15 +103,23 @@ function ImportModal({ onClose, onImported }) {
           )}
           {phase === 'preview' && preview && (
             <div className="alert alert-success">
-              ✓ File is valid — <strong>{preview.count} item{preview.count !== 1 ? 's' : ''}</strong> ready to import.
+              ✓ File is valid — <strong>{preview.count} item{preview.count !== 1 ? 's' : ''}</strong> ready to{isSuperAdmin ? ' import' : ' submit for approval'}.
             </div>
           )}
           {phase === 'result' && result && (
             <>
-              <div className="alert alert-success mb-16">
-                ✓ Import complete — <strong>{result.imported}</strong> item{result.imported !== 1 ? 's' : ''} imported.
-                {result.skipped > 0 && ` ${result.skipped} skipped.`}
-              </div>
+              {result.pendingApproval ? (
+                <div className="alert alert-warning mb-16">
+                  ⏳ <strong>{result.imported}</strong> item{result.imported !== 1 ? 's' : ''} submitted for approval.
+                  {result.skipped > 0 && ` ${result.skipped} skipped (duplicate SKU).`}
+                  {' '}They will appear in inventory once approved.
+                </div>
+              ) : (
+                <div className="alert alert-success mb-16">
+                  ✓ Import complete — <strong>{result.imported}</strong> item{result.imported !== 1 ? 's' : ''} added to inventory.
+                  {result.skipped > 0 && ` ${result.skipped} skipped.`}
+                </div>
+              )}
               {result.skippedRefs?.length > 0 && (
                 <div className="text-muted text-sm">Skipped: {result.skippedRefs.join(', ')}</div>
               )}
@@ -120,7 +131,11 @@ function ImportModal({ onClose, onImported }) {
           {phase === 'preview' && <>
             <button className="btn btn-ghost" onClick={() => setPhase('pick')}>← Back</button>
             <button className="btn btn-primary" onClick={handleConfirm} disabled={loading}>
-              {loading ? 'Importing…' : `✓ Import ${preview?.count} Item${preview?.count !== 1 ? 's' : ''}`}
+              {loading
+                ? (isSuperAdmin ? 'Importing…' : 'Submitting…')
+                : isSuperAdmin
+                  ? `✓ Import ${preview?.count} Item${preview?.count !== 1 ? 's' : ''}`
+                  : `✓ Submit ${preview?.count} Item${preview?.count !== 1 ? 's' : ''} for Approval`}
             </button>
           </>}
           {phase === 'result'  && <button className="btn btn-primary" onClick={onClose}>Done</button>}
@@ -295,13 +310,13 @@ export default function Inventory() {
           <div className="page-subtitle">Track your stock and reorder levels</div>
         </div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          {can('manager') && (
+          {user?.role !== 'admin' && (
             <button className="btn btn-ghost btn-sm"
               onClick={() => triggerDownload('/api/inventory/export/csv', exportFilename)}>
               ⬇ Export CSV
             </button>
           )}
-          {can('finance') && (
+          {user?.role !== 'admin' && (
             <button className="btn btn-ghost btn-sm" onClick={() => setShowImport(true)}>
               ⬆ Import CSV
             </button>
@@ -478,7 +493,7 @@ export default function Inventory() {
       )}
 
       {/* Import Modal */}
-      {showImport && <ImportModal onClose={() => setShowImport(false)} onImported={loadItems} />}
+      {showImport && <ImportModal onClose={() => setShowImport(false)} onImported={loadItems} isSuperAdmin={user?.role === 'super_admin'} />}
 
       {/* Deletion Modal */}
       {deletionModal && (
