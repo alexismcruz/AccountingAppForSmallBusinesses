@@ -1,17 +1,38 @@
 import { useState } from 'react';
 import { useSettings } from '../context/SettingsContext.jsx';
+import { useUser } from '../context/UserContext.jsx';
 import { CURRENCIES } from '../data/currencies.js';
 import CharCount from '../components/CharCount.jsx';
 
 export default function Settings() {
   const { settings, setSettings } = useSettings();
+  const { user } = useUser();
   const [form, setForm] = useState({ ...settings });
   const [msg, setMsg] = useState(null);
   const [saving, setSaving] = useState(false);
+  const [resetting, setResetting] = useState(false);
 
   const handleCurrencyChange = (code) => {
     const cur = CURRENCIES.find(c => c.code === code);
     if (cur) setForm(f => ({ ...f, currency: cur.code, currency_symbol: cur.symbol }));
+  };
+
+  const handleReset = async () => {
+    if (!window.confirm(
+      'Reset sandbox to default demo data?\n\n' +
+      'This will permanently erase ALL current data (journal entries, inventory, payments, approvals, logs) ' +
+      'and restore the XYZ Trading Co. demo dataset.\n\nThis cannot be undone. Continue?'
+    )) return;
+    setResetting(true); setMsg(null);
+    try {
+      const res = await fetch('/api/sandbox/reset', {
+        method: 'POST', credentials: 'include',
+      });
+      const data = await res.json();
+      if (!res.ok) { setMsg({ type: 'error', text: data.error || 'Reset failed.' }); return; }
+      setMsg({ type: 'success', text: '✓ Sandbox reset complete — demo data restored. Refresh the page to see the changes.' });
+    } catch { setMsg({ type: 'error', text: 'Network error. Please try again.' }); }
+    finally { setResetting(false); }
   };
 
   const handleSave = async () => {
@@ -137,6 +158,24 @@ export default function Settings() {
           ))}
         </div>
       </div>
+
+      {/* Sandbox reset — only shown in SANDBOX_MODE and only to super_admin */}
+      {settings.sandboxMode && user?.role === 'super_admin' && (
+        <div className="card mt-16" style={{ maxWidth: 640, background: '#fff7ed', border: '1px solid #fed7aa' }}>
+          <div className="section-title" style={{ color: '#92400e' }}>🧪 Sandbox Controls</div>
+          <p style={{ fontSize: 13, color: '#78350f', marginBottom: 16 }}>
+            Reset all data back to the default XYZ Trading Co. demo dataset. This permanently erases
+            all current entries, inventory, payments, approvals, and logs.
+          </p>
+          <button
+            className="btn btn-danger"
+            onClick={handleReset}
+            disabled={resetting}
+          >
+            {resetting ? '⏳ Resetting…' : '🔄 Reset Sandbox to Demo Data'}
+          </button>
+        </div>
+      )}
     </div>
   );
 }

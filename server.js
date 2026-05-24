@@ -2,7 +2,7 @@ const express = require('express');
 const cors    = require('cors');
 const path    = require('path');
 const session = require('express-session');
-const { initDB } = require('./db/database');
+const { initDB, getDB } = require('./db/database');
 
 const app  = express();
 const PORT = process.env.PORT || 3001;
@@ -10,6 +10,19 @@ const PORT = process.env.PORT || 3001;
 try {
   initDB();
   console.log('✅ Database initialised at', process.env.DB_PATH || 'accounting.db (local)');
+
+  // ── Sandbox: seed demo data on first boot ─────────────────────────────────
+  if (process.env.SANDBOX_MODE) {
+    const { seedSandboxData } = require('./db/sandboxSeed');
+    const db = getDB();
+    const biz = db.prepare('SELECT business_name FROM business_settings WHERE id = 1').get();
+    if (!biz || biz.business_name === 'My Business') {
+      seedSandboxData(db);
+      console.log('🧪 Sandbox: demo data seeded for XYZ Trading Co.');
+    } else {
+      console.log('🧪 Sandbox mode active — existing data preserved');
+    }
+  }
 } catch (err) {
   console.error('❌ Database init failed:', err.message);
   process.exit(1);
@@ -211,6 +224,7 @@ app.use('/api/exchange-rate', require('./routes/exchangeRate'));
 app.use('/api/approvals',     require('./routes/approvals'));
 app.use('/api/logs',          require('./routes/logs'));
 app.use('/api/invoices',      require('./routes/invoices'));
+app.use('/api/sandbox',       require('./routes/sandbox'));
 
 // ── Serve built React app in production ──────────────────────────────────────
 if (process.env.NODE_ENV === 'production') {

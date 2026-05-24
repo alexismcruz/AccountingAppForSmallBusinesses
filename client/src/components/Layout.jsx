@@ -314,6 +314,19 @@ export default function Layout({ children, onLogout }) {
 
       {/* Main area */}
       <div className="main-area">
+
+        {/* Sandbox banner — visible only when SANDBOX_MODE=true */}
+        {settings.sandboxMode && (
+          <div style={{
+            background: '#92400e', color: '#fef3c7',
+            padding: '6px 16px', textAlign: 'center',
+            fontSize: 11, fontWeight: 700, letterSpacing: '0.05em',
+            flexShrink: 0, lineHeight: 1.4,
+          }}>
+            🧪 SANDBOX ENVIRONMENT — Demo data only. Not for real business use.
+          </div>
+        )}
+
         <div className="top-bar">
           {/* Hamburger button — visible on mobile/tablet only */}
           <button

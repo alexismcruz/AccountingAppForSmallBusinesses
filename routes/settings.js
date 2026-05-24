@@ -4,7 +4,8 @@ const { getDB } = require('../db/database');
 
 router.get('/', (req, res) => {
   const db = getDB();
-  res.json(db.prepare('SELECT * FROM business_settings WHERE id = 1').get());
+  const settings = db.prepare('SELECT * FROM business_settings WHERE id = 1').get();
+  res.json({ ...settings, sandboxMode: !!process.env.SANDBOX_MODE });
 });
 
 router.put('/', (req, res) => {
