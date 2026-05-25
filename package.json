@@ -4,20 +4,21 @@
   "description": "Simple accounting app for small business owners",
   "main": "server.js",
   "engines": {
-    "node": ">=22.0.0"
+    "node": ">=18.0.0"
   },
   "scripts": {
     "setup": "npm install && npm --prefix client install",
-    "dev": "concurrently --kill-others-on-fail -n SERVER,CLIENT -c blue,green \"node --experimental-sqlite server.js\" \"npm --prefix client run dev\"",
-    "server": "node --experimental-sqlite server.js",
+    "dev": "concurrently --kill-others-on-fail -n SERVER,CLIENT -c blue,green \"node server.js\" \"npm --prefix client run dev\"",
+    "server": "node server.js",
     "build": "npm --prefix client run build",
-    "start": "node --experimental-sqlite server.js"
+    "start": "node server.js"
   },
   "dependencies": {
     "cors": "^2.8.5",
     "express": "^4.18.2",
     "express-session": "^1.18.1",
-    "pdfkit": "^0.18.0"
+    "pdfkit": "^0.18.0",
+    "pg": "^8.21.0"
   },
   "devDependencies": {
     "concurrently": "^8.2.2"

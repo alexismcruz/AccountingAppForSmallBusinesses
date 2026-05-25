@@ -1,6 +1,6 @@
 const express = require('express');
 const router  = express.Router();
-const { getDB } = require('../db/database');
+const { query } = require('../db/database');
 
 function csvEsc(val) {
   if (val === null || val === undefined) return '';
@@ -19,43 +19,49 @@ router.use((req, res, next) => {
 });
 
 // ── GET /api/logs ─────────────────────────────────────────────────────────────
-router.get('/', (req, res) => {
-  const db = getDB();
+router.get('/', async (req, res) => {
   const { from, to, search, limit = 500 } = req.query;
-
-  let sql = 'SELECT * FROM audit_logs WHERE 1=1';
   const params = [];
-  if (from)   { sql += ' AND created_at >= ?'; params.push(from); }
-  if (to)     { sql += ' AND created_at <= ?'; params.push(to + ' 23:59:59'); }
+  let idx = 1;
+  let sql = 'SELECT * FROM audit_logs WHERE 1=1';
+
+  if (from)   { sql += ` AND created_at >= $${idx++}`; params.push(from); }
+  if (to)     { sql += ` AND created_at <= $${idx++}`; params.push(to + ' 23:59:59'); }
   if (search) {
-    sql += ' AND (user_email LIKE ? OR user_name LIKE ? OR action LIKE ? OR entity_ref LIKE ?)';
-    params.push(`%${search}%`, `%${search}%`, `%${search}%`, `%${search}%`);
+    sql += ` AND (user_email ILIKE $${idx} OR user_name ILIKE $${idx+1} OR action ILIKE $${idx+2} OR entity_ref ILIKE $${idx+3})`;
+    const s = `%${search}%`;
+    params.push(s, s, s, s);
+    idx += 4;
   }
-  sql += ' ORDER BY created_at DESC LIMIT ?';
+  sql += ` ORDER BY created_at DESC LIMIT $${idx}`;
   params.push(parseInt(limit) || 500);
 
-  res.json(db.prepare(sql).all(...params));
+  try {
+    const { rows } = await query(sql, params);
+    res.json(rows);
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // ── GET /api/logs/export/csv ──────────────────────────────────────────────────
-router.get('/export/csv', (req, res) => {
-  const db = getDB();
+router.get('/export/csv', async (req, res) => {
   const { from, to } = req.query;
-
-  let sql = 'SELECT * FROM audit_logs WHERE 1=1';
   const params = [];
-  if (from) { sql += ' AND created_at >= ?'; params.push(from); }
-  if (to)   { sql += ' AND created_at <= ?'; params.push(to + ' 23:59:59'); }
+  let idx = 1;
+  let sql = 'SELECT * FROM audit_logs WHERE 1=1';
+
+  if (from) { sql += ` AND created_at >= $${idx++}`; params.push(from); }
+  if (to)   { sql += ` AND created_at <= $${idx++}`; params.push(to + ' 23:59:59'); }
   sql += ' ORDER BY created_at DESC';
 
-  const rows = db.prepare(sql).all(...params);
-  const cols = ['created_at', 'user_name', 'user_email', 'user_role', 'action', 'entity_type', 'entity_ref', 'details'];
-  const csv  = [cols.join(','), ...rows.map(r => cols.map(c => csvEsc(r[c])).join(','))].join('\n');
-
-  const today = new Date().toISOString().split('T')[0];
-  res.setHeader('Content-Type', 'text/csv');
-  res.setHeader('Content-Disposition', `attachment; filename="audit-logs-${today}.csv"`);
-  res.send(csv);
+  try {
+    const { rows } = await query(sql, params);
+    const cols = ['created_at', 'user_name', 'user_email', 'user_role', 'action', 'entity_type', 'entity_ref', 'details'];
+    const csv  = [cols.join(','), ...rows.map(r => cols.map(c => csvEsc(r[c])).join(','))].join('\n');
+    const today = new Date().toISOString().split('T')[0];
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', `attachment; filename="audit-logs-${today}.csv"`);
+    res.send(csv);
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 module.exports = router;

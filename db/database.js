@@ -1,155 +1,181 @@
-const { DatabaseSync } = require('node:sqlite');
-const path = require('path');
-const fs = require('fs');
+const { Pool } = require('pg');
 
-const DB_PATH = process.env.DB_PATH || path.join(__dirname, '..', 'accounting.db');
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+});
 
-// Ensure the directory exists (important when Railway Volume is mounted at /data)
-const DB_DIR = path.dirname(DB_PATH);
-if (!fs.existsSync(DB_DIR)) {
-  fs.mkdirSync(DB_DIR, { recursive: true });
+// ── Simple query helper — returns pg result { rows, rowCount } ─────────────────
+function query(text, params) {
+  return pool.query(text, params);
 }
 
-let db;
-
-function getDB() {
-  if (!db) {
-    db = new DatabaseSync(DB_PATH);
-    db.exec('PRAGMA journal_mode = WAL');
-    db.exec('PRAGMA foreign_keys = ON');
-  }
-  return db;
-}
-
-// Run a function inside a BEGIN/COMMIT transaction
-function runTransaction(fn) {
-  const db = getDB();
-  db.exec('BEGIN');
+// ── Transaction helper ────────────────────────────────────────────────────────
+// fn receives a pg client; use client.query() inside to stay in the transaction
+async function withTransaction(fn) {
+  const client = await pool.connect();
   try {
-    const result = fn(db);
-    db.exec('COMMIT');
+    await client.query('BEGIN');
+    const result = await fn(client);
+    await client.query('COMMIT');
     return result;
   } catch (e) {
-    db.exec('ROLLBACK');
+    await client.query('ROLLBACK');
     throw e;
+  } finally {
+    client.release();
   }
 }
 
-function initDB() {
-  const db = getDB();
-
-  db.exec(`
+// ── Schema initialisation ─────────────────────────────────────────────────────
+async function initDB() {
+  await pool.query(`
     CREATE TABLE IF NOT EXISTS accounts (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      code TEXT UNIQUE NOT NULL,
-      name TEXT NOT NULL,
-      type TEXT NOT NULL,
+      id             SERIAL PRIMARY KEY,
+      code           TEXT UNIQUE NOT NULL,
+      name           TEXT NOT NULL,
+      type           TEXT NOT NULL,
       normal_balance TEXT NOT NULL,
-      description TEXT,
-      is_active INTEGER DEFAULT 1,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    );
+      description    TEXT,
+      is_active      INTEGER DEFAULT 1,
+      created_at     TIMESTAMPTZ DEFAULT NOW()
+    )
+  `);
 
+  await pool.query(`
     CREATE TABLE IF NOT EXISTS journal_entries (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      date TEXT NOT NULL,
-      reference TEXT UNIQUE NOT NULL,
-      description TEXT NOT NULL,
-      status TEXT DEFAULT 'posted',
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    );
+      id               SERIAL PRIMARY KEY,
+      date             TEXT NOT NULL,
+      reference        TEXT UNIQUE NOT NULL,
+      description      TEXT NOT NULL,
+      status           TEXT DEFAULT 'posted',
+      currency         TEXT DEFAULT 'USD',
+      exchange_rate    DOUBLE PRECISION DEFAULT 1.0,
+      entry_type       TEXT DEFAULT 'regular',
+      created_by_email TEXT DEFAULT 'system',
+      created_by_name  TEXT DEFAULT 'System',
+      created_by_role  TEXT DEFAULT 'admin',
+      created_at       TIMESTAMPTZ DEFAULT NOW()
+    )
+  `);
 
+  await pool.query(`
     CREATE TABLE IF NOT EXISTS journal_lines (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      entry_id INTEGER NOT NULL,
-      account_id INTEGER NOT NULL,
-      debit REAL DEFAULT 0,
-      credit REAL DEFAULT 0,
-      notes TEXT,
-      FOREIGN KEY (entry_id) REFERENCES journal_entries(id) ON DELETE CASCADE,
-      FOREIGN KEY (account_id) REFERENCES accounts(id)
-    );
+      id          SERIAL PRIMARY KEY,
+      entry_id    INTEGER NOT NULL REFERENCES journal_entries(id) ON DELETE CASCADE,
+      account_id  INTEGER NOT NULL REFERENCES accounts(id),
+      debit       DOUBLE PRECISION DEFAULT 0,
+      credit      DOUBLE PRECISION DEFAULT 0,
+      base_debit  DOUBLE PRECISION,
+      base_credit DOUBLE PRECISION,
+      notes       TEXT
+    )
+  `);
 
+  await pool.query(`
     CREATE TABLE IF NOT EXISTS inventory_items (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      sku TEXT UNIQUE NOT NULL,
-      name TEXT NOT NULL,
-      category TEXT,
-      unit TEXT DEFAULT 'pcs',
-      quantity REAL DEFAULT 0,
-      unit_cost REAL DEFAULT 0,
-      reorder_point REAL DEFAULT 10,
-      is_active INTEGER DEFAULT 1,
-      notes TEXT,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    );
+      id               SERIAL PRIMARY KEY,
+      sku              TEXT UNIQUE NOT NULL,
+      name             TEXT NOT NULL,
+      category         TEXT,
+      unit             TEXT DEFAULT 'pcs',
+      quantity         DOUBLE PRECISION DEFAULT 0,
+      unit_cost        DOUBLE PRECISION DEFAULT 0,
+      reorder_point    DOUBLE PRECISION DEFAULT 10,
+      is_active        INTEGER DEFAULT 1,
+      pending_approval INTEGER DEFAULT 0,
+      pending_deletion INTEGER DEFAULT 0,
+      created_by_email TEXT DEFAULT 'system',
+      created_by_name  TEXT DEFAULT 'System',
+      created_by_role  TEXT DEFAULT 'admin',
+      notes            TEXT,
+      created_at       TIMESTAMPTZ DEFAULT NOW()
+    )
+  `);
 
+  await pool.query(`
     CREATE TABLE IF NOT EXISTS receivables (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      customer_name TEXT NOT NULL,
-      invoice_number TEXT UNIQUE NOT NULL,
-      description TEXT,
-      amount REAL NOT NULL,
-      due_date TEXT,
-      status TEXT DEFAULT 'pending',
-      paid_amount REAL DEFAULT 0,
-      entry_id INTEGER,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY (entry_id) REFERENCES journal_entries(id)
-    );
+      id               SERIAL PRIMARY KEY,
+      customer_name    TEXT NOT NULL,
+      invoice_number   TEXT UNIQUE NOT NULL,
+      description      TEXT,
+      amount           DOUBLE PRECISION NOT NULL,
+      due_date         TEXT,
+      scheduled_date   TEXT,
+      status           TEXT DEFAULT 'pending',
+      paid_amount      DOUBLE PRECISION DEFAULT 0,
+      currency         TEXT DEFAULT 'USD',
+      exchange_rate    DOUBLE PRECISION DEFAULT 1.0,
+      entry_id         INTEGER REFERENCES journal_entries(id),
+      pending_approval INTEGER DEFAULT 0,
+      pending_deletion INTEGER DEFAULT 0,
+      created_by_email TEXT DEFAULT 'system',
+      created_by_name  TEXT DEFAULT 'System',
+      created_by_role  TEXT DEFAULT 'admin',
+      created_at       TIMESTAMPTZ DEFAULT NOW()
+    )
+  `);
 
+  await pool.query(`
     CREATE TABLE IF NOT EXISTS payables (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      supplier_name TEXT NOT NULL,
+      id               SERIAL PRIMARY KEY,
+      supplier_name    TEXT NOT NULL,
       reference_number TEXT,
-      description TEXT,
-      amount REAL NOT NULL,
-      due_date TEXT,
-      status TEXT DEFAULT 'pending',
-      paid_amount REAL DEFAULT 0,
-      entry_id INTEGER,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY (entry_id) REFERENCES journal_entries(id)
-    );
+      description      TEXT,
+      amount           DOUBLE PRECISION NOT NULL,
+      due_date         TEXT,
+      scheduled_date   TEXT,
+      status           TEXT DEFAULT 'pending',
+      paid_amount      DOUBLE PRECISION DEFAULT 0,
+      currency         TEXT DEFAULT 'USD',
+      exchange_rate    DOUBLE PRECISION DEFAULT 1.0,
+      entry_id         INTEGER REFERENCES journal_entries(id),
+      pending_approval INTEGER DEFAULT 0,
+      pending_deletion INTEGER DEFAULT 0,
+      created_by_email TEXT DEFAULT 'system',
+      created_by_name  TEXT DEFAULT 'System',
+      created_by_role  TEXT DEFAULT 'admin',
+      created_at       TIMESTAMPTZ DEFAULT NOW()
+    )
+  `);
 
+  await pool.query(`
     CREATE TABLE IF NOT EXISTS business_settings (
-      id INTEGER PRIMARY KEY DEFAULT 1,
-      business_name TEXT DEFAULT 'My Business',
+      id                  INTEGER PRIMARY KEY DEFAULT 1,
+      business_name       TEXT DEFAULT 'My Business',
       registration_number TEXT DEFAULT '',
-      address TEXT DEFAULT '',
-      tax_id TEXT DEFAULT '',
-      currency TEXT DEFAULT 'USD',
-      currency_symbol TEXT DEFAULT '$',
-      fiscal_year_start TEXT DEFAULT '01-01',
-      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    );
+      address             TEXT DEFAULT '',
+      tax_id              TEXT DEFAULT '',
+      currency            TEXT DEFAULT 'USD',
+      currency_symbol     TEXT DEFAULT '$',
+      fiscal_year_start   TEXT DEFAULT '01-01',
+      updated_at          TIMESTAMPTZ DEFAULT NOW()
+    )
   `);
 
-  // ── Approval requests ────────────────────────────────────────────────────────
-  db.exec(`
+  await pool.query(`
     CREATE TABLE IF NOT EXISTS approval_requests (
-      id                  INTEGER PRIMARY KEY AUTOINCREMENT,
-      type                TEXT NOT NULL,       -- create_entry | delete_entry | delete_receivable | delete_payable
-      entity_id           INTEGER NOT NULL,    -- journal_entries.id / receivables.id / payables.id
-      entity_ref          TEXT,                -- human-readable ref e.g. JE-0001 / INV-001
-      entity_snapshot     TEXT,                -- JSON snapshot of the entity for display
-      submitted_by_email  TEXT NOT NULL,
-      submitted_by_name   TEXT,
-      submitted_by_role   TEXT NOT NULL,
-      submitter_note      TEXT,
-      status              TEXT NOT NULL DEFAULT 'pending',  -- pending | approved | rejected
-      reviewed_by_email   TEXT,
-      reviewed_by_name    TEXT,
-      reviewer_note       TEXT DEFAULT '',
-      reviewed_at         TEXT,
-      created_at          TEXT DEFAULT (datetime('now'))
-    );
+      id                 SERIAL PRIMARY KEY,
+      type               TEXT NOT NULL,
+      entity_id          INTEGER NOT NULL,
+      entity_ref         TEXT,
+      entity_snapshot    TEXT,
+      submitted_by_email TEXT NOT NULL,
+      submitted_by_name  TEXT,
+      submitted_by_role  TEXT NOT NULL,
+      submitter_note     TEXT,
+      status             TEXT NOT NULL DEFAULT 'pending',
+      reviewed_by_email  TEXT,
+      reviewed_by_name   TEXT,
+      reviewer_note      TEXT DEFAULT '',
+      reviewed_at        TIMESTAMPTZ,
+      created_at         TIMESTAMPTZ DEFAULT NOW()
+    )
   `);
 
-  // ── Audit logs ───────────────────────────────────────────────────────────────
-  db.exec(`
+  await pool.query(`
     CREATE TABLE IF NOT EXISTS audit_logs (
-      id          INTEGER PRIMARY KEY AUTOINCREMENT,
+      id          SERIAL PRIMARY KEY,
       user_email  TEXT NOT NULL,
       user_name   TEXT,
       user_role   TEXT,
@@ -158,79 +184,40 @@ function initDB() {
       entity_id   INTEGER,
       entity_ref  TEXT,
       details     TEXT,
-      created_at  TEXT DEFAULT (datetime('now'))
-    );
+      created_at  TIMESTAMPTZ DEFAULT NOW()
+    )
   `);
 
-  // Migrations — safe to run on existing databases (errors from "already exists" are swallowed)
-  const migrations = [
-    "ALTER TABLE journal_entries ADD COLUMN currency TEXT DEFAULT 'USD'",
-    "ALTER TABLE journal_entries ADD COLUMN exchange_rate REAL DEFAULT 1.0",
-    "ALTER TABLE journal_entries ADD COLUMN entry_type TEXT DEFAULT 'regular'",
-    "ALTER TABLE journal_lines ADD COLUMN base_debit REAL",
-    "ALTER TABLE journal_lines ADD COLUMN base_credit REAL",
-    "ALTER TABLE receivables ADD COLUMN currency TEXT DEFAULT 'USD'",
-    "ALTER TABLE receivables ADD COLUMN exchange_rate REAL DEFAULT 1.0",
-    "ALTER TABLE receivables ADD COLUMN scheduled_date TEXT",
-    "ALTER TABLE payables ADD COLUMN currency TEXT DEFAULT 'USD'",
-    "ALTER TABLE payables ADD COLUMN exchange_rate REAL DEFAULT 1.0",
-    "ALTER TABLE payables ADD COLUMN scheduled_date TEXT",
-    // Approval workflow columns
-    "ALTER TABLE journal_entries ADD COLUMN created_by_email TEXT DEFAULT 'system'",
-    "ALTER TABLE journal_entries ADD COLUMN created_by_name  TEXT DEFAULT 'System'",
-    "ALTER TABLE journal_entries ADD COLUMN created_by_role  TEXT DEFAULT 'admin'",
-    "ALTER TABLE receivables ADD COLUMN pending_deletion  INTEGER DEFAULT 0",
-    "ALTER TABLE payables   ADD COLUMN pending_deletion  INTEGER DEFAULT 0",
-    // Approval workflow for new payments + inventory
-    "ALTER TABLE receivables ADD COLUMN pending_approval  INTEGER DEFAULT 0",
-    "ALTER TABLE receivables ADD COLUMN created_by_email  TEXT DEFAULT 'system'",
-    "ALTER TABLE receivables ADD COLUMN created_by_name   TEXT DEFAULT 'System'",
-    "ALTER TABLE receivables ADD COLUMN created_by_role   TEXT DEFAULT 'admin'",
-    "ALTER TABLE payables    ADD COLUMN pending_approval  INTEGER DEFAULT 0",
-    "ALTER TABLE payables    ADD COLUMN created_by_email  TEXT DEFAULT 'system'",
-    "ALTER TABLE payables    ADD COLUMN created_by_name   TEXT DEFAULT 'System'",
-    "ALTER TABLE payables    ADD COLUMN created_by_role   TEXT DEFAULT 'admin'",
-    "ALTER TABLE inventory_items ADD COLUMN pending_approval  INTEGER DEFAULT 0",
-    "ALTER TABLE inventory_items ADD COLUMN pending_deletion  INTEGER DEFAULT 0",
-    "ALTER TABLE inventory_items ADD COLUMN created_by_email  TEXT DEFAULT 'system'",
-    "ALTER TABLE inventory_items ADD COLUMN created_by_name   TEXT DEFAULT 'System'",
-    "ALTER TABLE inventory_items ADD COLUMN created_by_role   TEXT DEFAULT 'admin'",
-  ];
-  for (const sql of migrations) {
-    try { db.exec(sql); } catch (_) { /* column already exists */ }
-  }
-  // Back-fill base amounts for existing rows that pre-date multi-currency support
-  db.exec("UPDATE journal_lines SET base_debit = debit, base_credit = credit WHERE base_debit IS NULL");
+  // ── Seed accounts if table is empty ────────────────────────────────────────
+  const { rowCount: accountCount } = await pool.query('SELECT 1 FROM accounts LIMIT 1');
+  if (accountCount === 0) await seedAccounts();
 
-  const accountCount = db.prepare('SELECT COUNT(*) as c FROM accounts').get();
-  if (accountCount.c === 0) seedAccounts(db);
+  // ── Ensure business_settings row exists ────────────────────────────────────
+  await pool.query('INSERT INTO business_settings (id) VALUES (1) ON CONFLICT DO NOTHING');
 
-  const settingsCount = db.prepare('SELECT COUNT(*) as c FROM business_settings').get();
-  if (settingsCount.c === 0) {
-    db.prepare('INSERT INTO business_settings (id) VALUES (1)').run();
-  }
-
-  // Seed initial cash balance of SGD 2,000 (Owner's investment) if no entries exist yet
-  const entryCount = db.prepare('SELECT COUNT(*) as c FROM journal_entries').get();
-  if (entryCount.c === 0) {
+  // ── Seed initial owner-investment entry if no entries exist ────────────────
+  const { rowCount: entryCount } = await pool.query('SELECT 1 FROM journal_entries LIMIT 1');
+  if (entryCount === 0) {
     const today = new Date().toISOString().split('T')[0];
-    const entry = db.prepare(
-      `INSERT INTO journal_entries (date, reference, description, currency, exchange_rate, entry_type)
-       VALUES (?, 'INIT-001', 'Initial cash balance - Owner investment', 'SGD', 1.0, 'regular')`
-    ).run(today);
-    const entryId = entry.lastInsertRowid;
-    const cash    = db.prepare("SELECT id FROM accounts WHERE code = '1000'").get();
-    const capital = db.prepare("SELECT id FROM accounts WHERE code = '3000'").get();
-    const line    = db.prepare(
-      `INSERT INTO journal_lines (entry_id, account_id, debit, credit, base_debit, base_credit)
-       VALUES (?, ?, ?, ?, ?, ?)`
-    );
-    line.run(entryId, cash.id,    2000, 0,    2000, 0);
-    line.run(entryId, capital.id, 0,    2000, 0,    2000);
+    const { rows: [entry] } = await pool.query(`
+      INSERT INTO journal_entries (date, reference, description, currency, exchange_rate, entry_type)
+      VALUES ($1, 'INIT-001', 'Initial cash balance - Owner investment', 'SGD', 1.0, 'regular')
+      RETURNING id
+    `, [today]);
+
+    const { rows: [cash] }    = await pool.query("SELECT id FROM accounts WHERE code = '1000'");
+    const { rows: [capital] } = await pool.query("SELECT id FROM accounts WHERE code = '3000'");
+
+    await pool.query(`
+      INSERT INTO journal_lines (entry_id, account_id, debit, credit, base_debit, base_credit)
+      VALUES ($1, $2, 2000, 0, 2000, 0),
+             ($1, $3, 0, 2000, 0, 2000)
+    `, [entry.id, cash.id, capital.id]);
   }
 }
 
-function seedAccounts(db) {
+// ── Chart of accounts seed ───────────────────────────────────────────────────
+async function seedAccounts() {
   const accounts = [
     // ── ASSETS ──────────────────────────────────────────────────────────────
     { code: '1000', name: 'Cash', type: 'Asset', normal_balance: 'Debit',
@@ -314,12 +301,13 @@ function seedAccounts(db) {
       description: 'Small, infrequent expenses that do not fit neatly into any other specific category.' },
   ];
 
-  const stmt = db.prepare(
-    'INSERT INTO accounts (code, name, type, normal_balance, description) VALUES (?, ?, ?, ?, ?)'
-  );
   for (const a of accounts) {
-    stmt.run(a.code, a.name, a.type, a.normal_balance, a.description);
+    await pool.query(
+      `INSERT INTO accounts (code, name, type, normal_balance, description)
+       VALUES ($1, $2, $3, $4, $5) ON CONFLICT (code) DO NOTHING`,
+      [a.code, a.name, a.type, a.normal_balance, a.description]
+    );
   }
 }
 
-module.exports = { getDB, initDB, runTransaction };
+module.exports = { query, withTransaction, initDB, pool };

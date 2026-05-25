@@ -2,31 +2,10 @@ const express = require('express');
 const cors    = require('cors');
 const path    = require('path');
 const session = require('express-session');
-const { initDB, getDB } = require('./db/database');
+const { initDB, query, pool } = require('./db/database');
 
 const app  = express();
 const PORT = process.env.PORT || 3001;
-
-try {
-  initDB();
-  console.log('✅ Database initialised at', process.env.DB_PATH || 'accounting.db (local)');
-
-  // ── Sandbox: seed demo data on first boot ─────────────────────────────────
-  if (process.env.SANDBOX_MODE) {
-    const { seedSandboxData } = require('./db/sandboxSeed');
-    const db = getDB();
-    const biz = db.prepare('SELECT business_name FROM business_settings WHERE id = 1').get();
-    if (!biz || biz.business_name === 'My Business') {
-      seedSandboxData(db);
-      console.log('🧪 Sandbox: demo data seeded for XYZ Trading Co.');
-    } else {
-      console.log('🧪 Sandbox mode active — existing data preserved');
-    }
-  }
-} catch (err) {
-  console.error('❌ Database init failed:', err.message);
-  process.exit(1);
-}
 
 app.set('trust proxy', 1);
 app.use(cors({ origin: ['http://localhost:5173', 'http://localhost:3001'], credentials: true }));
@@ -45,32 +24,28 @@ app.use(session({
 
 // ── Role levels ───────────────────────────────────────────────────────────────
 const ROLE_LEVELS = { staff: 1, manager: 2, finance: 3, admin: 2, super_admin: 5 };
-// Note: admin is view-only for accounting data; treated as level 2 for read access
 
 function userRole(req)  { return req.session.user?.role  || 'staff'; }
 function userLevel(req) { return ROLE_LEVELS[userRole(req)] || 0; }
 
 // ── UAM validation helper ─────────────────────────────────────────────────────
 async function validateViaUAM(email, password, clientSlug) {
-  const uamBase = process.env.UAM_URL.replace(/\/$/, ''); // strip trailing slash
-  const res  = await fetch(`${uamBase}/api/validate`, {
+  const uamBase = process.env.UAM_URL.replace(/\/$/, '');
+  const res = await fetch(`${uamBase}/api/validate`, {
     method:  'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-API-Key':    process.env.UAM_API_SECRET || '',
-    },
-    body:   JSON.stringify({ email, password, client_slug: clientSlug }),
-    signal: AbortSignal.timeout(15000), // 15 s timeout
+    headers: { 'Content-Type': 'application/json', 'X-API-Key': process.env.UAM_API_SECRET || '' },
+    body:    JSON.stringify({ email, password, client_slug: clientSlug }),
+    signal:  AbortSignal.timeout(15000),
   });
   return res.json();
 }
 
-// ── Password strength validation (mirrors UAM rules) ─────────────────────────
+// ── Password strength validation ──────────────────────────────────────────────
 function validatePasswordStrength(password) {
-  if (!password)             return 'Password is required';
-  if (password.length < 8)   return 'Password must be at least 8 characters';
-  if (password.length > 20)  return 'Password must not exceed 20 characters';
-  if (/\s/.test(password))   return 'Password must not contain spaces';
+  if (!password)            return 'Password is required';
+  if (password.length < 8)  return 'Password must be at least 8 characters';
+  if (password.length > 20) return 'Password must not exceed 20 characters';
+  if (/\s/.test(password))  return 'Password must not contain spaces';
   if (!/[0-9]/.test(password))
     return 'Password must contain at least one number';
   if (!/[!@#$%^&*()\-_=+\[\]{};:'",.<>/?\\|`~]/.test(password))
@@ -83,15 +58,11 @@ app.post('/api/auth/login', async (req, res) => {
   const { email, password } = req.body;
 
   if (process.env.UAM_URL && process.env.UAM_API_SECRET && process.env.CLIENT_SLUG) {
-    // ── UAM mode: validate against the central UAM service ────────────────
-    if (!email || !password) {
+    if (!email || !password)
       return res.status(400).json({ error: 'Email and password are required' });
-    }
     try {
       const result = await validateViaUAM(email, password, process.env.CLIENT_SLUG);
-      if (!result.valid) {
-        return res.status(401).json({ error: result.error || 'Invalid credentials' });
-      }
+      if (!result.valid) return res.status(401).json({ error: result.error || 'Invalid credentials' });
       req.session.authenticated = true;
       req.session.user = {
         id:    result.user.id,
@@ -108,11 +79,10 @@ app.post('/api/auth/login', async (req, res) => {
     }
   }
 
-  // ── Fallback mode: single APP_PASSWORD ────────────────────────────────────
+  // Fallback: single APP_PASSWORD
   const APP_PASSWORD = process.env.APP_PASSWORD;
-  if (!APP_PASSWORD) {
+  if (!APP_PASSWORD)
     return res.status(500).json({ error: 'APP_PASSWORD environment variable is not set on the server.' });
-  }
   if (password === APP_PASSWORD) {
     req.session.authenticated = true;
     req.session.user = { email: email || 'admin', name: 'Admin', role: 'admin' };
@@ -122,11 +92,8 @@ app.post('/api/auth/login', async (req, res) => {
 });
 
 app.get('/api/auth/me', (req, res) => {
-  if (req.session.authenticated) {
-    res.json({ authenticated: true, user: req.session.user || null });
-  } else {
-    res.status(401).json({ authenticated: false });
-  }
+  if (req.session.authenticated) res.json({ authenticated: true, user: req.session.user || null });
+  else res.status(401).json({ authenticated: false });
 });
 
 app.post('/api/auth/logout', (req, res) => {
@@ -146,52 +113,42 @@ app.use('/api', (req, res, next) => {
   const method = req.method;
   const WRITE  = ['POST', 'PUT', 'PATCH', 'DELETE'];
 
-  // Admin is view-only for accounting data (cannot create/edit/delete entries, payments, inventory)
   if (role === 'admin' && WRITE.includes(method)) {
     const restricted = ['/entries', '/payments', '/inventory'];
-    if (restricted.some(r => p.startsWith(r))) {
+    if (restricted.some(r => p.startsWith(r)))
       return res.status(403).json({ error: 'Admin role is view-only — changes require Staff, Manager, or Finance access' });
-    }
   }
 
-  // Settings: Finance, Admin, Super Admin
   if (method === 'PUT' && p === '/settings') {
-    if (!['finance', 'admin', 'super_admin'].includes(role)) {
+    if (!['finance', 'admin', 'super_admin'].includes(role))
       return res.status(403).json({ error: 'Finance role or above required to change settings' });
-    }
   }
 
-  // Journal entry CSV import: Finance+
   if (method === 'POST' && p === '/entries/import/csv') {
-    if (!['finance', 'super_admin'].includes(role)) {
+    if (!['finance', 'super_admin'].includes(role))
       return res.status(403).json({ error: 'Finance role required to import journal entries' });
-    }
   }
 
   next();
 });
 
-// ── Change password (authenticated users only) ────────────────────────────────
+// ── Change password ───────────────────────────────────────────────────────────
 app.post('/api/auth/change-password', async (req, res) => {
   const user = req.session.user;
   const { current_password, new_password, confirm_password } = req.body;
 
-  if (!current_password || !new_password || !confirm_password) {
+  if (!current_password || !new_password || !confirm_password)
     return res.status(400).json({ error: 'All three fields are required' });
-  }
-  if (new_password !== confirm_password) {
+  if (new_password !== confirm_password)
     return res.status(400).json({ error: 'New password and confirmation do not match' });
-  }
-  if (new_password === current_password) {
+  if (new_password === current_password)
     return res.status(400).json({ error: 'New password must be different from your current password' });
-  }
 
   const strengthErr = validatePasswordStrength(new_password);
   if (strengthErr) return res.status(400).json({ error: strengthErr });
 
-  if (!(process.env.UAM_URL && process.env.UAM_API_SECRET)) {
+  if (!(process.env.UAM_URL && process.env.UAM_API_SECRET))
     return res.status(400).json({ error: 'Password change is not available in single-password mode. Update the APP_PASSWORD environment variable instead.' });
-  }
 
   try {
     const uamBase = process.env.UAM_URL.replace(/\/$/, '');
@@ -229,18 +186,39 @@ app.use('/api/sandbox',       require('./routes/sandbox'));
 // ── Serve built React app in production ──────────────────────────────────────
 if (process.env.NODE_ENV === 'production') {
   app.use(express.static(path.join(__dirname, 'client/dist')));
-  app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, 'client/dist/index.html'));
-  });
+  app.get('*', (req, res) => res.sendFile(path.join(__dirname, 'client/dist/index.html')));
 }
 
-app.listen(PORT, () => {
-  console.log('\n====================================');
-  console.log('  Small Business Accounting App');
-  console.log('====================================');
-  console.log(`\n  API Server: http://localhost:${PORT}/api`);
-  const mode = process.env.UAM_URL ? `UAM (${process.env.UAM_URL})` : 'Single password (APP_PASSWORD)';
-  console.log(`  Auth mode : ${mode}`);
-  if (process.env.NODE_ENV !== 'production') console.log(`  Open App  : http://localhost:5173`);
-  console.log('\n');
-});
+// ── Start server ──────────────────────────────────────────────────────────────
+(async () => {
+  try {
+    await initDB();
+    console.log('✅ PostgreSQL database initialised');
+
+    // Sandbox: seed demo data on first boot
+    if (process.env.SANDBOX_MODE) {
+      const { rows: [biz] } = await query('SELECT business_name FROM business_settings WHERE id = 1');
+      if (!biz || biz.business_name === 'My Business') {
+        const { seedSandboxData } = require('./db/sandboxSeed');
+        await seedSandboxData(pool);
+        console.log('🧪 Sandbox: demo data seeded for XYZ Trading Co.');
+      } else {
+        console.log('🧪 Sandbox mode active — existing data preserved');
+      }
+    }
+
+    app.listen(PORT, () => {
+      console.log('\n====================================');
+      console.log('  Small Business Accounting App');
+      console.log('====================================');
+      console.log(`\n  API Server: http://localhost:${PORT}/api`);
+      const mode = process.env.UAM_URL ? `UAM (${process.env.UAM_URL})` : 'Single password (APP_PASSWORD)';
+      console.log(`  Auth mode : ${mode}`);
+      if (process.env.NODE_ENV !== 'production') console.log(`  Open App  : http://localhost:5173`);
+      console.log('\n');
+    });
+  } catch (err) {
+    console.error('❌ Startup failed:', err.message);
+    process.exit(1);
+  }
+})();
