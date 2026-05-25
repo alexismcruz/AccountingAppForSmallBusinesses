@@ -351,6 +351,262 @@ function PayModal({ record, type, onClose, onSaved }) {
   );
 }
 
+// ── Apply Tax Modal ───────────────────────────────────────────────────────────
+function ApplyTaxModal({ record, entityType, onClose, onApplied }) {
+  const { fmt } = useSettings();
+  const [taxRates,   setTaxRates]   = useState([]);
+  const [selectedId, setSelectedId] = useState('');
+  const [baseAmount, setBaseAmount] = useState(String(record.amount));
+  const [notes,      setNotes]      = useState('');
+  const [saving,     setSaving]     = useState(false);
+  const [error,      setError]      = useState('');
+  const [loading,    setLoading]    = useState(true);
+
+  useEffect(() => {
+    fetch('/api/tax/rates', { credentials: 'include' })
+      .then(r => r.json())
+      .then(rates => {
+        const filtered = rates.filter(r =>
+          r.is_active && (r.applies_to === 'both' || r.applies_to === entityType)
+        );
+        setTaxRates(filtered);
+        if (filtered.length === 1) setSelectedId(String(filtered[0].id));
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [entityType]);
+
+  const selectedRate = taxRates.find(r => String(r.id) === selectedId);
+  const base = parseFloat(baseAmount) || 0;
+
+  // Mirror server-side computeTax for preview
+  let previewTax = 0;
+  if (selectedRate && base > 0) {
+    const exempt  = parseFloat(selectedRate.exempt_threshold) || 0;
+    const taxable = Math.max(0, base - exempt);
+    if (selectedRate.type === 'percentage') {
+      const rate = parseFloat(selectedRate.rate) || 0;
+      previewTax = selectedRate.is_inclusive
+        ? taxable * rate / (100 + rate)
+        : taxable * rate / 100;
+    } else if (selectedRate.type === 'fixed_amount') {
+      previewTax = taxable > 0 ? (parseFloat(selectedRate.amount) || 0) : 0;
+    } else if (selectedRate.type === 'tiered') {
+      const sorted = [...(selectedRate.tiers || [])].sort((a, b) => (parseFloat(a.min)||0) - (parseFloat(b.min)||0));
+      let tax = 0;
+      for (const tier of sorted) {
+        const tMin = parseFloat(tier.min) || 0;
+        const tMax = tier.max != null && tier.max !== '' ? parseFloat(tier.max) : Infinity;
+        if (taxable <= tMin) break;
+        tax += (Math.min(taxable, tMax) - tMin) * (parseFloat(tier.rate) || 0) / 100;
+      }
+      previewTax = tax;
+    }
+    previewTax = Math.round(previewTax * 100) / 100;
+  }
+
+  const handleApply = async () => {
+    if (!selectedId) return setError('Please select a tax rate.');
+    if (!base)       return setError('Base amount must be greater than zero.');
+    setSaving(true); setError('');
+    try {
+      const res = await fetch('/api/tax/applications', {
+        method: 'POST', credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          tax_rate_id: parseInt(selectedId),
+          entity_type: entityType,
+          entity_id:   record.id,
+          base_amount: base,
+          notes:       notes || null,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setError(data.error); return; }
+      onApplied(data);
+      onClose();
+    } catch { setError('Network error.'); }
+    finally { setSaving(false); }
+  };
+
+  const name = entityType === 'receivable' ? record.customer_name : record.supplier_name;
+  const ref  = record.invoice_number || record.reference_number || `#${record.id}`;
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal" style={{ maxWidth: 500 }} onClick={e => e.stopPropagation()}>
+        <div className="modal-header">
+          <div className="modal-title">🧾 Apply Tax</div>
+          <button className="btn btn-ghost btn-icon" onClick={onClose}>✕</button>
+        </div>
+        <div className="modal-body">
+          <div className="alert alert-info mb-16">
+            Applying tax to <strong>{ref}</strong> — {name}
+          </div>
+          {error && <div className="alert alert-error mb-12">⚠ {error}</div>}
+          {loading ? (
+            <div style={{ textAlign: 'center', padding: 24, color: 'var(--text-muted)' }}>Loading tax rates…</div>
+          ) : taxRates.length === 0 ? (
+            <div className="alert alert-warning">
+              No active tax rates available for {entityType === 'receivable' ? 'sales' : 'purchases'}.
+              Go to <strong>Tax → Tax Rates</strong> to set some up first.
+            </div>
+          ) : (
+            <>
+              <div className="form-group">
+                <label className="form-label">Tax Rate *</label>
+                <select className="form-select" value={selectedId}
+                  onChange={e => setSelectedId(e.target.value)}>
+                  <option value="">— Select a tax rate —</option>
+                  {taxRates.map(r => (
+                    <option key={r.id} value={String(r.id)}>
+                      {r.name} ({r.code}) —{' '}
+                      {r.type === 'percentage' ? `${r.rate}%` : r.type === 'fixed_amount' ? fmt(r.amount) : 'Tiered'}
+                      {r.is_inclusive ? ' (incl.)' : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="form-group">
+                <label className="form-label">Base Amount</label>
+                <AmountInput value={baseAmount} onChange={setBaseAmount} placeholder="0.00" />
+                <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>
+                  Invoice/bill total: {fmt(record.amount)}
+                </div>
+              </div>
+              {selectedRate && (
+                <div style={{
+                  background: 'var(--bg)', border: '2px solid var(--primary)',
+                  borderRadius: 8, padding: '14px 16px', marginBottom: 16,
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                }}>
+                  <div>
+                    <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 2 }}>Estimated Tax Amount</div>
+                    {selectedRate.is_inclusive && (
+                      <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>Tax-inclusive: extracted from base</div>
+                    )}
+                    {(parseFloat(selectedRate.exempt_threshold) || 0) > 0 && (
+                      <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                        Exempt threshold: {fmt(selectedRate.exempt_threshold)}
+                      </div>
+                    )}
+                  </div>
+                  <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--primary)' }}>
+                    {fmt(previewTax)}
+                  </div>
+                </div>
+              )}
+              <div className="form-group">
+                <label className="form-label">Notes <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>(optional)</span></label>
+                <input className="form-input" value={notes}
+                  onChange={e => setNotes(e.target.value)}
+                  placeholder="Any notes about this tax application…" />
+              </div>
+            </>
+          )}
+        </div>
+        <div className="modal-footer">
+          <button className="btn btn-ghost" onClick={onClose}>Cancel</button>
+          {taxRates.length > 0 && (
+            <button className="btn btn-primary" onClick={handleApply}
+              disabled={saving || !selectedId || !base}>
+              {saving ? 'Applying…' : '✓ Apply Tax'}
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Tax journal-entry prompt ──────────────────────────────────────────────────
+function TaxJournalModal({ application, accounts, onClose, onRecorded }) {
+  const { fmt } = useSettings();
+  const defaultDebit  = accounts.find(a => a.code === '4000')?.id || '';
+  const defaultCredit = accounts.find(a => a.code === '2300')?.id || '';
+  const [form, setForm]   = useState({
+    date:              new Date().toISOString().split('T')[0],
+    reference:         `TAX-${application.tax_code}-${new Date().toISOString().split('T')[0]}`,
+    debit_account_id:  defaultDebit,
+    credit_account_id: defaultCredit,
+  });
+  const [saving, setSaving] = useState(false);
+  const [error,  setError]  = useState('');
+
+  const handleRecord = async () => {
+    if (!form.debit_account_id || !form.credit_account_id)
+      return setError('Please select both debit and credit accounts.');
+    if (String(form.debit_account_id) === String(form.credit_account_id))
+      return setError('Debit and credit accounts must be different.');
+    setSaving(true); setError('');
+    try {
+      const res = await fetch(`/api/tax/applications/${application.id}/journal-entry`, {
+        method: 'POST', credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(form),
+      });
+      const data = await res.json();
+      if (!res.ok) { setError(data.error); return; }
+      onRecorded();
+      onClose();
+    } catch { setError('Network error.'); }
+    finally { setSaving(false); }
+  };
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal" style={{ maxWidth: 500 }} onClick={e => e.stopPropagation()}>
+        <div className="modal-header">
+          <div className="modal-title">📒 Record Tax Journal Entry</div>
+          <button className="btn btn-ghost btn-icon" onClick={onClose}>✕</button>
+        </div>
+        <div className="modal-body">
+          <div className="alert alert-success mb-16">
+            ✓ <strong>{application.tax_name}</strong> ({application.tax_code}) applied —
+            tax amount: <strong>{fmt(application.tax_amount)}</strong>.
+            Would you like to record the journal entry now?
+          </div>
+          {error && <div className="alert alert-error mb-12">⚠ {error}</div>}
+          <div className="grid-2 gap-16">
+            <div className="form-group">
+              <label className="form-label">Date</label>
+              <input type="date" className="form-input" value={form.date}
+                onChange={e => setForm(f => ({ ...f, date: e.target.value }))} />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Reference</label>
+              <input className="form-input" value={form.reference}
+                onChange={e => setForm(f => ({ ...f, reference: e.target.value }))} />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Debit Account</label>
+              <select className="form-select" value={form.debit_account_id}
+                onChange={e => setForm(f => ({ ...f, debit_account_id: e.target.value }))}>
+                <option value="">— Select —</option>
+                {accounts.map(a => <option key={a.id} value={a.id}>{a.code} — {a.name}</option>)}
+              </select>
+            </div>
+            <div className="form-group">
+              <label className="form-label">Credit Account</label>
+              <select className="form-select" value={form.credit_account_id}
+                onChange={e => setForm(f => ({ ...f, credit_account_id: e.target.value }))}>
+                <option value="">— Select —</option>
+                {accounts.map(a => <option key={a.id} value={a.id}>{a.code} — {a.name}</option>)}
+              </select>
+            </div>
+          </div>
+        </div>
+        <div className="modal-footer">
+          <button className="btn btn-ghost" onClick={onClose}>I'll do it later</button>
+          <button className="btn btn-primary" onClick={handleRecord} disabled={saving}>
+            {saving ? 'Saving…' : '📒 Record Journal Entry'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Deletion-request modal ────────────────────────────────────────────────────
 function DeletionModal({ rec, isAR, onClose, onDone }) {
   const name   = isAR ? rec.customer_name : rec.supplier_name;
@@ -416,9 +672,18 @@ export default function Payments({ tab }) {
   const [showImport,    setShowImport]    = useState(false);
   const [payRecord,     setPayRecord]     = useState(null);
   const [deletionModal, setDeletionModal] = useState(null);
+  const [taxRecord,     setTaxRecord]     = useState(null);
+  const [jeApp,         setJeApp]         = useState(null);
+  const [accounts,      setAccounts]      = useState([]);
   const [msg,           setMsg]           = useState(null);
 
   useEffect(() => { loadRecords(); }, [tab]);
+
+  // Load accounts once for the tax journal-entry modal
+  useEffect(() => {
+    fetch('/api/accounts', { credentials: 'include' })
+      .then(r => r.json()).then(setAccounts).catch(() => {});
+  }, []);
 
   const loadRecords = () => {
     const endpoint = isAR ? '/api/payments/receivables' : '/api/payments/payables';
@@ -434,6 +699,11 @@ export default function Payments({ tab }) {
       setMsg({ type: 'success', text: 'Submission recalled.' });
       loadRecords();
     } catch { setMsg({ type: 'error', text: 'Network error.' }); }
+  };
+
+  const handleTaxApplied = (application) => {
+    setJeApp(application);
+    setMsg({ type: 'success', text: `Tax applied: ${application.tax_name} — ${fmt(application.tax_amount)}. Record the journal entry below, or do it later from Tax → Applications.` });
   };
 
   const today = new Date().toISOString().split('T')[0];
@@ -452,6 +722,22 @@ export default function Payments({ tab }) {
           rec={deletionModal} isAR={isAR}
           onClose={() => setDeletionModal(null)}
           onDone={text => { setMsg({ type: 'success', text }); loadRecords(); }}
+        />
+      )}
+      {taxRecord && (
+        <ApplyTaxModal
+          record={taxRecord}
+          entityType={isAR ? 'receivable' : 'payable'}
+          onClose={() => setTaxRecord(null)}
+          onApplied={handleTaxApplied}
+        />
+      )}
+      {jeApp && (
+        <TaxJournalModal
+          application={jeApp}
+          accounts={accounts}
+          onClose={() => setJeApp(null)}
+          onRecorded={() => setMsg({ type: 'success', text: 'Tax journal entry recorded successfully.' })}
         />
       )}
       {showImport && <ImportModal type={tab} onClose={() => setShowImport(false)} onImported={loadRecords} />}
@@ -569,6 +855,13 @@ export default function Payments({ tab }) {
                               title="Download PDF Invoice"
                               onClick={() => triggerBinaryDownload(`/api/invoices/receivable/${rec.id}`, `Invoice-${rec.invoice_number || rec.id}.pdf`)}>
                               📄 PDF
+                            </button>
+                          )}
+                          {!rec.pending_deletion && !rec.pending_approval && (
+                            <button className="btn btn-ghost btn-sm"
+                              title="Apply a tax rate to this record"
+                              onClick={() => setTaxRecord(rec)}>
+                              🧾 Tax
                             </button>
                           )}
                           {!rec.pending_deletion && !rec.pending_approval && user?.role !== 'admin' && (
