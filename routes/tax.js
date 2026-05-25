@@ -42,11 +42,18 @@ function computeTax(taxRate, baseAmount) {
 
 // ── GET /api/tax/rates ────────────────────────────────────────────────────────
 router.get('/rates', async (req, res) => {
+  // Filter by tax system so Philippines rates never appear for Generic clients and vice versa.
+  // In standalone mode (no UAM session), show all rates.
+  const taxSystem = req.session?.tax_system || null;
+  const systemClause = taxSystem
+    ? `WHERE (tr.tax_system_filter = 'all' OR tr.tax_system_filter = '${taxSystem}')`
+    : '';
   try {
     const { rows } = await query(`
       SELECT tr.*, a.name AS tax_account_name, a.code AS tax_account_code
       FROM tax_rates tr
       LEFT JOIN accounts a ON a.id = tr.tax_account_id
+      ${systemClause}
       ORDER BY tr.is_active DESC, tr.name
     `);
     res.json(rows.map(r => ({
@@ -68,7 +75,7 @@ router.post('/rates', async (req, res) => {
     name, code, type, rate, amount, tiers,
     applies_to, is_inclusive, exempt_threshold,
     tax_account_id, effective_from, effective_to,
-    filing_frequency, description, business_type_filter,
+    filing_frequency, description, business_type_filter, tax_system_filter,
   } = req.body;
 
   if (!name || !code || !type)
@@ -78,12 +85,16 @@ router.post('/rates', async (req, res) => {
   if (type === 'tiered' && (!Array.isArray(tiers) || tiers.length === 0))
     return res.status(400).json({ error: 'At least one tier is required for tiered type' });
 
+  // Default new rates to the current client's tax system so they stay scoped correctly
+  const sessionTaxSystem = req.session?.tax_system || 'all';
+
   try {
     const { rows: [tax] } = await query(
       `INSERT INTO tax_rates
          (name, code, type, rate, amount, tiers, applies_to, is_inclusive, exempt_threshold,
-          tax_account_id, effective_from, effective_to, filing_frequency, description, business_type_filter)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15) RETURNING *`,
+          tax_account_id, effective_from, effective_to, filing_frequency, description,
+          business_type_filter, tax_system_filter)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16) RETURNING *`,
       [
         name.trim(), code.trim().toUpperCase(), type,
         parseFloat(rate) || 0, parseFloat(amount) || 0,
@@ -96,6 +107,7 @@ router.post('/rates', async (req, res) => {
         filing_frequency || 'monthly',
         description || null,
         business_type_filter || 'all',
+        tax_system_filter || sessionTaxSystem,
       ]
     );
     logAction(user, 'CREATE_TAX_RATE', 'tax_rate', tax.id, tax.code);
@@ -113,7 +125,7 @@ router.put('/rates/:id', async (req, res) => {
   const {
     name, type, rate, amount, tiers, applies_to, is_inclusive,
     exempt_threshold, tax_account_id, effective_from, effective_to,
-    filing_frequency, description, is_active, business_type_filter,
+    filing_frequency, description, is_active, business_type_filter, tax_system_filter,
   } = req.body;
 
   try {
@@ -122,8 +134,9 @@ router.put('/rates/:id', async (req, res) => {
          name=$1, type=$2, rate=$3, amount=$4, tiers=$5, applies_to=$6,
          is_inclusive=$7, exempt_threshold=$8, tax_account_id=$9,
          effective_from=$10, effective_to=$11, filing_frequency=$12,
-         description=$13, is_active=$14, business_type_filter=$15
-       WHERE id=$16 RETURNING *`,
+         description=$13, is_active=$14, business_type_filter=$15,
+         tax_system_filter=$16
+       WHERE id=$17 RETURNING *`,
       [
         name, type, parseFloat(rate) || 0, parseFloat(amount) || 0,
         tiers ? JSON.stringify(tiers) : null,
@@ -133,6 +146,7 @@ router.put('/rates/:id', async (req, res) => {
         filing_frequency || 'monthly', description || null,
         is_active === false || is_active === 0 ? 0 : 1,
         business_type_filter || 'all',
+        tax_system_filter || req.session?.tax_system || 'all',
         req.params.id,
       ]
     );
@@ -230,9 +244,11 @@ router.post('/rates/seed-philippines', async (req, res) => {
       try {
         // Try insert first; if code exists, update only the business_type_filter
         const result = await query(
-          `INSERT INTO tax_rates (name, code, type, rate, amount, tiers, applies_to, filing_frequency, description, business_type_filter)
-           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
-           ON CONFLICT (code) DO UPDATE SET business_type_filter = EXCLUDED.business_type_filter
+          `INSERT INTO tax_rates (name, code, type, rate, amount, tiers, applies_to, filing_frequency, description, business_type_filter, tax_system_filter)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+           ON CONFLICT (code) DO UPDATE SET
+             business_type_filter = EXCLUDED.business_type_filter,
+             tax_system_filter    = EXCLUDED.tax_system_filter
            RETURNING (xmax = 0) AS is_insert`,
           [
             p.name, p.code, p.type,
@@ -241,6 +257,7 @@ router.post('/rates/seed-philippines', async (req, res) => {
             p.tiers ? JSON.stringify(p.tiers) : null,
             p.applies_to, p.filing_frequency, p.description,
             p.business_type_filter || 'all',
+            'philippines',
           ]
         );
         if (result.rows[0]?.is_insert) inserted.push(p.code);
@@ -404,8 +421,12 @@ router.get('/projections', async (req, res) => {
   const targetYear = parseInt(year) || new Date().getFullYear();
 
   try {
+    const taxSystem = req.session?.tax_system || null;
+    const projSystemClause = taxSystem
+      ? `AND (tax_system_filter = 'all' OR tax_system_filter = '${taxSystem}')`
+      : '';
     const { rows: taxRates } = await query(
-      'SELECT * FROM tax_rates WHERE is_active = 1 ORDER BY name'
+      `SELECT * FROM tax_rates WHERE is_active = 1 ${projSystemClause} ORDER BY name`
     );
 
     const { rows: receivables } = await query(

@@ -175,6 +175,7 @@ async function initDB() {
       filing_frequency     TEXT DEFAULT 'monthly' CHECK(filing_frequency IN ('monthly','quarterly','annual')),
       description          TEXT,
       business_type_filter TEXT DEFAULT 'all',
+      tax_system_filter    TEXT DEFAULT 'all',
       created_at           TIMESTAMPTZ DEFAULT NOW()
     )
   `);
@@ -222,6 +223,10 @@ async function initDB() {
   await pool.query(`UPDATE tax_rates SET business_type_filter = 'corporate'  WHERE code = 'CIT-25'   AND business_type_filter = 'all'`);
   // Individual-only: PIT graduated rates for sole prop and mixed income earners
   await pool.query(`UPDATE tax_rates SET business_type_filter = 'individual' WHERE code = 'PIT-GRAD' AND business_type_filter = 'all'`);
+  // ── Migrate tax_rates: add tax_system_filter to separate PH rates from generic
+  await pool.query(`ALTER TABLE tax_rates ADD COLUMN IF NOT EXISTS tax_system_filter TEXT DEFAULT 'all'`);
+  // Tag all known BIR/Philippines-specific codes so they never appear for Generic clients
+  await pool.query(`UPDATE tax_rates SET tax_system_filter = 'philippines' WHERE code IN ('VAT-OUT','VAT-IN','EWT-10','PT-3','CIT-25','PIT-GRAD') AND tax_system_filter = 'all'`);
 
   await pool.query(`
     CREATE TABLE IF NOT EXISTS approval_requests (
