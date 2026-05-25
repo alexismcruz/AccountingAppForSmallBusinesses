@@ -749,6 +749,7 @@ export default function Tax({ tab = 'rates' }) {
                 border:     `1px solid ${businessType === 'corporate' ? '#bfdbfe' : businessType === 'sole_proprietorship' ? '#bbf7d0' : '#e9d5ff'}`,
               }}>
                 {BIZ_LABELS[businessType] || '🏢 Corporate'}
+              </span>
             )}
           </div>
           <div className="page-subtitle">Define tax rates, apply taxes to invoices, and track filings</div>
