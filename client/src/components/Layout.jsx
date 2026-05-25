@@ -149,6 +149,7 @@ export default function Layout({ children, onLogout }) {
   const location = useLocation();
   const [reportsOpen,     setReportsOpen]     = useState(location.pathname.startsWith('/reports'));
   const [paymentsOpen,    setPaymentsOpen]    = useState(location.pathname.startsWith('/payments'));
+  const [taxOpen,         setTaxOpen]         = useState(location.pathname.startsWith('/tax'));
   const [sidebarOpen,     setSidebarOpen]     = useState(false);
   const [pendingCount,    setPendingCount]    = useState(0);
   const [showChangePw,    setShowChangePw]    = useState(false);
@@ -184,6 +185,10 @@ export default function Layout({ children, onLogout }) {
     '/settings':                 'Business Settings',
     '/approvals':                'Approvals',
     '/logs':                     'Audit Logs',
+    '/tax/rates':                'Tax Rates',
+    '/tax/applications':         'Tax Applications',
+    '/tax/projections':          'Tax Projections',
+    '/tax/filings':              'Filing Tracker',
   };
 
   return (
@@ -226,6 +231,27 @@ export default function Layout({ children, onLogout }) {
               <NavItem to="/payments/schedule" label="↳ Schedule"      sub onNavigate={closeSidebar} />
               <NavItem to="/payments/incoming" label="↳ Incoming (AR)" sub onNavigate={closeSidebar} />
               <NavItem to="/payments/pending"  label="↳ Pending (AP)"  sub onNavigate={closeSidebar} />
+            </div>
+          )}
+        </div>
+
+        <div className="nav-section">
+          <div className="nav-label">Tax</div>
+          <div
+            className={`nav-item ${taxOpen ? 'active' : ''}`}
+            onClick={() => setTaxOpen(o => !o)}
+            style={{ cursor: 'pointer' }}
+          >
+            <span className="nav-icon">🧾</span>
+            <span style={{ flex: 1 }}>Tax</span>
+            <span style={{ fontSize: 10 }}>{taxOpen ? '▲' : '▼'}</span>
+          </div>
+          {taxOpen && (
+            <div>
+              <NavItem to="/tax/rates"        label="↳ Tax Rates"       sub onNavigate={closeSidebar} />
+              <NavItem to="/tax/applications" label="↳ Applications"    sub onNavigate={closeSidebar} />
+              <NavItem to="/tax/projections"  label="↳ Projections"     sub onNavigate={closeSidebar} />
+              <NavItem to="/tax/filings"      label="↳ Filing Tracker"  sub onNavigate={closeSidebar} />
             </div>
           )}
         </div>

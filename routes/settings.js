@@ -5,7 +5,9 @@ const { query } = require('../db/database');
 router.get('/', async (req, res) => {
   try {
     const { rows: [settings] } = await query('SELECT * FROM business_settings WHERE id = 1');
-    res.json({ ...settings, sandboxMode: !!process.env.SANDBOX_MODE });
+    // UAM tax_system takes precedence over the local setting
+    const tax_system = req.session?.tax_system || settings?.tax_system || 'generic';
+    res.json({ ...settings, tax_system, sandboxMode: !!process.env.SANDBOX_MODE });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 

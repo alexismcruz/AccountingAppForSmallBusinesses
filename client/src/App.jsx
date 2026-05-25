@@ -14,6 +14,7 @@ import FiscalYear from './pages/FiscalYear.jsx';
 import PaymentSchedule from './pages/PaymentSchedule.jsx';
 import Approvals from './pages/Approvals.jsx';
 import Logs from './pages/Logs.jsx';
+import Tax from './pages/Tax.jsx';
 
 export default function App() {
   const [authChecked, setAuthChecked] = useState(false);
@@ -56,6 +57,10 @@ export default function App() {
             <Route path="/settings"                 element={<Settings />} />
             <Route path="/approvals"                element={<Approvals />} />
             <Route path="/logs"                     element={<Logs />} />
+            <Route path="/tax/rates"                element={<Tax tab="rates" />} />
+            <Route path="/tax/applications"         element={<Tax tab="applications" />} />
+            <Route path="/tax/projections"          element={<Tax tab="projections" />} />
+            <Route path="/tax/filings"              element={<Tax tab="filings" />} />
             <Route path="*"                         element={<Navigate to="/" replace />} />
           </Routes>
         </Layout>

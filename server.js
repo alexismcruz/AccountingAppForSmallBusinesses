@@ -70,6 +70,7 @@ app.post('/api/auth/login', async (req, res) => {
         name:  result.user.full_name || result.user.email,
         role:  result.user.role,
       };
+      req.session.tax_system = result.client?.tax_system || null;
       const { logAction } = require('./utils/auditLog');
       logAction(req.session.user, 'LOGIN', 'auth', null, null, { mode: 'uam' });
       return res.json({ success: true, user: req.session.user });
@@ -182,6 +183,7 @@ app.use('/api/approvals',     require('./routes/approvals'));
 app.use('/api/logs',          require('./routes/logs'));
 app.use('/api/invoices',      require('./routes/invoices'));
 app.use('/api/sandbox',       require('./routes/sandbox'));
+app.use('/api/tax',           require('./routes/tax'));
 
 // ── Serve built React app in production ──────────────────────────────────────
 if (process.env.NODE_ENV === 'production') {

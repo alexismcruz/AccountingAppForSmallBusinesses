@@ -149,8 +149,68 @@ async function initDB() {
       currency            TEXT DEFAULT 'USD',
       currency_symbol     TEXT DEFAULT '$',
       fiscal_year_start   TEXT DEFAULT '01-01',
+      tax_system          TEXT DEFAULT 'generic',
       updated_at          TIMESTAMPTZ DEFAULT NOW()
     )
+  `);
+
+  // ── Tax tables ──────────────────────────────────────────────────────────────
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS tax_rates (
+      id               SERIAL PRIMARY KEY,
+      name             TEXT NOT NULL,
+      code             TEXT UNIQUE NOT NULL,
+      type             TEXT NOT NULL CHECK(type IN ('percentage','fixed_amount','tiered')),
+      rate             DOUBLE PRECISION DEFAULT 0,
+      amount           DOUBLE PRECISION DEFAULT 0,
+      tiers            JSONB,
+      applies_to       TEXT NOT NULL DEFAULT 'both' CHECK(applies_to IN ('sales','purchases','both')),
+      is_inclusive     INTEGER DEFAULT 0,
+      exempt_threshold DOUBLE PRECISION DEFAULT 0,
+      tax_account_id   INTEGER REFERENCES accounts(id) ON DELETE SET NULL,
+      is_active        INTEGER DEFAULT 1,
+      effective_from   TEXT,
+      effective_to     TEXT,
+      filing_frequency TEXT DEFAULT 'monthly' CHECK(filing_frequency IN ('monthly','quarterly','annual')),
+      description      TEXT,
+      created_at       TIMESTAMPTZ DEFAULT NOW()
+    )
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS tax_applications (
+      id               SERIAL PRIMARY KEY,
+      tax_rate_id      INTEGER NOT NULL REFERENCES tax_rates(id) ON DELETE CASCADE,
+      entity_type      TEXT NOT NULL CHECK(entity_type IN ('receivable','payable')),
+      entity_id        INTEGER NOT NULL,
+      base_amount      DOUBLE PRECISION NOT NULL,
+      tax_amount       DOUBLE PRECISION NOT NULL,
+      journal_entry_id INTEGER REFERENCES journal_entries(id) ON DELETE SET NULL,
+      notes            TEXT,
+      created_at       TIMESTAMPTZ DEFAULT NOW()
+    )
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS tax_filings (
+      id               SERIAL PRIMARY KEY,
+      tax_rate_id      INTEGER REFERENCES tax_rates(id) ON DELETE SET NULL,
+      period_type      TEXT NOT NULL CHECK(period_type IN ('monthly','quarterly','annual')),
+      period_start     TEXT NOT NULL,
+      period_end       TEXT NOT NULL,
+      total_tax_amount DOUBLE PRECISION DEFAULT 0,
+      status           TEXT DEFAULT 'pending' CHECK(status IN ('pending','filed','paid')),
+      filed_at         TIMESTAMPTZ,
+      paid_at          TIMESTAMPTZ,
+      reference        TEXT,
+      notes            TEXT,
+      created_at       TIMESTAMPTZ DEFAULT NOW()
+    )
+  `);
+
+  // ── Migrate business_settings: add tax_system if missing ───────────────────
+  await pool.query(`
+    ALTER TABLE business_settings ADD COLUMN IF NOT EXISTS tax_system TEXT DEFAULT 'generic'
   `);
 
   await pool.query(`
