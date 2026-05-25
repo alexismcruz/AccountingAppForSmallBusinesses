@@ -162,7 +162,7 @@ const statusBadge = (rec) => {
 
 function AddModal({ type, onClose, onSaved }) {
   const { settings } = useSettings();
-  const baseCurrency = settings.currency || 'USD';
+  const baseCurrency = settings.currency || 'PHP';
   const isAR = type === 'incoming';
   const [form, setForm] = useState({
     customer_name: '', supplier_name: '', invoice_number: '', reference_number: '',
@@ -674,7 +674,7 @@ function DeletionModal({ rec, isAR, onClose, onDone }) {
 export default function Payments({ tab }) {
   const { fmt, settings } = useSettings();
   const { can, user }     = useUser();
-  const baseCurrency = settings.currency || 'USD';
+  const baseCurrency = settings.currency || 'PHP';
   const isAR = tab === 'incoming';
   const [records,       setRecords]       = useState([]);
   const [showAdd,       setShowAdd]       = useState(false);

@@ -4,7 +4,7 @@ import { useSettings } from '../context/SettingsContext.jsx';
 
 export default function CurrencySelect({ value, onChange, rate, onRateChange, label = 'Currency' }) {
   const { settings } = useSettings();
-  const baseCurrency = settings.currency || 'USD';
+  const baseCurrency = settings.currency || 'PHP';
   const isForeign = value && value !== baseCurrency;
   const [fetching, setFetching] = useState(false);
   const [rateInfo, setRateInfo] = useState(null); // { date, source } or { error }

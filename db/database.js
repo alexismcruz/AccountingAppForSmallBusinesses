@@ -146,8 +146,8 @@ async function initDB() {
       registration_number TEXT DEFAULT '',
       address             TEXT DEFAULT '',
       tax_id              TEXT DEFAULT '',
-      currency            TEXT DEFAULT 'USD',
-      currency_symbol     TEXT DEFAULT '$',
+      currency            TEXT DEFAULT 'PHP',
+      currency_symbol     TEXT DEFAULT '₱',
       fiscal_year_start   TEXT DEFAULT '01-01',
       tax_system          TEXT DEFAULT 'generic',
       business_type       TEXT DEFAULT 'corporate',
@@ -213,6 +213,8 @@ async function initDB() {
   // ── Migrate business_settings ──────────────────────────────────────────────
   await pool.query(`ALTER TABLE business_settings ADD COLUMN IF NOT EXISTS tax_system     TEXT DEFAULT 'generic'`);
   await pool.query(`ALTER TABLE business_settings ADD COLUMN IF NOT EXISTS business_type  TEXT DEFAULT 'corporate'`);
+  // Update default currency from USD to PHP for any row that still has the old default
+  await pool.query(`UPDATE business_settings SET currency = 'PHP', currency_symbol = '₱' WHERE id = 1 AND currency = 'USD' AND currency_symbol = '$'`);
 
   // ── Migrate tax_rates: add business_type_filter + fix known BIR codes ──────
   await pool.query(`ALTER TABLE tax_rates ADD COLUMN IF NOT EXISTS business_type_filter TEXT DEFAULT 'all'`);

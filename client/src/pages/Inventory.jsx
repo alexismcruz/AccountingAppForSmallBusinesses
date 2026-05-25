@@ -211,7 +211,7 @@ function itemStatusBadge(item) {
 export default function Inventory() {
   const { fmt, settings } = useSettings();
   const { can, user }     = useUser();
-  const baseCurrency = settings.currency || 'USD';
+  const baseCurrency = settings.currency || 'PHP';
   const [items,         setItems]         = useState([]);
   const [search,        setSearch]        = useState('');
   const [showModal,     setShowModal]     = useState(false);

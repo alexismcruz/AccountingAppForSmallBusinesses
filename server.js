@@ -72,6 +72,7 @@ app.post('/api/auth/login', async (req, res) => {
       };
       req.session.tax_system    = result.client?.tax_system    || null;
       req.session.business_type = result.client?.business_type || null;
+      req.session.base_currency = result.client?.base_currency || null;
       const { logAction } = require('./utils/auditLog');
       logAction(req.session.user, 'LOGIN', 'auth', null, null, { mode: 'uam' });
       return res.json({ success: true, user: req.session.user });

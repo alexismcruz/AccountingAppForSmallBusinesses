@@ -108,7 +108,7 @@ export default function Settings() {
         <div className="grid-2 gap-16">
           <div className="form-group">
             <label className="form-label">Currency</label>
-            <select className="form-select" value={form.currency || 'USD'}
+            <select className="form-select" value={form.currency || 'PHP'}
               onChange={e => handleCurrencyChange(e.target.value)}>
               {CURRENCIES.map(c => <option key={c.code} value={c.code}>{c.label}</option>)}
             </select>

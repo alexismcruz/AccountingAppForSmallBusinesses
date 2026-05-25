@@ -5,8 +5,8 @@ const SettingsContext = createContext({});
 export function SettingsProvider({ children }) {
   const [settings, setSettings] = useState({
     business_name: 'My Business',
-    currency: 'USD',
-    currency_symbol: '$',
+    currency: 'PHP',
+    currency_symbol: '₱',
   });
 
   useEffect(() => {

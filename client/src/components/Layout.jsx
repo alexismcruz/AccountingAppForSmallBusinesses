@@ -309,7 +309,7 @@ export default function Layout({ children, onLogout }) {
             </div>
           )}
           <div style={{ fontSize: 11, color: '#60a5fa', marginBottom: 8 }}>
-            {settings.currency || 'USD'} · {new Date().toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
+            {settings.currency || 'PHP'} · {new Date().toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
           </div>
           <button
             onClick={() => setShowChangePw(true)}

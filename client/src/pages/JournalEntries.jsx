@@ -276,7 +276,7 @@ function DeletionModal({ entry, onClose, onDone }) {
 export default function JournalEntries() {
   const { fmt, settings } = useSettings();
   const { can, user }     = useUser();
-  const baseCurrency      = settings.currency || 'USD';
+  const baseCurrency      = settings.currency || 'PHP';
 
   const [entries,      setEntries]      = useState([]);
   const [accounts,     setAccounts]     = useState([]);

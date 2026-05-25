@@ -49,7 +49,7 @@ function BalanceSheet({ date, setDate }) {
               As of {new Date(date + 'T00:00:00').toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
             </div>
             <div style={{ color: 'var(--text-muted)', fontSize: 11, marginTop: 4 }}>
-              All amounts in {settings.currency || 'USD'} (base currency)
+              All amounts in {settings.currency || 'PHP'} (base currency)
             </div>
           </div>
 
@@ -187,7 +187,7 @@ function IncomeStatement({ fromDate, toDate, setFromDate, setToDate }) {
               For the period {new Date(fromDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} to {new Date(toDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
             </div>
             <div style={{ color: 'var(--text-muted)', fontSize: 11, marginTop: 4 }}>
-              All amounts in {settings.currency || 'USD'} (base currency)
+              All amounts in {settings.currency || 'PHP'} (base currency)
             </div>
           </div>
           <table className="report-table">

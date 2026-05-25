@@ -100,7 +100,7 @@ function PayModal({ item, onClose, onSaved }) {
 
 export default function PaymentSchedule() {
   const { fmt, settings } = useSettings();
-  const baseCurrency = settings.currency || 'USD';
+  const baseCurrency = settings.currency || 'PHP';
   const [schedule, setSchedule] = useState([]);
   const [today, setToday] = useState('');
   const [loading, setLoading] = useState(true);
