@@ -3,6 +3,31 @@ const router = express.Router();
 const { query, withTransaction } = require('../db/database');
 const { logAction } = require('../utils/auditLog');
 
+// ── Tax calculation helper (mirrors routes/tax.js) ───────────────────────────
+function computeTax(taxRate, baseAmount) {
+  const base    = parseFloat(baseAmount) || 0;
+  const exempt  = parseFloat(taxRate.exempt_threshold) || 0;
+  const taxable = Math.max(0, base - exempt);
+  let   tax     = 0;
+  if (taxRate.type === 'percentage') {
+    const rate = parseFloat(taxRate.rate) || 0;
+    tax = taxRate.is_inclusive ? taxable * rate / (100 + rate) : taxable * rate / 100;
+  } else if (taxRate.type === 'fixed_amount') {
+    tax = taxable > 0 ? (parseFloat(taxRate.amount) || 0) : 0;
+  } else if (taxRate.type === 'tiered') {
+    const tiers  = typeof taxRate.tiers === 'string' ? JSON.parse(taxRate.tiers) : (taxRate.tiers || []);
+    const sorted = [...tiers].sort((a, b) => (parseFloat(a.min) || 0) - (parseFloat(b.min) || 0));
+    for (const tier of sorted) {
+      const tMin  = parseFloat(tier.min) || 0;
+      const tMax  = tier.max != null && tier.max !== '' ? parseFloat(tier.max) : Infinity;
+      const tRate = parseFloat(tier.rate) || 0;
+      if (taxable <= tMin) break;
+      tax += (Math.min(taxable, tMax) - tMin) * tRate / 100;
+    }
+  }
+  return Math.round(tax * 100) / 100;
+}
+
 // ── CSV helpers ──────────────────────────────────────────────────────────────
 
 function csvEsc(val) {
@@ -42,8 +67,18 @@ function parseCSVRow(line) {
 
 router.get('/receivables/export/csv', async (req, res) => {
   try {
-    const { rows } = await query('SELECT * FROM receivables ORDER BY due_date, created_at');
-    const cols = ['customer_name','invoice_number','description','amount','currency','exchange_rate','due_date','scheduled_date','status','paid_amount'];
+    const { rows } = await query(`
+      SELECT r.*,
+        COALESCE(STRING_AGG(tr.code, ', ' ORDER BY ta.created_at), '') AS tax_codes,
+        COALESCE(SUM(ta.tax_amount), 0)                                 AS total_tax_applied
+      FROM receivables r
+      LEFT JOIN tax_applications ta ON ta.entity_id = r.id AND ta.entity_type = 'receivable'
+      LEFT JOIN tax_rates tr ON tr.id = ta.tax_rate_id
+      GROUP BY r.id
+      ORDER BY r.due_date, r.created_at
+    `);
+    const cols = ['customer_name','invoice_number','description','amount','currency','exchange_rate',
+                  'due_date','scheduled_date','status','paid_amount','tax_codes','total_tax_applied'];
     const csv  = [cols.join(','), ...rows.map(r => cols.map(c => csvEsc(r[c])).join(','))].join('\n');
     const today = new Date().toISOString().split('T')[0];
     res.setHeader('Content-Type', 'text/csv');
@@ -54,9 +89,10 @@ router.get('/receivables/export/csv', async (req, res) => {
 
 router.get('/receivables/import/template', (req, res) => {
   const sample = [
-    'customer_name,invoice_number,description,amount,currency,exchange_rate,due_date,scheduled_date',
-    'John Santos,INV-001,Website design services,5000,USD,1,2026-02-28,2026-02-15',
-    'ABC Company,INV-002,Monthly retainer,2000,SGD,1,2026-03-01,',
+    'customer_name,invoice_number,description,amount,currency,exchange_rate,due_date,scheduled_date,tax_rate_code,tax_base_amount',
+    'John Santos,INV-001,Website design services,5000,USD,1,2026-02-28,2026-02-15,VAT-OUT,5000',
+    'ABC Company,INV-002,Monthly retainer (non-VAT),2000,PHP,1,2026-03-01,,PT-3,2000',
+    'Maria Reyes,INV-003,Consulting fee (no tax),8000,PHP,1,2026-03-15,,,'
   ].join('\n');
   res.setHeader('Content-Type', 'text/csv');
   res.setHeader('Content-Disposition', 'attachment; filename="receivables-template.csv"');
@@ -69,26 +105,57 @@ router.post('/receivables/import/csv', async (req, res) => {
   const rows = parseCSVText(csv);
   if (!rows.length) return res.status(400).json({ error: 'CSV has no data rows' });
 
+  // ── Validate ───────────────────────────────────────────────────────────────
   const errors = [];
-  rows.forEach((r, i) => {
+  const taxRateCache = {};
+  for (let i = 0; i < rows.length; i++) {
+    const r = rows[i];
     if (!r.customer_name) errors.push(`Row ${i+2}: missing customer_name`);
     if (!r.amount || isNaN(parseFloat(r.amount))) errors.push(`Row ${i+2}: invalid amount`);
-  });
+    if (r.tax_rate_code) {
+      const code = r.tax_rate_code.trim().toUpperCase();
+      if (!taxRateCache[code]) {
+        const { rows: [tr] } = await query('SELECT * FROM tax_rates WHERE code = $1 AND is_active = 1', [code]);
+        taxRateCache[code] = tr || null;
+      }
+      if (!taxRateCache[r.tax_rate_code.trim().toUpperCase()])
+        errors.push(`Row ${i+2}: tax_rate_code "${r.tax_rate_code}" not found or inactive`);
+    }
+  }
   if (errors.length) return res.status(400).json({ error: 'Validation errors', details: errors });
   if (dryRun) return res.json({ ok: true, count: rows.length });
 
+  // ── Import ─────────────────────────────────────────────────────────────────
   try {
     const imported = [], skipped = [];
     for (const r of rows) {
       try {
-        await query(
-          'INSERT INTO receivables (customer_name, invoice_number, description, amount, currency, exchange_rate, due_date, scheduled_date) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)',
+        const { rows: [rec] } = await query(
+          `INSERT INTO receivables
+             (customer_name, invoice_number, description, amount, currency, exchange_rate, due_date, scheduled_date)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id`,
           [r.customer_name,
            r.invoice_number || `INV-${Date.now()}-${Math.random().toString(36).slice(2,6)}`,
            r.description || '', parseFloat(r.amount),
            r.currency || 'USD', parseFloat(r.exchange_rate) || 1.0,
            r.due_date || null, r.scheduled_date || null]
         );
+
+        // Apply tax if specified
+        if (r.tax_rate_code) {
+          const code    = r.tax_rate_code.trim().toUpperCase();
+          const taxRate = taxRateCache[code];
+          if (taxRate) {
+            const base   = parseFloat(r.tax_base_amount) || parseFloat(r.amount);
+            const taxAmt = computeTax(taxRate, base);
+            await query(
+              `INSERT INTO tax_applications (tax_rate_id, entity_type, entity_id, base_amount, tax_amount, notes)
+               VALUES ($1,'receivable',$2,$3,$4,'Imported via CSV')`,
+              [taxRate.id, rec.id, base, taxAmt]
+            );
+          }
+        }
+
         imported.push(r.invoice_number || r.customer_name);
       } catch (e) {
         skipped.push(`${r.invoice_number || r.customer_name} — ${e.code === '23505' ? 'invoice number already exists' : e.message}`);
@@ -102,8 +169,18 @@ router.post('/receivables/import/csv', async (req, res) => {
 
 router.get('/payables/export/csv', async (req, res) => {
   try {
-    const { rows } = await query('SELECT * FROM payables ORDER BY due_date, created_at');
-    const cols = ['supplier_name','reference_number','description','amount','currency','exchange_rate','due_date','scheduled_date','status','paid_amount'];
+    const { rows } = await query(`
+      SELECT p.*,
+        COALESCE(STRING_AGG(tr.code, ', ' ORDER BY ta.created_at), '') AS tax_codes,
+        COALESCE(SUM(ta.tax_amount), 0)                                 AS total_tax_applied
+      FROM payables p
+      LEFT JOIN tax_applications ta ON ta.entity_id = p.id AND ta.entity_type = 'payable'
+      LEFT JOIN tax_rates tr ON tr.id = ta.tax_rate_id
+      GROUP BY p.id
+      ORDER BY p.due_date, p.created_at
+    `);
+    const cols = ['supplier_name','reference_number','description','amount','currency','exchange_rate',
+                  'due_date','scheduled_date','status','paid_amount','tax_codes','total_tax_applied'];
     const csv  = [cols.join(','), ...rows.map(r => cols.map(c => csvEsc(r[c])).join(','))].join('\n');
     const today = new Date().toISOString().split('T')[0];
     res.setHeader('Content-Type', 'text/csv');
@@ -114,9 +191,10 @@ router.get('/payables/export/csv', async (req, res) => {
 
 router.get('/payables/import/template', (req, res) => {
   const sample = [
-    'supplier_name,reference_number,description,amount,currency,exchange_rate,due_date,scheduled_date',
-    'Office Supplies Co,PO-001,Monthly office supplies,800,USD,1,2026-02-15,2026-02-10',
-    'Cloud Host Ltd,PO-002,Server hosting Q1,1200,USD,1,2026-03-31,',
+    'supplier_name,reference_number,description,amount,currency,exchange_rate,due_date,scheduled_date,tax_rate_code,tax_base_amount',
+    'Office Supplies Co,PO-001,Monthly office supplies,800,PHP,1,2026-02-15,2026-02-10,VAT-IN,800',
+    'Juan dela Cruz,PO-002,Professional consulting fee,5000,PHP,1,2026-03-31,,EWT-10,5000',
+    'Cloud Host Ltd,PO-003,Server hosting Q1,1200,USD,1,2026-03-31,,,'
   ].join('\n');
   res.setHeader('Content-Type', 'text/csv');
   res.setHeader('Content-Disposition', 'attachment; filename="payables-template.csv"');
@@ -129,24 +207,55 @@ router.post('/payables/import/csv', async (req, res) => {
   const rows = parseCSVText(csv);
   if (!rows.length) return res.status(400).json({ error: 'CSV has no data rows' });
 
+  // ── Validate ───────────────────────────────────────────────────────────────
   const errors = [];
-  rows.forEach((r, i) => {
+  const taxRateCache = {};
+  for (let i = 0; i < rows.length; i++) {
+    const r = rows[i];
     if (!r.supplier_name) errors.push(`Row ${i+2}: missing supplier_name`);
     if (!r.amount || isNaN(parseFloat(r.amount))) errors.push(`Row ${i+2}: invalid amount`);
-  });
+    if (r.tax_rate_code) {
+      const code = r.tax_rate_code.trim().toUpperCase();
+      if (!taxRateCache[code]) {
+        const { rows: [tr] } = await query('SELECT * FROM tax_rates WHERE code = $1 AND is_active = 1', [code]);
+        taxRateCache[code] = tr || null;
+      }
+      if (!taxRateCache[r.tax_rate_code.trim().toUpperCase()])
+        errors.push(`Row ${i+2}: tax_rate_code "${r.tax_rate_code}" not found or inactive`);
+    }
+  }
   if (errors.length) return res.status(400).json({ error: 'Validation errors', details: errors });
   if (dryRun) return res.json({ ok: true, count: rows.length });
 
+  // ── Import ─────────────────────────────────────────────────────────────────
   try {
     const imported = [], skipped = [];
     for (const r of rows) {
       try {
-        await query(
-          'INSERT INTO payables (supplier_name, reference_number, description, amount, currency, exchange_rate, due_date, scheduled_date) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)',
+        const { rows: [pay] } = await query(
+          `INSERT INTO payables
+             (supplier_name, reference_number, description, amount, currency, exchange_rate, due_date, scheduled_date)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id`,
           [r.supplier_name, r.reference_number || '', r.description || '',
            parseFloat(r.amount), r.currency || 'USD', parseFloat(r.exchange_rate) || 1.0,
            r.due_date || null, r.scheduled_date || null]
         );
+
+        // Apply tax if specified
+        if (r.tax_rate_code) {
+          const code    = r.tax_rate_code.trim().toUpperCase();
+          const taxRate = taxRateCache[code];
+          if (taxRate) {
+            const base   = parseFloat(r.tax_base_amount) || parseFloat(r.amount);
+            const taxAmt = computeTax(taxRate, base);
+            await query(
+              `INSERT INTO tax_applications (tax_rate_id, entity_type, entity_id, base_amount, tax_amount, notes)
+               VALUES ($1,'payable',$2,$3,$4,'Imported via CSV')`,
+              [taxRate.id, pay.id, base, taxAmt]
+            );
+          }
+        }
+
         imported.push(r.supplier_name);
       } catch (e) {
         skipped.push(`${r.supplier_name} — ${e.message}`);
