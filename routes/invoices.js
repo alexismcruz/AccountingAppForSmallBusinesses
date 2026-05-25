@@ -45,7 +45,17 @@ router.get('/receivable/:id', async (req, res) => {
         minimumFractionDigits: 2, maximumFractionDigits: 2,
       })}`;
 
-    const balance  = (rec.amount || 0) - (rec.paid_amount || 0);
+    const { rows: taxes } = await query(`
+      SELECT ta.tax_amount, tr.name AS tax_name, tr.code AS tax_code, tr.rate, tr.type
+      FROM tax_applications ta
+      JOIN tax_rates tr ON tr.id = ta.tax_rate_id
+      WHERE ta.entity_type = 'receivable' AND ta.entity_id = $1
+      ORDER BY ta.created_at
+    `, [req.params.id]);
+
+    const totalTax  = taxes.reduce((s, t) => s + (parseFloat(t.tax_amount) || 0), 0);
+    const grandTotal = (rec.amount || 0) + totalTax;
+    const balance   = grandTotal - (rec.paid_amount || 0);
     const invNum   = rec.invoice_number || String(rec.id);
     const filename = `Invoice-${invNum}.pdf`.replace(/[^a-zA-Z0-9.\-_]/g, '-');
 
@@ -148,6 +158,16 @@ router.get('/receivable/:id', async (req, res) => {
     };
 
     addRow('Subtotal', fmt(rec.amount));
+    taxes.forEach(t => {
+      const rateLabel = t.type === 'percentage' ? ` (${parseFloat(t.rate) || 0}%)` : '';
+      addRow(`${t.tax_name}${rateLabel}`, fmt(t.tax_amount), false, C.gray);
+    });
+    if (taxes.length > 0) {
+      doc.moveTo(totX, totY + 2).lineTo(RIGHT, totY + 2)
+         .strokeColor(C.border).lineWidth(0.5).stroke();
+      totY += 10;
+      addRow('Total', fmt(grandTotal), true);
+    }
     if (rec.paid_amount > 0) addRow('Amount Paid', `− ${fmt(rec.paid_amount)}`, false, C.success);
 
     doc.moveTo(totX, totY + 2).lineTo(RIGHT, totY + 2)
