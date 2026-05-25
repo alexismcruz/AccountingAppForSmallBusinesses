@@ -156,23 +156,86 @@ router.delete('/rates/:id', async (req, res) => {
 });
 
 // ── POST /api/tax/rates/seed-philippines ─────────────────────────────────────
+// Accepts { business_type: 'corporate' | 'sole_proprietorship' | 'mixed_income' }
 router.post('/rates/seed-philippines', async (req, res) => {
-  const user = req.session.user;
-  const presets = [
-    { name: 'Output VAT (Sales)',        code: 'VAT-OUT', type: 'percentage', rate: 12, applies_to: 'sales',     filing_frequency: 'monthly',   description: 'Value Added Tax on sales/revenue — BIR Form 2550M / 2550Q' },
-    { name: 'Input VAT (Purchases)',     code: 'VAT-IN',  type: 'percentage', rate: 12, applies_to: 'purchases', filing_frequency: 'monthly',   description: 'VAT on purchases — creditable against Output VAT' },
-    { name: 'Expanded Withholding Tax',  code: 'EWT-10',  type: 'percentage', rate: 10, applies_to: 'purchases', filing_frequency: 'monthly',   description: 'BIR EWT on professional/service fees — BIR Form 0619-E / 1601-EQ' },
-    { name: 'Corporate Income Tax',      code: 'CIT-25',  type: 'percentage', rate: 25, applies_to: 'both',      filing_frequency: 'quarterly', description: '25% Corporate Income Tax for domestic corps — BIR Form 1702Q' },
-    { name: 'Percentage Tax (Non-VAT)',  code: 'PT-3',    type: 'percentage', rate: 3,  applies_to: 'sales',     filing_frequency: 'quarterly', description: '3% Percentage Tax for non-VAT registered businesses — BIR Form 2551Q' },
+  const user          = req.session.user;
+  const business_type = req.body.business_type || 'corporate';
+
+  // ── Rates common to all business types ────────────────────────────────────
+  const common = [
+    {
+      name: 'Output VAT (Sales)',   code: 'VAT-OUT', type: 'percentage', rate: 12,
+      applies_to: 'sales',     filing_frequency: 'monthly',
+      description: 'Value Added Tax on sales/revenue — BIR Form 2550M / 2550Q',
+    },
+    {
+      name: 'Input VAT (Purchases)', code: 'VAT-IN', type: 'percentage', rate: 12,
+      applies_to: 'purchases', filing_frequency: 'monthly',
+      description: 'VAT on purchases — creditable against Output VAT',
+    },
+    {
+      name: 'Expanded Withholding Tax (10%)', code: 'EWT-10', type: 'percentage', rate: 10,
+      applies_to: 'purchases', filing_frequency: 'monthly',
+      description: 'BIR EWT on professional/service fees paid to suppliers — BIR Form 0619-E / 1601-EQ',
+    },
+    {
+      name: 'Percentage Tax (Non-VAT)', code: 'PT-3', type: 'percentage', rate: 3,
+      applies_to: 'sales',     filing_frequency: 'quarterly',
+      description: '3% Percentage Tax for non-VAT registered businesses — BIR Form 2551Q',
+    },
   ];
+
+  // ── Corporate-only: Corporate Income Tax ───────────────────────────────────
+  const corporateOnly = [
+    {
+      name: 'Corporate Income Tax (25%)', code: 'CIT-25', type: 'percentage', rate: 25,
+      applies_to: 'both', filing_frequency: 'quarterly',
+      description: '25% Corporate Income Tax for domestic corporations — BIR Form 1702Q',
+    },
+  ];
+
+  // ── Sole Prop / Mixed Income: Graduated Personal Income Tax ───────────────
+  // BIR graduated rates (TRAIN Law, effective 2023+)
+  // Tier: { min, max (null = no cap), rate% }
+  const pitTiers = [
+    { min: 0,        max: 250000,   rate: 0  },  // tax-exempt
+    { min: 250000,   max: 400000,   rate: 15 },  // + 15% of excess over 250k
+    { min: 400000,   max: 800000,   rate: 20 },  // + 20% of excess over 400k
+    { min: 800000,   max: 2000000,  rate: 25 },  // + 25% of excess over 800k
+    { min: 2000000,  max: 8000000,  rate: 30 },  // + 30% of excess over 2M
+    { min: 8000000,  max: null,     rate: 35 },  // + 35% of excess over 8M
+  ];
+  const mixedDesc = business_type === 'mixed_income'
+    ? 'Graduated PIT on business/professional income for mixed-income earners — compensation income is withheld separately by employer — BIR Form 1701Q'
+    : 'Graduated Personal Income Tax on net business income (TRAIN Law, 2023+) — BIR Form 1701Q';
+
+  const individualOnly = [
+    {
+      name: 'Personal Income Tax (Graduated)', code: 'PIT-GRAD', type: 'tiered',
+      applies_to: 'both', filing_frequency: 'annual',
+      tiers: pitTiers,
+      description: mixedDesc,
+    },
+  ];
+
+  const presets = business_type === 'corporate'
+    ? [...common, ...corporateOnly]
+    : [...common, ...individualOnly];
+
   try {
     const inserted = [], skipped = [];
     for (const p of presets) {
       try {
         await query(
-          `INSERT INTO tax_rates (name, code, type, rate, applies_to, filing_frequency, description)
-           VALUES ($1,$2,$3,$4,$5,$6,$7)`,
-          [p.name, p.code, p.type, p.rate, p.applies_to, p.filing_frequency, p.description]
+          `INSERT INTO tax_rates (name, code, type, rate, amount, tiers, applies_to, filing_frequency, description)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
+          [
+            p.name, p.code, p.type,
+            p.rate  || 0,
+            p.amount || 0,
+            p.tiers ? JSON.stringify(p.tiers) : null,
+            p.applies_to, p.filing_frequency, p.description,
+          ]
         );
         inserted.push(p.code);
       } catch (e) {
@@ -180,7 +243,7 @@ router.post('/rates/seed-philippines', async (req, res) => {
         else throw e;
       }
     }
-    logAction(user, 'SEED_PH_TAX_RATES', 'tax_rate', null, null, { inserted });
+    logAction(user, 'SEED_PH_TAX_RATES', 'tax_rate', null, null, { inserted, business_type });
     res.json({ ok: true, inserted: inserted.length, skipped: skipped.length, codes: inserted });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });

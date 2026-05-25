@@ -567,7 +567,18 @@ function FilingModal({ filing, taxRates, onClose, onSaved }) {
 export default function Tax({ tab = 'rates' }) {
   const { fmt, settings } = useSettings();
   const { can }           = useUser();
-  const isPhilippines     = settings.tax_system === 'philippines';
+  const isPhilippines  = settings.tax_system === 'philippines';
+  const businessType   = settings.business_type || 'corporate';
+  const BIZ_LABELS     = {
+    corporate:           '🏢 Corporate',
+    sole_proprietorship: '👤 Sole Prop',
+    mixed_income:        '🔀 Mixed Income',
+  };
+  const BIZ_PRESETS    = {
+    corporate:           { label: 'VAT-OUT, VAT-IN, EWT-10, CIT-25, PT-3', count: 5 },
+    sole_proprietorship: { label: 'VAT-OUT, VAT-IN, EWT-10, PIT-GRAD, PT-3', count: 5 },
+    mixed_income:        { label: 'VAT-OUT, VAT-IN, EWT-10, PIT-GRAD, PT-3', count: 5 },
+  };
 
   const [activeTab,     setActiveTab]     = useState(tab);
   const [taxRates,      setTaxRates]      = useState([]);
@@ -611,13 +622,18 @@ export default function Tax({ tab = 'rates' }) {
   useEffect(() => { if (activeTab === 'projections') loadProjections(); }, [activeTab, projYear, projPeriod]);
 
   const handleSeedPhilippines = async () => {
-    if (!confirm('This will add 5 standard Philippines tax rates (VAT-OUT, VAT-IN, EWT-10, CIT-25, PT-3). Existing codes will be skipped. Continue?')) return;
+    const preset = BIZ_PRESETS[businessType];
+    if (!confirm(`This will load ${preset.count} standard Philippines tax rates for ${BIZ_LABELS[businessType]}:\n${preset.label}\n\nExisting codes will be skipped. Continue?`)) return;
     setSeeding(true);
     try {
-      const res  = await fetch('/api/tax/rates/seed-philippines', { method: 'POST', credentials: 'include' });
+      const res  = await fetch('/api/tax/rates/seed-philippines', {
+        method: 'POST', credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ business_type: businessType }),
+      });
       const data = await res.json();
       if (!res.ok) { setMsg({ type: 'error', text: data.error }); return; }
-      setMsg({ type: 'success', text: `✓ Seeded ${data.inserted} Philippines tax rate${data.inserted !== 1 ? 's' : ''}${data.skipped > 0 ? ` (${data.skipped} already existed)` : ''}.` });
+      setMsg({ type: 'success', text: `✓ Seeded ${data.inserted} Philippines tax rate${data.inserted !== 1 ? 's' : ''} for ${BIZ_LABELS[businessType]}${data.skipped > 0 ? ` (${data.skipped} already existed)` : ''}.` });
       loadRates();
     } catch { setMsg({ type: 'error', text: 'Network error.' }); }
     finally { setSeeding(false); }
@@ -726,6 +742,14 @@ export default function Tax({ tab = 'rates' }) {
                 🇵🇭 Philippines Mode
               </span>
             )}
+            {isPhilippines && (
+              <span style={{ marginLeft: 6, padding: '2px 10px', borderRadius: 999, fontSize: 11, fontWeight: 600,
+                background: businessType === 'corporate' ? '#eff6ff' : businessType === 'sole_proprietorship' ? '#f0fdf4' : '#faf5ff',
+                color:      businessType === 'corporate' ? '#1e40af' : businessType === 'sole_proprietorship' ? '#166534' : '#6b21a8',
+                border:     `1px solid ${businessType === 'corporate' ? '#bfdbfe' : businessType === 'sole_proprietorship' ? '#bbf7d0' : '#e9d5ff'}`,
+              }}>
+                {BIZ_LABELS[businessType] || '🏢 Corporate'}
+            )}
           </div>
           <div className="page-subtitle">Define tax rates, apply taxes to invoices, and track filings</div>
         </div>
@@ -769,8 +793,9 @@ export default function Tax({ tab = 'rates' }) {
             </div>
             <div style={{ display: 'flex', gap: 8 }}>
               {isPhilippines && (
-                <button className="btn btn-ghost btn-sm" onClick={handleSeedPhilippines} disabled={seeding}>
-                  {seeding ? 'Seeding…' : '🇵🇭 Load PH Presets'}
+                <button className="btn btn-ghost btn-sm" onClick={handleSeedPhilippines} disabled={seeding}
+                  title={`Load ${BIZ_LABELS[businessType]} presets: ${BIZ_PRESETS[businessType]?.label}`}>
+                  {seeding ? 'Seeding…' : `🇵🇭 Load ${BIZ_LABELS[businessType]} Presets`}
                 </button>
               )}
               {can('finance') && (
@@ -785,7 +810,7 @@ export default function Tax({ tab = 'rates' }) {
             {taxRates.length === 0 ? (
               <div className="empty-state">
                 <div className="empty-state-icon">🧾</div>
-                <p>No tax rates defined yet.{isPhilippines ? ' Click "🇵🇭 Load PH Presets" to get started.' : ' Click "+ Add Tax Rate" to add one.'}</p>
+                <p>No tax rates defined yet.{isPhilippines ? ` Click "🇵🇭 Load ${BIZ_LABELS[businessType]} Presets" to get started.` : ' Click "+ Add Tax Rate" to add one.'}</p>
               </div>
             ) : (
               <div className="table-wrap">

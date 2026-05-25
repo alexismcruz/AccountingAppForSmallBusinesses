@@ -70,7 +70,8 @@ app.post('/api/auth/login', async (req, res) => {
         name:  result.user.full_name || result.user.email,
         role:  result.user.role,
       };
-      req.session.tax_system = result.client?.tax_system || null;
+      req.session.tax_system    = result.client?.tax_system    || null;
+      req.session.business_type = result.client?.business_type || null;
       const { logAction } = require('./utils/auditLog');
       logAction(req.session.user, 'LOGIN', 'auth', null, null, { mode: 'uam' });
       return res.json({ success: true, user: req.session.user });

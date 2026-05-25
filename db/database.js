@@ -150,6 +150,7 @@ async function initDB() {
       currency_symbol     TEXT DEFAULT '$',
       fiscal_year_start   TEXT DEFAULT '01-01',
       tax_system          TEXT DEFAULT 'generic',
+      business_type       TEXT DEFAULT 'corporate',
       updated_at          TIMESTAMPTZ DEFAULT NOW()
     )
   `);
@@ -208,10 +209,9 @@ async function initDB() {
     )
   `);
 
-  // ── Migrate business_settings: add tax_system if missing ───────────────────
-  await pool.query(`
-    ALTER TABLE business_settings ADD COLUMN IF NOT EXISTS tax_system TEXT DEFAULT 'generic'
-  `);
+  // ── Migrate business_settings ──────────────────────────────────────────────
+  await pool.query(`ALTER TABLE business_settings ADD COLUMN IF NOT EXISTS tax_system     TEXT DEFAULT 'generic'`);
+  await pool.query(`ALTER TABLE business_settings ADD COLUMN IF NOT EXISTS business_type  TEXT DEFAULT 'corporate'`);
 
   await pool.query(`
     CREATE TABLE IF NOT EXISTS approval_requests (
