@@ -171,6 +171,71 @@ router.delete('/rates/:id', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// ── POST /api/tax/rates/seed-generic ─────────────────────────────────────────
+// Seeds placeholder generic tax rates from UAM admin configuration (session flags)
+router.post('/rates/seed-generic', async (req, res) => {
+  const user            = req.session.user;
+  const vat_exempt      = req.session?.vat_exempt               || false;
+  const has_state_tax   = req.session?.has_state_tax            || false;
+  const state_tax_rate  = parseFloat(req.session?.state_tax_rate) || 0;
+  const has_city_tax    = req.session?.has_city_tax             || false;
+  const city_tax_rate   = parseFloat(req.session?.city_tax_rate) || 0;
+  const filing_freq     = req.session?.default_filing_frequency  || 'monthly';
+
+  const presets = [];
+
+  if (!vat_exempt) {
+    presets.push({
+      name: 'Sales Tax', code: 'SALES-TAX', type: 'percentage', rate: 0,
+      applies_to: 'sales', filing_frequency: filing_freq,
+      description: 'General sales tax placeholder — edit this rate to match your local rate. Applied to sales invoices.',
+    });
+  }
+
+  if (has_state_tax) {
+    presets.push({
+      name: 'State Tax', code: 'STATE-TAX', type: 'percentage', rate: state_tax_rate,
+      applies_to: 'both', filing_frequency: filing_freq,
+      description: `State-level tax at ${state_tax_rate}%. Applied to both sales and purchases.`,
+    });
+  }
+
+  if (has_city_tax) {
+    presets.push({
+      name: 'City Tax', code: 'CITY-TAX', type: 'percentage', rate: city_tax_rate,
+      applies_to: 'both', filing_frequency: filing_freq,
+      description: `City-level tax at ${city_tax_rate}%. Applied to both sales and purchases.`,
+    });
+  }
+
+  if (presets.length === 0) {
+    return res.json({ ok: true, inserted: 0, updated: 0, message: 'No rates to seed based on current configuration' });
+  }
+
+  try {
+    const inserted = [], updated = [];
+    for (const p of presets) {
+      const result = await query(
+        `INSERT INTO tax_rates
+           (name, code, type, rate, amount, applies_to, filing_frequency, description, business_type_filter, tax_system_filter)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+         ON CONFLICT (code) DO UPDATE SET
+           name              = EXCLUDED.name,
+           rate              = EXCLUDED.rate,
+           filing_frequency  = EXCLUDED.filing_frequency,
+           description       = EXCLUDED.description,
+           tax_system_filter = EXCLUDED.tax_system_filter
+         RETURNING (xmax = 0) AS is_insert`,
+        [p.name, p.code, p.type, p.rate || 0, 0, p.applies_to, p.filing_frequency, p.description, 'all', 'generic']
+      );
+      if (result.rows[0]?.is_insert) inserted.push(p.code);
+      else updated.push(p.code);
+    }
+    logAction(user, 'SEED_GENERIC_TAX_RATES', 'tax_rate', null, null, { inserted, updated, vat_exempt, has_state_tax, has_city_tax });
+    res.json({ ok: true, inserted: inserted.length, updated: updated.length, codes: [...inserted, ...updated] });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // ── POST /api/tax/rates/seed-philippines ─────────────────────────────────────
 // Accepts { business_type: 'corporate' | 'sole_proprietorship' | 'mixed_income' }
 router.post('/rates/seed-philippines', async (req, res) => {

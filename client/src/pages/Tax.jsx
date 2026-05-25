@@ -12,7 +12,37 @@ const fmtDate = (d) => {
 
 const TYPE_LABELS = { percentage: 'Percentage (%)', fixed_amount: 'Fixed Amount', tiered: 'Tiered Brackets' };
 const APPLIES_LABELS = { sales: 'Sales (AR)', purchases: 'Purchases (AP)', both: 'Both' };
-const FREQ_LABELS    = { monthly: 'Monthly', quarterly: 'Quarterly', annual: 'Annual' };
+const FREQ_LABELS    = { monthly: 'Monthly', quarterly: 'Quarterly', 'bi-annual': 'Bi-Annual', annual: 'Annual' };
+
+// ── Tooltip component ─────────────────────────────────────────────────────────
+function InfoTip({ text }) {
+  const [show, setShow] = useState(false);
+  return (
+    <span style={{ position: 'relative', display: 'inline-block', marginLeft: 5 }}>
+      <span
+        onMouseEnter={() => setShow(true)}
+        onMouseLeave={() => setShow(false)}
+        style={{ cursor: 'help', color: 'var(--text-muted)', fontSize: 12, userSelect: 'none' }}
+      >ⓘ</span>
+      {show && (
+        <div style={{
+          position: 'absolute', bottom: 'calc(100% + 6px)', left: '50%',
+          transform: 'translateX(-50%)', background: '#1e293b', color: '#f8fafc',
+          fontSize: 12, padding: '8px 12px', borderRadius: 6, width: 260,
+          zIndex: 200, lineHeight: 1.6, boxShadow: '0 4px 16px rgba(0,0,0,0.25)',
+          pointerEvents: 'none',
+        }}>
+          {text}
+          <div style={{
+            position: 'absolute', top: '100%', left: '50%', transform: 'translateX(-50%)',
+            borderWidth: '6px 6px 0', borderStyle: 'solid',
+            borderColor: '#1e293b transparent transparent',
+          }} />
+        </div>
+      )}
+    </span>
+  );
+}
 const STATUS_COLORS  = {
   pending: { bg: '#fef3c7', color: '#92400e', label: 'Pending' },
   filed:   { bg: '#dbeafe', color: '#1e40af', label: 'Filed' },
@@ -293,13 +323,21 @@ function TaxRateModal({ rate, accounts, onClose, onSaved }) {
 
             {/* Exempt Threshold */}
             <div className="form-group">
-              <label className="form-label">Exempt Threshold <span style={{ fontWeight: 400, color: 'var(--text-muted)', fontSize: 11 }}>(optional — skip tax below this amount)</span></label>
+              <label className="form-label">
+                Exempt Threshold
+                <InfoTip text="Tax is only calculated on the amount exceeding this value. Example: threshold of ₱20,000 with a 10% rate — a ₱25,000 transaction is taxed only on ₱5,000, not the full amount. Leave at 0 to tax the full amount." />
+                <span style={{ fontWeight: 400, color: 'var(--text-muted)', fontSize: 11, marginLeft: 6 }}>(optional)</span>
+              </label>
               <AmountInput value={form.exempt_threshold} onChange={v => f('exempt_threshold', v)} placeholder="0.00" />
             </div>
 
             {/* Tax Account */}
             <div className="form-group">
-              <label className="form-label">Linked Tax Payable Account <span style={{ fontWeight: 400, color: 'var(--text-muted)', fontSize: 11 }}>(optional)</span></label>
+              <label className="form-label">
+                Linked Tax Payable Account
+                <InfoTip text="When this tax is applied, the tax amount is posted as a credit to this liability account — typically 'Sales Tax Payable' (2300) for output taxes you owe, or 'Withholding Tax Payable' for taxes you collect on behalf of the government. Linking it enables automatic journal entries." />
+                <span style={{ fontWeight: 400, color: 'var(--text-muted)', fontSize: 11, marginLeft: 6 }}>(optional)</span>
+              </label>
               <select className="form-input" value={form.tax_account_id} onChange={e => f('tax_account_id', e.target.value)}>
                 <option value="">— None —</option>
                 {liabilityAccounts.map(a => <option key={a.id} value={a.id}>{a.code} — {a.name}</option>)}
@@ -576,6 +614,7 @@ export default function Tax({ tab = 'rates' }) {
   const { fmt, settings } = useSettings();
   const { can }           = useUser();
   const isPhilippines  = settings.tax_system === 'philippines';
+  const isGeneric      = settings.tax_system === 'generic' || !settings.tax_system;
   const businessType   = settings.business_type || 'corporate';
   const BIZ_LABELS     = {
     corporate:           '🏢 Corporate',
@@ -642,6 +681,23 @@ export default function Tax({ tab = 'rates' }) {
       const data = await res.json();
       if (!res.ok) { setMsg({ type: 'error', text: data.error }); return; }
       setMsg({ type: 'success', text: `✓ Seeded ${data.inserted} Philippines tax rate${data.inserted !== 1 ? 's' : ''} for ${BIZ_LABELS[businessType]}${data.skipped > 0 ? ` (${data.skipped} already existed)` : ''}.` });
+      loadRates();
+    } catch { setMsg({ type: 'error', text: 'Network error.' }); }
+    finally { setSeeding(false); }
+  };
+
+  const handleSeedGeneric = async () => {
+    if (!confirm('This will create placeholder tax rates based on your admin configuration (State Tax, City Tax, VAT Exempt). Existing codes will not be overwritten. Continue?')) return;
+    setSeeding(true);
+    try {
+      const res  = await fetch('/api/tax/rates/seed-generic', { method: 'POST', credentials: 'include' });
+      const data = await res.json();
+      if (!res.ok) { setMsg({ type: 'error', text: data.error }); return; }
+      if (data.inserted === 0) {
+        setMsg({ type: 'success', text: 'Admin configuration applied — rates already existed, nothing new to add.' });
+      } else {
+        setMsg({ type: 'success', text: `✓ Created ${data.inserted} tax rate${data.inserted !== 1 ? 's' : ''} from admin configuration. Edit each rate below to adjust the values.` });
+      }
       loadRates();
     } catch { setMsg({ type: 'error', text: 'Network error.' }); }
     finally { setSeeding(false); }
@@ -815,11 +871,34 @@ export default function Tax({ tab = 'rates' }) {
             </div>
           </div>
 
+          {isGeneric && (
+            <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 10, padding: '14px 18px', marginBottom: 16 }}>
+              <div style={{ fontWeight: 600, color: '#1e40af', marginBottom: 4 }}>🌐 Generic Tax System</div>
+              <div style={{ fontSize: 13, color: '#1e40af', lineHeight: 1.6 }}>
+                Add your own tax rates below — percentage, fixed amount, or tiered brackets.
+                Each rate you create will appear in the tax dropdown on invoices and payments.
+              </div>
+              {(settings.has_state_tax || settings.has_city_tax || settings.vat_exempt) && (
+                <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid #bfdbfe', display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                  <span style={{ fontSize: 12, color: '#1e40af' }}>
+                    Admin configured:
+                    {settings.has_state_tax  && <strong style={{ marginLeft: 6 }}>State Tax ({settings.state_tax_rate || 0}%)</strong>}
+                    {settings.has_city_tax   && <strong style={{ marginLeft: 6 }}>City Tax ({settings.city_tax_rate || 0}%)</strong>}
+                    {settings.vat_exempt     && <strong style={{ marginLeft: 6 }}>VAT Exempt</strong>}
+                  </span>
+                  <button className="btn btn-primary btn-sm" onClick={handleSeedGeneric} disabled={seeding}>
+                    {seeding ? 'Applying…' : 'Apply Admin Configuration'}
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
           <div className="card">
             {taxRates.length === 0 ? (
               <div className="empty-state">
                 <div className="empty-state-icon">🧾</div>
-                <p>No tax rates defined yet.{isPhilippines ? ` Click "🇵🇭 Load ${BIZ_LABELS[businessType]} Presets" to get started.` : ' Click "+ Add Tax Rate" to add one.'}</p>
+                <p>No tax rates defined yet.{isPhilippines ? ` Click "🇵🇭 Load ${BIZ_LABELS[businessType]} Presets" to get started.` : ' Click "+ Add Tax Rate" to create your first rate.'}</p>
               </div>
             ) : (
               <div className="table-wrap">

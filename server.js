@@ -70,9 +70,15 @@ app.post('/api/auth/login', async (req, res) => {
         name:  result.user.full_name || result.user.email,
         role:  result.user.role,
       };
-      req.session.tax_system    = result.client?.tax_system    || null;
-      req.session.business_type = result.client?.business_type || null;
-      req.session.base_currency = result.client?.base_currency || null;
+      req.session.tax_system               = result.client?.tax_system               || null;
+      req.session.business_type            = result.client?.business_type            || null;
+      req.session.base_currency            = result.client?.base_currency            || null;
+      req.session.vat_exempt               = result.client?.vat_exempt               ?? false;
+      req.session.has_state_tax            = result.client?.has_state_tax            ?? false;
+      req.session.state_tax_rate           = result.client?.state_tax_rate           ?? 0;
+      req.session.has_city_tax             = result.client?.has_city_tax             ?? false;
+      req.session.city_tax_rate            = result.client?.city_tax_rate            ?? 0;
+      req.session.default_filing_frequency = result.client?.default_filing_frequency ?? 'monthly';
       const { logAction } = require('./utils/auditLog');
       logAction(req.session.user, 'LOGIN', 'auth', null, null, { mode: 'uam' });
       return res.json({ success: true, user: req.session.user });

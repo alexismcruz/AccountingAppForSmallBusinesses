@@ -227,6 +227,9 @@ async function initDB() {
   await pool.query(`ALTER TABLE tax_rates ADD COLUMN IF NOT EXISTS tax_system_filter TEXT DEFAULT 'all'`);
   // Tag all known BIR/Philippines-specific codes so they never appear for Generic clients
   await pool.query(`UPDATE tax_rates SET tax_system_filter = 'philippines' WHERE code IN ('VAT-OUT','VAT-IN','EWT-10','PT-3','CIT-25','PIT-GRAD') AND tax_system_filter = 'all'`);
+  // ── Migrate tax_rates: expand filing_frequency CHECK to include 'bi-annual' ─
+  await pool.query(`ALTER TABLE tax_rates DROP CONSTRAINT IF EXISTS tax_rates_filing_frequency_check`);
+  await pool.query(`ALTER TABLE tax_rates ADD CONSTRAINT tax_rates_filing_frequency_check CHECK(filing_frequency IN ('monthly','quarterly','bi-annual','annual'))`);
 
   await pool.query(`
     CREATE TABLE IF NOT EXISTS approval_requests (

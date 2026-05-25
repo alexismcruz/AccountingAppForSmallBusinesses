@@ -21,7 +21,17 @@ router.get('/', async (req, res) => {
     const business_type = req.session?.business_type || settings?.business_type || 'corporate';
     const currency      = req.session?.base_currency || settings?.currency      || 'PHP';
     const currency_symbol = CURRENCY_SYMBOLS[currency] || settings?.currency_symbol || '₱';
-    res.json({ ...settings, tax_system, business_type, currency, currency_symbol, sandboxMode: !!process.env.SANDBOX_MODE });
+    const vat_exempt               = req.session?.vat_exempt               ?? false;
+    const has_state_tax            = req.session?.has_state_tax            ?? false;
+    const state_tax_rate           = parseFloat(req.session?.state_tax_rate) || 0;
+    const has_city_tax             = req.session?.has_city_tax             ?? false;
+    const city_tax_rate            = parseFloat(req.session?.city_tax_rate) || 0;
+    const default_filing_frequency = req.session?.default_filing_frequency  || 'monthly';
+    res.json({
+      ...settings, tax_system, business_type, currency, currency_symbol,
+      vat_exempt, has_state_tax, state_tax_rate, has_city_tax, city_tax_rate, default_filing_frequency,
+      sandboxMode: !!process.env.SANDBOX_MODE,
+    });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
