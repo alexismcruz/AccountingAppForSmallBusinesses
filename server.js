@@ -193,6 +193,8 @@ app.use('/api/invoices',      require('./routes/invoices'));
 app.use('/api/sandbox',       require('./routes/sandbox'));
 app.use('/api/tax',            require('./routes/tax'));
 app.use('/api/opening-balance', require('./routes/openingBalance'));
+app.use('/api/employees',       require('./routes/employees'));
+app.use('/api/payroll',         require('./routes/payroll'));
 
 // ── Serve built React app in production ──────────────────────────────────────
 if (process.env.NODE_ENV === 'production') {

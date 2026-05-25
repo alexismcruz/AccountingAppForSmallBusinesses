@@ -184,6 +184,8 @@ export default function Layout({ children, onLogout }) {
     '/fiscal':                   'Fiscal Year Management',
     '/settings':                 'Business Settings',
     '/opening-balance':          'Opening Balances',
+    '/hr/employees':             'Employees',
+    '/hr/payroll':               'Payroll Runs',
     '/approvals':                'Approvals',
     '/logs':                     'Audit Logs',
     '/tax/rates':                'Tax Rates',
@@ -234,6 +236,12 @@ export default function Layout({ children, onLogout }) {
               <NavItem to="/payments/pending"  label="↳ Pending (AP)"  sub onNavigate={closeSidebar} />
             </div>
           )}
+        </div>
+
+        <div className="nav-section">
+          <div className="nav-label">HR &amp; Payroll</div>
+          <NavItem to="/hr/employees" icon="👥" label="Employees"    onNavigate={closeSidebar} />
+          <NavItem to="/hr/payroll"   icon="💰" label="Payroll Runs" onNavigate={closeSidebar} />
         </div>
 
         <div className="nav-section">

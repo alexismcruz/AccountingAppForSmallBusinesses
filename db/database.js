@@ -231,6 +231,78 @@ async function initDB() {
   await pool.query(`ALTER TABLE tax_rates DROP CONSTRAINT IF EXISTS tax_rates_filing_frequency_check`);
   await pool.query(`ALTER TABLE tax_rates ADD CONSTRAINT tax_rates_filing_frequency_check CHECK(filing_frequency IN ('monthly','quarterly','bi-annual','annual'))`);
 
+  // ── HR & Payroll tables ────────────────────────────────────────────────────
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS employees (
+      id                INTEGER PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+      employee_number   TEXT UNIQUE NOT NULL,
+      first_name        TEXT NOT NULL,
+      last_name         TEXT NOT NULL,
+      email             TEXT,
+      phone             TEXT,
+      position          TEXT,
+      department        TEXT,
+      employment_type   TEXT DEFAULT 'regular'
+                          CHECK(employment_type IN ('regular','probationary','contractual','part_time')),
+      pay_frequency     TEXT DEFAULT 'semi_monthly'
+                          CHECK(pay_frequency IN ('semi_monthly','monthly')),
+      basic_salary      DOUBLE PRECISION DEFAULT 0,
+      sss_number        TEXT,
+      philhealth_number TEXT,
+      pagibig_number    TEXT,
+      tin               TEXT,
+      bank_name         TEXT,
+      bank_account      TEXT,
+      hire_date         TEXT,
+      notes             TEXT,
+      is_active         INTEGER DEFAULT 1,
+      created_at        TIMESTAMPTZ DEFAULT NOW()
+    )
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS payroll_periods (
+      id           INTEGER PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+      period_start TEXT NOT NULL,
+      period_end   TEXT NOT NULL,
+      pay_date     TEXT NOT NULL,
+      pay_frequency TEXT DEFAULT 'semi_monthly'
+                      CHECK(pay_frequency IN ('semi_monthly','monthly')),
+      status       TEXT DEFAULT 'draft' CHECK(status IN ('draft','posted')),
+      notes        TEXT,
+      created_by   TEXT,
+      created_at   TIMESTAMPTZ DEFAULT NOW()
+    )
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS payroll_entries (
+      id                   INTEGER PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+      payroll_period_id    INTEGER NOT NULL REFERENCES payroll_periods(id) ON DELETE CASCADE,
+      employee_id          INTEGER NOT NULL REFERENCES employees(id),
+      basic_pay            DOUBLE PRECISION DEFAULT 0,
+      overtime_pay         DOUBLE PRECISION DEFAULT 0,
+      holiday_pay          DOUBLE PRECISION DEFAULT 0,
+      allowances           DOUBLE PRECISION DEFAULT 0,
+      gross_pay            DOUBLE PRECISION DEFAULT 0,
+      sss_employee         DOUBLE PRECISION DEFAULT 0,
+      sss_employer         DOUBLE PRECISION DEFAULT 0,
+      sss_msc              DOUBLE PRECISION DEFAULT 0,
+      philhealth_employee  DOUBLE PRECISION DEFAULT 0,
+      philhealth_employer  DOUBLE PRECISION DEFAULT 0,
+      pagibig_employee     DOUBLE PRECISION DEFAULT 0,
+      pagibig_employer     DOUBLE PRECISION DEFAULT 0,
+      wtax                 DOUBLE PRECISION DEFAULT 0,
+      other_deductions     DOUBLE PRECISION DEFAULT 0,
+      total_deductions     DOUBLE PRECISION DEFAULT 0,
+      net_pay              DOUBLE PRECISION DEFAULT 0,
+      taxable_compensation DOUBLE PRECISION DEFAULT 0,
+      notes                TEXT,
+      created_at           TIMESTAMPTZ DEFAULT NOW(),
+      UNIQUE(payroll_period_id, employee_id)
+    )
+  `);
+
   await pool.query(`
     CREATE TABLE IF NOT EXISTS approval_requests (
       id                 SERIAL PRIMARY KEY,

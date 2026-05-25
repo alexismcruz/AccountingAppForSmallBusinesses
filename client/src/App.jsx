@@ -16,6 +16,8 @@ import Approvals from './pages/Approvals.jsx';
 import Logs from './pages/Logs.jsx';
 import Tax             from './pages/Tax.jsx';
 import OpeningBalance  from './pages/OpeningBalance.jsx';
+import Employees      from './pages/Employees.jsx';
+import Payroll        from './pages/Payroll.jsx';
 
 export default function App() {
   const [authChecked, setAuthChecked] = useState(false);
@@ -63,6 +65,8 @@ export default function App() {
             <Route path="/tax/projections"          element={<Tax tab="projections" />} />
             <Route path="/tax/filings"              element={<Tax tab="filings" />} />
             <Route path="/opening-balance"          element={<OpeningBalance />} />
+            <Route path="/hr/employees"             element={<Employees />} />
+            <Route path="/hr/payroll"               element={<Payroll />} />
             <Route path="*"                         element={<Navigate to="/" replace />} />
           </Routes>
         </Layout>
