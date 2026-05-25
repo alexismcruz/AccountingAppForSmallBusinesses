@@ -68,7 +68,7 @@ router.post('/rates', async (req, res) => {
     name, code, type, rate, amount, tiers,
     applies_to, is_inclusive, exempt_threshold,
     tax_account_id, effective_from, effective_to,
-    filing_frequency, description,
+    filing_frequency, description, business_type_filter,
   } = req.body;
 
   if (!name || !code || !type)
@@ -82,8 +82,8 @@ router.post('/rates', async (req, res) => {
     const { rows: [tax] } = await query(
       `INSERT INTO tax_rates
          (name, code, type, rate, amount, tiers, applies_to, is_inclusive, exempt_threshold,
-          tax_account_id, effective_from, effective_to, filing_frequency, description)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14) RETURNING *`,
+          tax_account_id, effective_from, effective_to, filing_frequency, description, business_type_filter)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15) RETURNING *`,
       [
         name.trim(), code.trim().toUpperCase(), type,
         parseFloat(rate) || 0, parseFloat(amount) || 0,
@@ -95,6 +95,7 @@ router.post('/rates', async (req, res) => {
         effective_from || null, effective_to || null,
         filing_frequency || 'monthly',
         description || null,
+        business_type_filter || 'all',
       ]
     );
     logAction(user, 'CREATE_TAX_RATE', 'tax_rate', tax.id, tax.code);
@@ -112,7 +113,7 @@ router.put('/rates/:id', async (req, res) => {
   const {
     name, type, rate, amount, tiers, applies_to, is_inclusive,
     exempt_threshold, tax_account_id, effective_from, effective_to,
-    filing_frequency, description, is_active,
+    filing_frequency, description, is_active, business_type_filter,
   } = req.body;
 
   try {
@@ -121,8 +122,8 @@ router.put('/rates/:id', async (req, res) => {
          name=$1, type=$2, rate=$3, amount=$4, tiers=$5, applies_to=$6,
          is_inclusive=$7, exempt_threshold=$8, tax_account_id=$9,
          effective_from=$10, effective_to=$11, filing_frequency=$12,
-         description=$13, is_active=$14
-       WHERE id=$15 RETURNING *`,
+         description=$13, is_active=$14, business_type_filter=$15
+       WHERE id=$16 RETURNING *`,
       [
         name, type, parseFloat(rate) || 0, parseFloat(amount) || 0,
         tiers ? JSON.stringify(tiers) : null,
@@ -131,6 +132,7 @@ router.put('/rates/:id', async (req, res) => {
         effective_from || null, effective_to || null,
         filing_frequency || 'monthly', description || null,
         is_active === false || is_active === 0 ? 0 : 1,
+        business_type_filter || 'all',
         req.params.id,
       ]
     );
@@ -165,22 +167,22 @@ router.post('/rates/seed-philippines', async (req, res) => {
   const common = [
     {
       name: 'Output VAT (Sales)',   code: 'VAT-OUT', type: 'percentage', rate: 12,
-      applies_to: 'sales',     filing_frequency: 'monthly',
+      applies_to: 'sales',     filing_frequency: 'monthly',  business_type_filter: 'all',
       description: 'Value Added Tax on sales/revenue — BIR Form 2550M / 2550Q',
     },
     {
       name: 'Input VAT (Purchases)', code: 'VAT-IN', type: 'percentage', rate: 12,
-      applies_to: 'purchases', filing_frequency: 'monthly',
+      applies_to: 'purchases', filing_frequency: 'monthly',  business_type_filter: 'all',
       description: 'VAT on purchases — creditable against Output VAT',
     },
     {
       name: 'Expanded Withholding Tax (10%)', code: 'EWT-10', type: 'percentage', rate: 10,
-      applies_to: 'purchases', filing_frequency: 'monthly',
+      applies_to: 'purchases', filing_frequency: 'monthly',  business_type_filter: 'all',
       description: 'BIR EWT on professional/service fees paid to suppliers — BIR Form 0619-E / 1601-EQ',
     },
     {
       name: 'Percentage Tax (Non-VAT)', code: 'PT-3', type: 'percentage', rate: 3,
-      applies_to: 'sales',     filing_frequency: 'quarterly',
+      applies_to: 'sales',     filing_frequency: 'quarterly', business_type_filter: 'all',
       description: '3% Percentage Tax for non-VAT registered businesses — BIR Form 2551Q',
     },
   ];
@@ -189,7 +191,7 @@ router.post('/rates/seed-philippines', async (req, res) => {
   const corporateOnly = [
     {
       name: 'Corporate Income Tax (25%)', code: 'CIT-25', type: 'percentage', rate: 25,
-      applies_to: 'both', filing_frequency: 'quarterly',
+      applies_to: 'both', filing_frequency: 'quarterly', business_type_filter: 'corporate',
       description: '25% Corporate Income Tax for domestic corporations — BIR Form 1702Q',
     },
   ];
@@ -212,7 +214,7 @@ router.post('/rates/seed-philippines', async (req, res) => {
   const individualOnly = [
     {
       name: 'Personal Income Tax (Graduated)', code: 'PIT-GRAD', type: 'tiered',
-      applies_to: 'both', filing_frequency: 'annual',
+      applies_to: 'both', filing_frequency: 'annual', business_type_filter: 'individual',
       tiers: pitTiers,
       description: mixedDesc,
     },
@@ -223,28 +225,33 @@ router.post('/rates/seed-philippines', async (req, res) => {
     : [...common, ...individualOnly];
 
   try {
-    const inserted = [], skipped = [];
+    const inserted = [], updated = [], skipped = [];
     for (const p of presets) {
       try {
-        await query(
-          `INSERT INTO tax_rates (name, code, type, rate, amount, tiers, applies_to, filing_frequency, description)
-           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
+        // Try insert first; if code exists, update only the business_type_filter
+        const result = await query(
+          `INSERT INTO tax_rates (name, code, type, rate, amount, tiers, applies_to, filing_frequency, description, business_type_filter)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+           ON CONFLICT (code) DO UPDATE SET business_type_filter = EXCLUDED.business_type_filter
+           RETURNING (xmax = 0) AS is_insert`,
           [
             p.name, p.code, p.type,
-            p.rate  || 0,
+            p.rate   || 0,
             p.amount || 0,
             p.tiers ? JSON.stringify(p.tiers) : null,
             p.applies_to, p.filing_frequency, p.description,
+            p.business_type_filter || 'all',
           ]
         );
-        inserted.push(p.code);
+        if (result.rows[0]?.is_insert) inserted.push(p.code);
+        else updated.push(p.code);
       } catch (e) {
-        if (e.code === '23505') skipped.push(p.code);
-        else throw e;
+        skipped.push(p.code);
+        if (e.code !== '23505') throw e;
       }
     }
-    logAction(user, 'SEED_PH_TAX_RATES', 'tax_rate', null, null, { inserted, business_type });
-    res.json({ ok: true, inserted: inserted.length, skipped: skipped.length, codes: inserted });
+    logAction(user, 'SEED_PH_TAX_RATES', 'tax_rate', null, null, { inserted, updated, business_type });
+    res.json({ ok: true, inserted: inserted.length, updated: updated.length, skipped: skipped.length, codes: inserted });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 

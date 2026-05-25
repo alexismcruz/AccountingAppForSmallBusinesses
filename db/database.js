@@ -158,23 +158,24 @@ async function initDB() {
   // ── Tax tables ──────────────────────────────────────────────────────────────
   await pool.query(`
     CREATE TABLE IF NOT EXISTS tax_rates (
-      id               SERIAL PRIMARY KEY,
-      name             TEXT NOT NULL,
-      code             TEXT UNIQUE NOT NULL,
-      type             TEXT NOT NULL CHECK(type IN ('percentage','fixed_amount','tiered')),
-      rate             DOUBLE PRECISION DEFAULT 0,
-      amount           DOUBLE PRECISION DEFAULT 0,
-      tiers            JSONB,
-      applies_to       TEXT NOT NULL DEFAULT 'both' CHECK(applies_to IN ('sales','purchases','both')),
-      is_inclusive     INTEGER DEFAULT 0,
-      exempt_threshold DOUBLE PRECISION DEFAULT 0,
-      tax_account_id   INTEGER REFERENCES accounts(id) ON DELETE SET NULL,
-      is_active        INTEGER DEFAULT 1,
-      effective_from   TEXT,
-      effective_to     TEXT,
-      filing_frequency TEXT DEFAULT 'monthly' CHECK(filing_frequency IN ('monthly','quarterly','annual')),
-      description      TEXT,
-      created_at       TIMESTAMPTZ DEFAULT NOW()
+      id                   SERIAL PRIMARY KEY,
+      name                 TEXT NOT NULL,
+      code                 TEXT UNIQUE NOT NULL,
+      type                 TEXT NOT NULL CHECK(type IN ('percentage','fixed_amount','tiered')),
+      rate                 DOUBLE PRECISION DEFAULT 0,
+      amount               DOUBLE PRECISION DEFAULT 0,
+      tiers                JSONB,
+      applies_to           TEXT NOT NULL DEFAULT 'both' CHECK(applies_to IN ('sales','purchases','both')),
+      is_inclusive         INTEGER DEFAULT 0,
+      exempt_threshold     DOUBLE PRECISION DEFAULT 0,
+      tax_account_id       INTEGER REFERENCES accounts(id) ON DELETE SET NULL,
+      is_active            INTEGER DEFAULT 1,
+      effective_from       TEXT,
+      effective_to         TEXT,
+      filing_frequency     TEXT DEFAULT 'monthly' CHECK(filing_frequency IN ('monthly','quarterly','annual')),
+      description          TEXT,
+      business_type_filter TEXT DEFAULT 'all',
+      created_at           TIMESTAMPTZ DEFAULT NOW()
     )
   `);
 
@@ -212,6 +213,13 @@ async function initDB() {
   // ── Migrate business_settings ──────────────────────────────────────────────
   await pool.query(`ALTER TABLE business_settings ADD COLUMN IF NOT EXISTS tax_system     TEXT DEFAULT 'generic'`);
   await pool.query(`ALTER TABLE business_settings ADD COLUMN IF NOT EXISTS business_type  TEXT DEFAULT 'corporate'`);
+
+  // ── Migrate tax_rates: add business_type_filter + fix known BIR codes ──────
+  await pool.query(`ALTER TABLE tax_rates ADD COLUMN IF NOT EXISTS business_type_filter TEXT DEFAULT 'all'`);
+  // Corporate-only: CIT applies only to registered corporations
+  await pool.query(`UPDATE tax_rates SET business_type_filter = 'corporate'  WHERE code = 'CIT-25'   AND business_type_filter = 'all'`);
+  // Individual-only: PIT graduated rates for sole prop and mixed income earners
+  await pool.query(`UPDATE tax_rates SET business_type_filter = 'individual' WHERE code = 'PIT-GRAD' AND business_type_filter = 'all'`);
 
   await pool.query(`
     CREATE TABLE IF NOT EXISTS approval_requests (

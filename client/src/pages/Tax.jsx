@@ -340,7 +340,9 @@ function ApplyTaxModal({ taxRates, onClose, onApplied }) {
   const [entities, setEntities] = useState([]);
   const [saving,   setSaving]   = useState(false);
   const [error,    setError]    = useState('');
-  const { fmt } = useSettings();
+  const { fmt, settings } = useSettings();
+  const businessType  = settings.business_type || 'corporate';
+  const isIndividual  = ['sole_proprietorship', 'mixed_income'].includes(businessType);
 
   useEffect(() => {
     if (!form.entity_type) return;
@@ -408,7 +410,13 @@ function ApplyTaxModal({ taxRates, onClose, onApplied }) {
               <select className="form-input" value={form.tax_rate_id}
                 onChange={e => setForm(f => ({ ...f, tax_rate_id: e.target.value }))}>
                 <option value="">— Select tax —</option>
-                {taxRates.filter(r => r.is_active).map(r => (
+                {taxRates.filter(r => {
+                  if (!r.is_active) return false;
+                  const btf = r.business_type_filter || 'all';
+                  if (btf === 'corporate'  && businessType !== 'corporate') return false;
+                  if (btf === 'individual' && !isIndividual)                return false;
+                  return true;
+                }).map(r => (
                   <option key={r.id} value={r.id}>
                     {r.name} ({r.code}) — {r.type === 'percentage' ? `${r.rate}%` : r.type === 'fixed_amount' ? `Fixed` : 'Tiered'}
                   </option>

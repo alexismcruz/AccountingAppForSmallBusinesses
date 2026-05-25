@@ -353,7 +353,8 @@ function PayModal({ record, type, onClose, onSaved }) {
 
 // ── Apply Tax Modal ───────────────────────────────────────────────────────────
 function ApplyTaxModal({ record, entityType, onClose, onApplied }) {
-  const { fmt } = useSettings();
+  const { fmt, settings } = useSettings();
+  const businessType = settings.business_type || 'corporate';
   const [taxRates,   setTaxRates]   = useState([]);
   const [selectedId, setSelectedId] = useState('');
   const [baseAmount, setBaseAmount] = useState(String(record.amount));
@@ -366,9 +367,17 @@ function ApplyTaxModal({ record, entityType, onClose, onApplied }) {
     fetch('/api/tax/rates', { credentials: 'include' })
       .then(r => r.json())
       .then(rates => {
-        const filtered = rates.filter(r =>
-          r.is_active && (r.applies_to === 'both' || r.applies_to === entityType)
-        );
+        const isIndividual = ['sole_proprietorship', 'mixed_income'].includes(businessType);
+        const filtered = rates.filter(r => {
+          if (!r.is_active) return false;
+          if (r.applies_to !== 'both' && r.applies_to !== entityType) return false;
+          // Filter by business type: 'all' shows for everyone, 'corporate' only for corps,
+          // 'individual' only for sole prop / mixed income
+          const btf = r.business_type_filter || 'all';
+          if (btf === 'corporate'  && businessType !== 'corporate') return false;
+          if (btf === 'individual' && !isIndividual)                return false;
+          return true;
+        });
         setTaxRates(filtered);
         if (filtered.length === 1) setSelectedId(String(filtered[0].id));
       })
