@@ -717,9 +717,9 @@ export default function Payments({ tab }) {
 
   const today = new Date().toISOString().split('T')[0];
   const pending = records.filter(r => r.status !== 'paid');
-  const totalOutstanding = pending.reduce((s, r) => s + (r.amount - r.paid_amount), 0);
+  const totalOutstanding = pending.reduce((s, r) => s + (r.amount + (parseFloat(r.total_tax_applied) || 0) - r.paid_amount), 0);
   const overdue = pending.filter(r => r.due_date && r.due_date < today);
-  const totalOverdue = overdue.reduce((s, r) => s + (r.amount - r.paid_amount), 0);
+  const totalOverdue = overdue.reduce((s, r) => s + (r.amount + (parseFloat(r.total_tax_applied) || 0) - r.paid_amount), 0);
 
   const exportUrl  = isAR ? '/api/payments/receivables/export/csv' : '/api/payments/payables/export/csv';
   const exportFile = isAR ? `receivables-${new Date().toISOString().split('T')[0]}.csv` : `payables-${new Date().toISOString().split('T')[0]}.csv`;
@@ -813,6 +813,8 @@ export default function Payments({ tab }) {
                   <th>Reference</th>
                   <th>Description</th>
                   <th className="td-right">Amount</th>
+                  <th className="td-right">Tax</th>
+                  <th className="td-right">Total</th>
                   <th>Currency</th>
                   <th className="td-right">Paid</th>
                   <th className="td-right">Balance</th>
@@ -824,13 +826,24 @@ export default function Payments({ tab }) {
               </thead>
               <tbody>
                 {records.map(rec => {
-                  const balance = rec.amount - rec.paid_amount;
+                  const taxAmt  = parseFloat(rec.total_tax_applied) || 0;
+                  const total   = rec.amount + taxAmt;
+                  const balance = total - rec.paid_amount;
                   return (
                     <tr key={rec.id}>
                       <td style={{ fontWeight: 500 }}>{isAR ? rec.customer_name : rec.supplier_name}</td>
                       <td className="td-mono text-muted">{rec.invoice_number || rec.reference_number || '—'}</td>
                       <td className="text-muted">{rec.description || '—'}</td>
                       <td className="td-right tabular">{fmt(rec.amount)}</td>
+                      <td className="td-right tabular">
+                        {taxAmt > 0
+                          ? <span title={rec.tax_codes} style={{ fontSize: 12, color: 'var(--primary)', cursor: 'default' }}>
+                              +{fmt(taxAmt)}
+                              {rec.tax_codes && <span style={{ color: 'var(--text-muted)', marginLeft: 4 }}>({rec.tax_codes})</span>}
+                            </span>
+                          : <span style={{ color: 'var(--text-light)' }}>—</span>}
+                      </td>
+                      <td className="td-right tabular" style={{ fontWeight: 600 }}>{fmt(total)}</td>
                       <td>
                         {rec.currency && rec.currency !== baseCurrency
                           ? <span className="badge badge-info">{rec.currency}</span>

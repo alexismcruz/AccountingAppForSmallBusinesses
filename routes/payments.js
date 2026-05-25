@@ -269,7 +269,16 @@ router.post('/payables/import/csv', async (req, res) => {
 
 router.get('/receivables', async (req, res) => {
   try {
-    const { rows } = await query('SELECT * FROM receivables ORDER BY due_date ASC, created_at DESC');
+    const { rows } = await query(`
+      SELECT r.*,
+        COALESCE(STRING_AGG(tr.code, ', ' ORDER BY ta.created_at), '') AS tax_codes,
+        COALESCE(SUM(ta.tax_amount), 0)                                 AS total_tax_applied
+      FROM receivables r
+      LEFT JOIN tax_applications ta ON ta.entity_id = r.id AND ta.entity_type = 'receivable'
+      LEFT JOIN tax_rates tr ON tr.id = ta.tax_rate_id
+      GROUP BY r.id
+      ORDER BY r.due_date ASC, r.created_at DESC
+    `);
     res.json(rows);
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -412,7 +421,16 @@ router.delete('/receivables/:id', async (req, res) => {
 
 router.get('/payables', async (req, res) => {
   try {
-    const { rows } = await query('SELECT * FROM payables ORDER BY due_date ASC, created_at DESC');
+    const { rows } = await query(`
+      SELECT p.*,
+        COALESCE(STRING_AGG(tr.code, ', ' ORDER BY ta.created_at), '') AS tax_codes,
+        COALESCE(SUM(ta.tax_amount), 0)                                 AS total_tax_applied
+      FROM payables p
+      LEFT JOIN tax_applications ta ON ta.entity_id = p.id AND ta.entity_type = 'payable'
+      LEFT JOIN tax_rates tr ON tr.id = ta.tax_rate_id
+      GROUP BY p.id
+      ORDER BY p.due_date ASC, p.created_at DESC
+    `);
     res.json(rows);
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
