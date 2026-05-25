@@ -183,6 +183,7 @@ export default function Layout({ children, onLogout }) {
     '/reports/ledger':           'General Ledger',
     '/fiscal':                   'Fiscal Year Management',
     '/settings':                 'Business Settings',
+    '/opening-balance':          'Opening Balances',
     '/approvals':                'Approvals',
     '/logs':                     'Audit Logs',
     '/tax/rates':                'Tax Rates',
@@ -289,7 +290,8 @@ export default function Layout({ children, onLogout }) {
 
         {can('admin') && (
           <div className="nav-section" style={{ marginTop: 'auto' }}>
-            <NavItem to="/settings" icon="⚙️" label="Settings" onNavigate={closeSidebar} />
+            <NavItem to="/settings"       icon="⚙️" label="Settings"         onNavigate={closeSidebar} />
+            <NavItem to="/opening-balance" label="↳ Opening Balances" sub    onNavigate={closeSidebar} />
           </div>
         )}
 
