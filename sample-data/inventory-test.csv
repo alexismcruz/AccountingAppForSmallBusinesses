@@ -1,0 +1,25 @@
+sku,name,category,unit,quantity,unit_cost,reorder_point,notes
+SW-001,Website Development - Basic Package,Web Services,project,10,25000,2,Standard 5-page company website
+SW-002,Website Development - Premium Package,Web Services,project,5,75000,1,Full e-commerce site with CMS
+SW-003,Mobile App Development - Starter,App Development,project,3,150000,1,Android or iOS native starter app
+SW-004,SEO Services - Monthly Retainer,Digital Marketing,month,20,8000,5,On-page and off-page SEO
+SW-005,Social Media Management,Digital Marketing,month,15,5000,5,Facebook + Instagram + posting
+SW-006,UI/UX Design Package,Design Services,project,8,18000,2,Wireframes mockups and prototypes
+SV-001,IT Consultation,Professional Services,hr,0,1500,0,Billed per engagement
+SV-002,Cloud Infrastructure Setup,Professional Services,project,2,20000,1,AWS or GCP environment setup
+SV-003,Technical Support - Basic,Professional Services,month,8,3500,2,8 hours remote support per month
+SV-004,Data Migration Service,Professional Services,project,2,25000,1,Database or cloud migration
+SV-005,Cybersecurity Audit,Professional Services,project,1,35000,1,Vulnerability assessment and report
+HW-001,Laptop - Developer Grade,Hardware,unit,5,65000,2,ASUS ProArt or Lenovo ThinkPad
+HW-002,External Hard Drive 2TB,Hardware,unit,10,4500,3,WD or Seagate USB 3.0
+HW-003,Mechanical Keyboard,Hardware,unit,8,3200,2,Programmer keyboard Cherry MX
+HW-004,USB-C Hub 7-in-1,Hardware,unit,12,1800,4,Multi-port adapter for laptops
+HW-005,Webcam HD 1080p,Hardware,unit,6,2500,3,For video conferences and streaming
+SP-001,Domain Name Registration,Subscriptions,year,15,1500,5,Annual .com or .ph domain
+SP-002,SSL Certificate - Standard,Subscriptions,year,10,2800,3,1-year SSL for one domain
+SP-003,Google Workspace License,Subscriptions,month,25,600,5,Per user per month Business Starter
+SP-004,Canva Pro License,Subscriptions,month,5,750,2,Design tool annual plan per seat
+OF-001,A4 Bond Paper 500 sheets,Office Supplies,ream,20,280,5,
+OF-002,Ballpen Box 12 pcs,Office Supplies,box,10,85,3,
+OF-003,Printer Ink Cartridge - Black,Office Supplies,unit,8,650,3,HP compatible
+OF-004,Whiteboard Marker Set,Office Supplies,set,6,120,3,4 colors per set

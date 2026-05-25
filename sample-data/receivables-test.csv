@@ -1,0 +1,9 @@
+customer_name,invoice_number,description,amount,currency,exchange_rate,due_date,scheduled_date,tax_rate_code,tax_base_amount
+ABC Corporation,INV-2026-001,Website redesign - Phase 1 completion,80000,PHP,1,2026-06-15,2026-06-10,VAT-OUT,80000
+Santos Retail Group,INV-2026-002,Monthly IT retainer - May 2026,20000,PHP,1,2026-06-01,2026-05-30,VAT-OUT,20000
+Department of Education,INV-2026-003,IT infrastructure consulting (VAT-exempt gov),50000,PHP,1,2026-06-30,,,
+Global Tech Inc,INV-2026-004,Custom software module - Q2 deliverable,2500,USD,56.50,2026-07-15,2026-07-01,,
+Maria Cruz Designs,INV-2026-005,Freelance UI/UX design project,30000,PHP,1,2026-06-20,,PT-3,30000
+BDO Unibank,INV-2026-006,Data analytics dashboard development,45000,PHP,1,2026-06-25,2026-06-20,VAT-OUT,45000
+Jollibee Foods Corporation,INV-2026-007,Mobile app development - milestone 2 of 3,120000,PHP,1,2026-07-31,,VAT-OUT,120000
+TechStartup PH Inc,INV-2026-008,Cloud infrastructure setup and migration,35000,PHP,1,2026-06-10,,VAT-OUT,35000

@@ -1,0 +1,31 @@
+date,reference,description,entry_type,currency,exchange_rate,account_code,debit,credit,line_notes
+2026-05-01,JE-2026-001,Owner capital contribution,regular,PHP,1,1010,100000,0,Bank deposit from owner
+2026-05-01,JE-2026-001,Owner capital contribution,regular,PHP,1,3000,0,100000,Initial capital injection
+2026-05-02,JE-2026-002,June office rent payment,regular,PHP,1,6100,28000,0,SM Prime Holdings - June rent
+2026-05-02,JE-2026-002,June office rent payment,regular,PHP,1,1010,0,28000,
+2026-05-05,JE-2026-003,Service revenue - ABC Corporation,regular,PHP,1,1100,89600,0,INV-2026-001 billed
+2026-05-05,JE-2026-003,Service revenue - ABC Corporation,regular,PHP,1,4100,0,80000,Website redesign fee
+2026-05-05,JE-2026-003,Service revenue - ABC Corporation,regular,PHP,1,2300,0,9600,Output VAT 12%
+2026-05-10,JE-2026-004,Collection - Santos Retail Group,regular,PHP,1,1010,22400,0,INV-2026-002 payment received
+2026-05-10,JE-2026-004,Collection - Santos Retail Group,regular,PHP,1,1100,0,22400,
+2026-05-15,JE-2026-005,Payroll - May 2026 1st half,regular,PHP,1,6000,45000,0,Staff salaries net of deductions
+2026-05-15,JE-2026-005,Payroll - May 2026 1st half,regular,PHP,1,1010,0,45000,
+2026-05-18,JE-2026-006,Globe Telecom internet bill,regular,PHP,1,6200,2500,0,May internet charges
+2026-05-18,JE-2026-006,Globe Telecom internet bill,regular,PHP,1,1010,0,2500,
+2026-05-20,JE-2026-007,Office supplies - National Book Store,regular,PHP,1,6300,3570,0,Pens paper and stationery
+2026-05-20,JE-2026-007,Office supplies - National Book Store,regular,PHP,1,1010,0,3570,
+2026-05-22,JE-2026-008,Service revenue - TechStartup PH,regular,PHP,1,1100,39200,0,INV-2026-008 billed
+2026-05-22,JE-2026-008,Service revenue - TechStartup PH,regular,PHP,1,4100,0,35000,Cloud setup fee
+2026-05-22,JE-2026-008,Service revenue - TechStartup PH,regular,PHP,1,2300,0,4200,Output VAT 12%
+2026-05-25,JE-2026-009,BDO bank charges - May,regular,PHP,1,6800,350,0,Monthly account maintenance fee
+2026-05-25,JE-2026-009,BDO bank charges - May,regular,PHP,1,1010,0,350,
+2026-05-28,JE-2026-010,Meralco electricity bill - May,regular,PHP,1,6200,8500,0,
+2026-05-28,JE-2026-010,Meralco electricity bill - May,regular,PHP,1,1010,0,8500,
+2026-05-28,JE-2026-011,AWS cloud hosting - May (USD),regular,USD,56.50,6200,150,0,Server hosting fees
+2026-05-28,JE-2026-011,AWS cloud hosting - May (USD),regular,USD,56.50,1010,0,150,
+2026-05-31,JE-2026-012,Payroll - May 2026 2nd half,regular,PHP,1,6000,45000,0,Staff salaries net of deductions
+2026-05-31,JE-2026-012,Payroll - May 2026 2nd half,regular,PHP,1,1010,0,45000,
+2026-05-31,JE-2026-013,Facebook and Google ads - May,regular,PHP,1,6400,5000,0,Social media advertising spend
+2026-05-31,JE-2026-013,Facebook and Google ads - May,regular,PHP,1,1010,0,5000,
+2026-05-31,JE-2026-014,Grab for Business - May transport,regular,PHP,1,6900,1200,0,Staff field visits
+2026-05-31,JE-2026-014,Grab for Business - May transport,regular,PHP,1,1010,0,1200,

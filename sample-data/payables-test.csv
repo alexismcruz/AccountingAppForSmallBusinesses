@@ -1,0 +1,9 @@
+supplier_name,reference_number,description,amount,currency,exchange_rate,due_date,scheduled_date,tax_rate_code,tax_base_amount
+SM Prime Holdings,PO-2026-001,Office space rental - June 2026,28000,PHP,1,2026-06-01,2026-05-28,VAT-IN,28000
+Juan dela Pena,PO-2026-002,IT consulting services - May 2026,15000,PHP,1,2026-06-05,,EWT-10,15000
+Globe Telecom,PO-2026-003,Business fiber internet - May 2026,2500,PHP,1,2026-06-05,,VAT-IN,2500
+Amazon Web Services,PO-2026-004,Cloud hosting - May 2026 (AWS),150,USD,56.50,2026-06-15,2026-06-10,,
+National Book Store,PO-2026-005,Office supplies and stationery,3570,PHP,1,2026-05-31,,VAT-IN,3570
+Meralco,PO-2026-006,Electricity bill - May 2026,8500,PHP,1,2026-06-10,,,
+Ana Santos Creative,PO-2026-007,Logo and branding design materials,8000,PHP,1,2026-06-15,,EWT-10,8000
+Grab for Business,PO-2026-008,Business transport - May 2026,1200,PHP,1,2026-05-31,,,
