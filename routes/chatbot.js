@@ -1,8 +1,27 @@
 const router    = require('express').Router();
 const { query, withTransaction } = require('../db/database');
-const Anthropic  = require('@anthropic-ai/sdk');
 
-const ai = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+// Direct fetch to Anthropic API — avoids any SDK version compatibility issues
+async function callClaude(systemPrompt, messages, tools) {
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method:  'POST',
+    headers: {
+      'Content-Type':    'application/json',
+      'x-api-key':       process.env.ANTHROPIC_API_KEY,
+      'anthropic-version': '2023-06-01',
+    },
+    body: JSON.stringify({
+      model:      'claude-3-haiku-20240307',
+      max_tokens: 1024,
+      system:     systemPrompt,
+      tools,
+      messages,
+    }),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(JSON.stringify(data));
+  return data;
+}
 
 // ── Tool definition ───────────────────────────────────────────────────────────
 
@@ -136,13 +155,7 @@ ${'─'.repeat(65)}
 ${accountsList}
 ${'─'.repeat(65)}`;
 
-    const response = await ai.messages.create({
-      model:      'claude-3-haiku-20240307',
-      max_tokens: 1024,
-      system:     systemPrompt,
-      tools:      [DRAFT_TOOL],
-      messages,
-    });
+    const response = await callClaude(systemPrompt, messages, [DRAFT_TOOL]);
 
     // Parse response blocks — extract text and optional tool call
     let textParts  = [];
