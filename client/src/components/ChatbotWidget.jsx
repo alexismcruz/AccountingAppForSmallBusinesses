@@ -266,11 +266,15 @@ export default function ChatbotWidget() {
   }, [open]);
 
   // Build conversation history for the API (text-only, alternating roles)
+  // Anthropic API requires the first message to be from 'user' — drop any
+  // leading assistant messages (e.g. the welcome greeting shown in the UI).
   const buildHistory = useCallback((msgs, plusUser = null) => {
     const history = msgs
       .filter(m => m.role === 'user' || (m.role === 'assistant' && m.content))
       .map(m => ({ role: m.role, content: m.content || '' }));
     if (plusUser) history.push({ role: 'user', content: plusUser });
+    // Trim leading assistant turns
+    while (history.length > 0 && history[0].role === 'assistant') history.shift();
     return history;
   }, []);
 
