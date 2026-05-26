@@ -2,7 +2,8 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { STATES } from "@/lib/types";
-import { titleCase } from "@/lib/utils";
+import { titleCase, slugify } from "@/lib/utils";
+import { prisma } from "@/lib/db";
 import ShopCard from "@/components/ShopCard";
 
 interface Props {
@@ -20,12 +21,27 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
+export const dynamic = "force-dynamic";
+
+async function getShops(stateName: string, citySlug: string) {
+  try {
+    const shops = await prisma.shop.findMany({
+      where: { state: stateName, active: true },
+      orderBy: [{ featured: "desc" }, { rating: "desc" }, { name: "asc" }],
+    });
+    return shops.filter((s) => slugify(s.city) === citySlug);
+  } catch {
+    return [];
+  }
+}
+
 export default async function CityPage({ params }: Props) {
   const { state, city } = await params;
   const stateName = STATES[state];
   if (!stateName) notFound();
 
-  const cityName = titleCase(city);
+  const shops = await getShops(stateName, city);
+  const cityName = shops[0]?.city ?? titleCase(city);
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-10">
@@ -41,12 +57,25 @@ export default async function CityPage({ params }: Props) {
         Thrift Shops in {cityName}, {stateName}
       </h1>
       <p className="text-gray-600 mb-8">
-        Showing thrift stores and secondhand shops in {cityName}.
+        {shops.length} {shops.length === 1 ? "shop" : "shops"} found in {cityName}.
       </p>
 
-      <div className="bg-amber-50 border border-amber-200 rounded-lg p-6 text-center">
-        <p className="text-amber-800 font-medium">Listings coming soon for {cityName}</p>
-      </div>
+      {shops.length === 0 ? (
+        <div className="bg-amber-50 border border-amber-200 rounded-lg p-6 text-center">
+          <p className="text-amber-800 font-medium">No listings found for {cityName} yet.</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {shops.map((shop) => (
+            <ShopCard
+              key={shop.id}
+              shop={shop as any}
+              stateSlug={state}
+              citySlug={city}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
