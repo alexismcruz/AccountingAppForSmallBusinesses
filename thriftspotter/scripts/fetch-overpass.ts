@@ -1,7 +1,7 @@
 import "dotenv/config";
 import { writeFileSync } from "fs";
 
-const OVERPASS_URL = "https://overpass-api.de/api/interpreter";
+const OVERPASS_URL = "https://overpass.kumi.systems/api/interpreter";
 
 const STATES = [
   { name: "New York", osmName: "New York", adminLevel: "4", slug: "new-york", abbr: "NY" },
@@ -39,7 +39,10 @@ async function fetchState(stateName: string, adminLevel: string) {
 
   const res = await fetch(OVERPASS_URL, {
     method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded",
+      "User-Agent": "ThriftSpotter/1.0 (thriftspotter.com; data collection)",
+    },
     body: `data=${encodeURIComponent(query)}`,
   });
 
