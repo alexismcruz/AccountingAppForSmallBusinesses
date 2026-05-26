@@ -196,6 +196,7 @@ app.use('/api/opening-balance', require('./routes/openingBalance'));
 app.use('/api/employees',       require('./routes/employees'));
 app.use('/api/payroll',         require('./routes/payroll'));
 app.use('/api/leaves',          require('./routes/leaves'));
+app.use('/api/chatbot',         require('./routes/chatbot'));
 
 // ── Serve built React app in production ──────────────────────────────────────
 if (process.env.NODE_ENV === 'production') {

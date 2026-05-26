@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { useSettings } from '../context/SettingsContext.jsx';
 import { useUser } from '../context/UserContext.jsx';
+import ChatbotWidget from './ChatbotWidget.jsx';
 
 // ── Password rules (mirrors server-side validation) ───────────────────────────
 const PW_RULES = 'Min 8 · Max 20 · At least 1 number · At least 1 special character · No spaces';
@@ -410,6 +411,9 @@ export default function Layout({ children, onLogout }) {
           {children}
         </main>
       </div>
+
+      {/* Accounting Assistant — floating chatbot widget */}
+      <ChatbotWidget />
     </div>
   );
 }
