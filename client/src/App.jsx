@@ -16,8 +16,11 @@ import Approvals from './pages/Approvals.jsx';
 import Logs from './pages/Logs.jsx';
 import Tax             from './pages/Tax.jsx';
 import OpeningBalance  from './pages/OpeningBalance.jsx';
-import Employees      from './pages/Employees.jsx';
-import Payroll        from './pages/Payroll.jsx';
+import Employees       from './pages/Employees.jsx';
+import Payroll         from './pages/Payroll.jsx';
+import Leaves          from './pages/Leaves.jsx';
+import BIRForms        from './pages/BIRForms.jsx';
+import ChartOfAccounts from './pages/ChartOfAccounts.jsx';
 
 export default function App() {
   const [authChecked, setAuthChecked] = useState(false);
@@ -67,6 +70,9 @@ export default function App() {
             <Route path="/opening-balance"          element={<OpeningBalance />} />
             <Route path="/hr/employees"             element={<Employees />} />
             <Route path="/hr/payroll"               element={<Payroll />} />
+            <Route path="/hr/leaves"                element={<Leaves />} />
+            <Route path="/hr/bir"                   element={<BIRForms />} />
+            <Route path="/accounts"                 element={<ChartOfAccounts />} />
             <Route path="*"                         element={<Navigate to="/" replace />} />
           </Routes>
         </Layout>

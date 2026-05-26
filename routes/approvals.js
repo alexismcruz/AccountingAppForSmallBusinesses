@@ -93,6 +93,10 @@ router.post('/:id/approve', async (req, res) => {
         await client.query('UPDATE inventory_items SET pending_approval = 0 WHERE id = $1', [request.entity_id]);
       } else if (request.type === 'delete_inventory') {
         await client.query('UPDATE inventory_items SET is_active = 0, pending_deletion = 0 WHERE id = $1', [request.entity_id]);
+      } else if (request.type === 'create_account') {
+        await client.query('UPDATE accounts SET pending_approval = 0 WHERE id = $1', [request.entity_id]);
+      } else if (request.type === 'delete_account') {
+        await client.query('UPDATE accounts SET is_active = 0, pending_deletion = 0 WHERE id = $1', [request.entity_id]);
       }
 
       await client.query(
@@ -141,6 +145,10 @@ router.post('/:id/reject', async (req, res) => {
       await query('DELETE FROM inventory_items WHERE id = $1', [request.entity_id]);
     } else if (request.type === 'delete_inventory') {
       await query('UPDATE inventory_items SET pending_deletion = 0 WHERE id = $1', [request.entity_id]);
+    } else if (request.type === 'create_account') {
+      await query('DELETE FROM accounts WHERE id = $1', [request.entity_id]);
+    } else if (request.type === 'delete_account') {
+      await query('UPDATE accounts SET pending_deletion = 0 WHERE id = $1', [request.entity_id]);
     }
 
     await query(

@@ -303,6 +303,120 @@ async function initDB() {
     )
   `);
 
+  // ── Phase 2 migrations ────────────────────────────────────────────────────
+
+  // Accounts: add approval workflow columns
+  await pool.query(`ALTER TABLE accounts ADD COLUMN IF NOT EXISTS pending_approval INTEGER DEFAULT 0`);
+  await pool.query(`ALTER TABLE accounts ADD COLUMN IF NOT EXISTS pending_deletion INTEGER DEFAULT 0`);
+  await pool.query(`ALTER TABLE accounts ADD COLUMN IF NOT EXISTS created_by_email TEXT DEFAULT 'system'`);
+  await pool.query(`ALTER TABLE accounts ADD COLUMN IF NOT EXISTS created_by_name  TEXT DEFAULT 'System'`);
+  await pool.query(`ALTER TABLE accounts ADD COLUMN IF NOT EXISTS created_by_role  TEXT DEFAULT 'system'`);
+
+  // Payroll periods: add period_type for 13th month differentiation
+  await pool.query(`ALTER TABLE payroll_periods ADD COLUMN IF NOT EXISTS period_type TEXT DEFAULT 'regular'`);
+  await pool.query(`ALTER TABLE payroll_periods DROP CONSTRAINT IF EXISTS payroll_periods_period_type_check`);
+  await pool.query(`ALTER TABLE payroll_periods ADD CONSTRAINT payroll_periods_period_type_check CHECK(period_type IN ('regular','thirteenth_month'))`);
+
+  // Payroll entries: add thirteenth_month_exempt flag for 90k threshold tracking
+  await pool.query(`ALTER TABLE payroll_entries ADD COLUMN IF NOT EXISTS period_type TEXT DEFAULT 'regular'`);
+
+  // ── Leave management tables ────────────────────────────────────────────────
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS leave_types (
+      id              INTEGER PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+      name            TEXT NOT NULL,
+      code            TEXT UNIQUE NOT NULL,
+      days_per_year   DOUBLE PRECISION DEFAULT 5,
+      carry_over_days INTEGER DEFAULT 0,
+      is_monetizable  INTEGER DEFAULT 0,
+      description     TEXT,
+      is_active       INTEGER DEFAULT 1,
+      created_at      TIMESTAMPTZ DEFAULT NOW()
+    )
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS leave_balances (
+      id            INTEGER PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+      employee_id   INTEGER NOT NULL REFERENCES employees(id) ON DELETE CASCADE,
+      leave_type_id INTEGER NOT NULL REFERENCES leave_types(id) ON DELETE CASCADE,
+      year          INTEGER NOT NULL,
+      entitled_days DOUBLE PRECISION DEFAULT 0,
+      used_days     DOUBLE PRECISION DEFAULT 0,
+      carry_over    DOUBLE PRECISION DEFAULT 0,
+      UNIQUE(employee_id, leave_type_id, year)
+    )
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS leave_requests (
+      id                INTEGER PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+      employee_id       INTEGER NOT NULL REFERENCES employees(id),
+      leave_type_id     INTEGER NOT NULL REFERENCES leave_types(id),
+      start_date        TEXT NOT NULL,
+      end_date          TEXT NOT NULL,
+      days              DOUBLE PRECISION NOT NULL,
+      reason            TEXT,
+      status            TEXT DEFAULT 'pending'
+                          CHECK(status IN ('pending','approved','rejected','cancelled')),
+      reviewed_by_email TEXT,
+      reviewed_by_name  TEXT,
+      reviewer_note     TEXT,
+      reviewed_at       TIMESTAMPTZ,
+      created_at        TIMESTAMPTZ DEFAULT NOW()
+    )
+  `);
+
+  // Seed default leave types (Philippines statutory + common)
+  const { rowCount: ltCount } = await pool.query('SELECT 1 FROM leave_types LIMIT 1');
+  if (ltCount === 0) {
+    await pool.query(`
+      INSERT INTO leave_types (name, code, days_per_year, carry_over_days, is_monetizable, description) VALUES
+      ('Vacation Leave',          'VL',  5, 5, 1,
+       'Annual vacation leave. Unused days (up to 5) may be carried over to the next year.'),
+      ('Sick Leave',              'SL',  5, 0, 0,
+       'Annual sick leave. Non-monetizable; unused days do not carry over.'),
+      ('Service Incentive Leave', 'SIL', 5, 0, 1,
+       'Statutory 5-day leave under the Labor Code (Art. 95). Monetizable if unused at year-end.'),
+      ('Emergency / Bereavement', 'EL',  3, 0, 0,
+       'Emergency or bereavement leave. Non-monetizable.')
+      ON CONFLICT (code) DO NOTHING
+    `);
+  }
+
+  // ── Seed payroll GL accounts ───────────────────────────────────────────────
+  const payrollAccts = [
+    { code: '2110', name: 'SSS Contributions Payable',                type: 'Liability', normal_balance: 'Credit',
+      description: 'Employee-withheld + employer share of SSS due to Social Security System.' },
+    { code: '2120', name: 'PhilHealth Contributions Payable',         type: 'Liability', normal_balance: 'Credit',
+      description: 'Employee-withheld + employer share of PhilHealth premiums due to PhilHealth.' },
+    { code: '2130', name: 'Pag-IBIG / HDMF Contributions Payable',   type: 'Liability', normal_balance: 'Credit',
+      description: 'Employee-withheld + employer share of Pag-IBIG contributions due to HDMF.' },
+    { code: '2140', name: 'Withholding Tax Payable - Compensation',   type: 'Liability', normal_balance: 'Credit',
+      description: 'BIR income tax withheld from employees\' compensation, for remittance via BIR Form 1601-C.' },
+    { code: '2150', name: 'Other Payroll Deductions Payable',         type: 'Liability', normal_balance: 'Credit',
+      description: 'Other deductions withheld from employees (loan repayments, company advances, etc.).' },
+    { code: '2160', name: 'Net Wages Payable',                        type: 'Liability', normal_balance: 'Credit',
+      description: 'Net salaries accrued but not yet disbursed to employees at period-end.' },
+    { code: '2170', name: '13th Month Pay Payable',                   type: 'Liability', normal_balance: 'Credit',
+      description: 'Accrued 13th month pay due to employees (mandatory under PD 851).' },
+    { code: '6010', name: 'SSS - Employer Contribution',              type: 'Expense', normal_balance: 'Debit',
+      description: 'Employer share of SSS contributions (9.5% of MSC + EC). A business expense, not deducted from employees.' },
+    { code: '6020', name: 'PhilHealth - Employer Contribution',       type: 'Expense', normal_balance: 'Debit',
+      description: 'Employer share of PhilHealth premiums (2.5% of basic salary).' },
+    { code: '6030', name: 'Pag-IBIG / HDMF - Employer Contribution', type: 'Expense', normal_balance: 'Debit',
+      description: 'Employer share of Pag-IBIG / HDMF contributions (2% of salary, max ₱100).' },
+    { code: '6040', name: '13th Month Pay Expense',                   type: 'Expense', normal_balance: 'Debit',
+      description: '13th month pay computed at 1/12 of annual basic salary earned, as required by PD 851.' },
+  ];
+  for (const a of payrollAccts) {
+    await pool.query(
+      `INSERT INTO accounts (code, name, type, normal_balance, description)
+       VALUES ($1,$2,$3,$4,$5) ON CONFLICT (code) DO NOTHING`,
+      [a.code, a.name, a.type, a.normal_balance, a.description]
+    );
+  }
+
   await pool.query(`
     CREATE TABLE IF NOT EXISTS approval_requests (
       id                 SERIAL PRIMARY KEY,

@@ -150,6 +150,7 @@ export default function Layout({ children, onLogout }) {
   const [reportsOpen,     setReportsOpen]     = useState(location.pathname.startsWith('/reports'));
   const [paymentsOpen,    setPaymentsOpen]    = useState(location.pathname.startsWith('/payments'));
   const [taxOpen,         setTaxOpen]         = useState(location.pathname.startsWith('/tax'));
+  const [hrOpen,          setHrOpen]          = useState(location.pathname.startsWith('/hr'));
   const [sidebarOpen,     setSidebarOpen]     = useState(false);
   const [pendingCount,    setPendingCount]    = useState(0);
   const [showChangePw,    setShowChangePw]    = useState(false);
@@ -186,6 +187,9 @@ export default function Layout({ children, onLogout }) {
     '/opening-balance':          'Opening Balances',
     '/hr/employees':             'Employees',
     '/hr/payroll':               'Payroll Runs',
+    '/hr/leaves':                'Leave Management',
+    '/hr/bir':                   'BIR Forms',
+    '/accounts':                 'Chart of Accounts',
     '/approvals':                'Approvals',
     '/logs':                     'Audit Logs',
     '/tax/rates':                'Tax Rates',
@@ -240,8 +244,20 @@ export default function Layout({ children, onLogout }) {
 
         <div className="nav-section">
           <div className="nav-label">HR &amp; Payroll</div>
-          <NavItem to="/hr/employees" icon="👥" label="Employees"    onNavigate={closeSidebar} />
-          <NavItem to="/hr/payroll"   icon="💰" label="Payroll Runs" onNavigate={closeSidebar} />
+          <div className={`nav-item ${hrOpen ? 'active' : ''}`}
+            onClick={() => setHrOpen(o => !o)} style={{ cursor:'pointer' }}>
+            <span className="nav-icon">👥</span>
+            <span style={{ flex:1 }}>HR &amp; Payroll</span>
+            <span style={{ fontSize:10 }}>{hrOpen ? '▲' : '▼'}</span>
+          </div>
+          {hrOpen && (
+            <div>
+              <NavItem to="/hr/employees" label="↳ Employees"       sub onNavigate={closeSidebar} />
+              <NavItem to="/hr/payroll"   label="↳ Payroll Runs"    sub onNavigate={closeSidebar} />
+              <NavItem to="/hr/leaves"    label="↳ Leave Management" sub onNavigate={closeSidebar} />
+              <NavItem to="/hr/bir"       label="↳ BIR Forms"        sub onNavigate={closeSidebar} />
+            </div>
+          )}
         </div>
 
         <div className="nav-section">
@@ -296,10 +312,16 @@ export default function Layout({ children, onLogout }) {
           </div>
         )}
 
+        {can('finance') && (
+          <div className="nav-section">
+            <NavItem to="/accounts" icon="📒" label="Chart of Accounts" onNavigate={closeSidebar} />
+          </div>
+        )}
+
         {can('admin') && (
           <div className="nav-section" style={{ marginTop: 'auto' }}>
-            <NavItem to="/settings"       icon="⚙️" label="Settings"         onNavigate={closeSidebar} />
-            <NavItem to="/opening-balance" label="↳ Opening Balances" sub    onNavigate={closeSidebar} />
+            <NavItem to="/settings"        icon="⚙️" label="Settings"          onNavigate={closeSidebar} />
+            <NavItem to="/opening-balance" label="↳ Opening Balances" sub      onNavigate={closeSidebar} />
           </div>
         )}
 
