@@ -163,7 +163,9 @@ ${'─'.repeat(65)}`;
 
   } catch (err) {
     console.error('Chatbot /message error:', err);
-    res.status(500).json({ error: 'Failed to get a response. Please try again.' });
+    // Return the real error message so it's visible in the chat widget
+    const detail = err?.message || String(err);
+    res.status(500).json({ error: `Assistant error: ${detail}` });
   }
 });
 
