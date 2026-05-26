@@ -9,9 +9,9 @@ function canApprove(approverRole, approverEmail, submitterRole, submitterEmail) 
   if (approverEmail === submitterEmail)  return false;
   if (approverRole === 'staff')          return false;
   if (approverRole === 'admin')          return false;
-  if (approverRole === 'super_admin')    return true;
+  if (approverRole === 'super_admin')    return false; // platform admin — not a business approver
   if (approverRole === 'manager')        return submitterRole === 'staff';
-  if (approverRole === 'finance')        return ['staff', 'manager'].includes(submitterRole);
+  if (approverRole === 'finance')        return ['staff', 'manager', 'finance'].includes(submitterRole);
   return false;
 }
 
