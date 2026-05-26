@@ -1,0 +1,37 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../app/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Shop {
+  id          Int      @id @default(autoincrement())
+  name        String
+  slug        String   @unique
+  address     String
+  city        String
+  state       String
+  zip         String?
+  phone       String?
+  website     String?
+  hours       Json?
+  lat         Float?
+  lng         Float?
+  description String?
+  categories  String[]
+  yelpId      String?  @unique
+  googleId    String?  @unique
+  rating      Float?
+  reviewCount Int?
+  featured    Boolean  @default(false)
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([state])
+  @@index([city])
+  @@index([state, city])
+}
