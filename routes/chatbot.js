@@ -280,9 +280,9 @@ router.post('/post', async (req, res) => {
       if (!isSuperAdmin) {
         await client.query(
           `INSERT INTO approval_requests
-             (entry_id, action, status, submitted_by_email, submitted_by_name, submitted_by_role)
-           VALUES ($1,'approve_entry','pending',$2,$3,$4)`,
-          [id, user.email, user.name, user.role]
+             (type, entity_id, entity_ref, submitted_by_email, submitted_by_name, submitted_by_role)
+           VALUES ('create_entry', $1, $2, $3, $4, $5)`,
+          [id, reference, user.email, user.name, user.role]
         );
       }
 
