@@ -76,7 +76,7 @@ router.post('/message', async (req, res) => {
     if (!user)            return res.status(401).json({ error: 'Not authenticated' });
     if (!messages?.length) return res.status(400).json({ error: 'messages array required' });
 
-    // Fetch chart of accounts for context injection (graceful fallback if table missing)
+    // Fetch chart of accounts for context injection (graceful fallback if table/column missing)
     let accounts = [];
     try {
       const { rows } = await query(
@@ -86,7 +86,18 @@ router.post('/message', async (req, res) => {
          ORDER BY code`
       );
       accounts = rows;
-    } catch (_) { /* table may not exist yet — continue with empty list */ }
+    } catch (_) {
+      // pending_approval column may not exist in older schema — retry without it
+      try {
+        const { rows } = await query(
+          `SELECT code, name, type, normal_balance
+           FROM accounts
+           WHERE is_active = 1
+           ORDER BY code`
+        );
+        accounts = rows;
+      } catch (__) { /* accounts table missing entirely — continue with empty list */ }
+    }
 
     // Fetch company settings (graceful fallback if table missing)
     let companyName = 'your company';
@@ -196,10 +207,10 @@ router.post('/post', async (req, res) => {
     if (!date || !description || !Array.isArray(lines) || lines.length < 2)
       return res.status(400).json({ error: 'Incomplete draft entry' });
 
-    // Resolve account codes → IDs
+    // Resolve account codes → IDs (is_active may be boolean or integer depending on schema)
     const codes = [...new Set(lines.map(l => l.account_code))];
     const { rows: acctRows } = await query(
-      `SELECT id, code, name FROM accounts WHERE code = ANY($1::text[]) AND is_active = 1`,
+      `SELECT id, code, name FROM accounts WHERE code = ANY($1::text[]) AND is_active IS NOT FALSE`,
       [codes]
     );
     const acctMap = Object.fromEntries(acctRows.map(a => [a.code, a]));
@@ -279,7 +290,7 @@ router.post('/post', async (req, res) => {
 
   } catch (err) {
     console.error('Chatbot /post error:', err);
-    res.status(500).json({ error: 'Failed to post the entry. Please try again.' });
+    res.status(500).json({ error: err?.message || 'Failed to post the entry. Please try again.' });
   }
 });
 
