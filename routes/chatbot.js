@@ -11,7 +11,7 @@ async function callClaude(systemPrompt, messages, tools) {
       'anthropic-version': '2023-06-01',
     },
     body: JSON.stringify({
-      model:      'claude-3-haiku-20240307',
+      model:      'claude-opus-4-7',
       max_tokens: 1024,
       system:     systemPrompt,
       tools,
