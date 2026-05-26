@@ -210,7 +210,7 @@ router.post('/post', async (req, res) => {
     // Resolve account codes → IDs (is_active may be boolean or integer depending on schema)
     const codes = [...new Set(lines.map(l => l.account_code))];
     const { rows: acctRows } = await query(
-      `SELECT id, code, name FROM accounts WHERE code = ANY($1::text[]) AND is_active IS NOT FALSE`,
+      `SELECT id, code, name FROM accounts WHERE code = ANY($1::text[]) AND is_active = 1`,
       [codes]
     );
     const acctMap = Object.fromEntries(acctRows.map(a => [a.code, a]));
