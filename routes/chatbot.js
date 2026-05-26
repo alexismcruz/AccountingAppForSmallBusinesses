@@ -57,23 +57,33 @@ router.post('/message', async (req, res) => {
     if (!user)            return res.status(401).json({ error: 'Not authenticated' });
     if (!messages?.length) return res.status(400).json({ error: 'messages array required' });
 
-    // Fetch chart of accounts for context injection
-    const { rows: accounts } = await query(
-      `SELECT code, name, type, normal_balance
-       FROM accounts
-       WHERE is_active = 1 AND pending_approval = 0
-       ORDER BY code`
-    );
+    // Fetch chart of accounts for context injection (graceful fallback if table missing)
+    let accounts = [];
+    try {
+      const { rows } = await query(
+        `SELECT code, name, type, normal_balance
+         FROM accounts
+         WHERE is_active = 1 AND pending_approval = 0
+         ORDER BY code`
+      );
+      accounts = rows;
+    } catch (_) { /* table may not exist yet — continue with empty list */ }
 
-    // Fetch company settings
-    const { rows: settingRows } = await query(
-      `SELECT key, value FROM settings WHERE key IN ('business_name','currency','tax_system')`
-    );
-    const s           = Object.fromEntries(settingRows.map(r => [r.key, r.value]));
-    const companyName = s.business_name || 'your company';
-    const currency    = s.currency      || 'PHP';
-    const taxSystem   = s.tax_system    || 'VAT';
-    const today       = new Date().toISOString().split('T')[0];
+    // Fetch company settings (graceful fallback if table missing)
+    let companyName = 'your company';
+    let currency    = 'PHP';
+    let taxSystem   = 'VAT';
+    try {
+      const { rows: settingRows } = await query(
+        `SELECT key, value FROM settings WHERE key IN ('business_name','currency','tax_system')`
+      );
+      const s = Object.fromEntries(settingRows.map(r => [r.key, r.value]));
+      companyName = s.business_name || companyName;
+      currency    = s.currency      || currency;
+      taxSystem   = s.tax_system    || taxSystem;
+    } catch (_) { /* table may not exist yet — use defaults */ }
+
+    const today = new Date().toISOString().split('T')[0];
 
     const accountsList = accounts.length
       ? accounts
