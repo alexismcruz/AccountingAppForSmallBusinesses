@@ -245,11 +245,14 @@ router.post('/post', async (req, res) => {
     );
     const reference = `CB-${dateStr}-${String(Number(cnt) + 1).padStart(3, '0')}`;
 
-    // Currency from settings
-    const { rows: currRows } = await query(
-      `SELECT value FROM settings WHERE key = 'currency'`
-    );
-    const currency = currRows[0]?.value || 'PHP';
+    // Currency from settings (graceful fallback if table missing)
+    let currency = 'PHP';
+    try {
+      const { rows: currRows } = await query(
+        `SELECT value FROM settings WHERE key = 'currency'`
+      );
+      currency = currRows[0]?.value || 'PHP';
+    } catch (_) { /* settings table not yet migrated — use PHP default */ }
 
     const isSuperAdmin = user.role === 'super_admin';
     const status       = isSuperAdmin ? 'posted' : 'pending_approval';
