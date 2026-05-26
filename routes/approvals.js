@@ -11,7 +11,7 @@ function canApprove(approverRole, approverEmail, submitterRole, submitterEmail) 
   if (approverRole === 'admin')          return false;
   if (approverRole === 'super_admin')    return true;
   if (approverRole === 'manager')        return submitterRole === 'staff';
-  if (approverRole === 'finance')        return ['staff', 'manager', 'finance'].includes(submitterRole);
+  if (approverRole === 'finance')        return ['staff', 'manager'].includes(submitterRole);
   return false;
 }
 

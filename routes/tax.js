@@ -45,8 +45,9 @@ router.get('/rates', async (req, res) => {
   // Filter by tax system so Philippines rates never appear for Generic clients and vice versa.
   // In standalone mode (no UAM session), show all rates.
   const taxSystem = req.session?.tax_system || null;
-  const systemClause = taxSystem
-    ? `WHERE (tr.tax_system_filter = 'all' OR tr.tax_system_filter = '${taxSystem}')`
+  const rateParams     = taxSystem ? [taxSystem] : [];
+  const systemClause   = taxSystem
+    ? `WHERE (tr.tax_system_filter = 'all' OR tr.tax_system_filter = $1)`
     : '';
   try {
     const { rows } = await query(`
@@ -55,7 +56,7 @@ router.get('/rates', async (req, res) => {
       LEFT JOIN accounts a ON a.id = tr.tax_account_id
       ${systemClause}
       ORDER BY tr.is_active DESC, tr.name
-    `);
+    `, rateParams);
     res.json(rows.map(r => ({
       ...r,
       rate:             parseFloat(r.rate)             || 0,
@@ -487,11 +488,13 @@ router.get('/projections', async (req, res) => {
 
   try {
     const taxSystem = req.session?.tax_system || null;
+    const projParams       = taxSystem ? [taxSystem] : [];
     const projSystemClause = taxSystem
-      ? `AND (tax_system_filter = 'all' OR tax_system_filter = '${taxSystem}')`
+      ? `AND (tax_system_filter = 'all' OR tax_system_filter = $1)`
       : '';
     const { rows: taxRates } = await query(
-      `SELECT * FROM tax_rates WHERE is_active = 1 ${projSystemClause} ORDER BY name`
+      `SELECT * FROM tax_rates WHERE is_active = 1 ${projSystemClause} ORDER BY name`,
+      projParams
     );
 
     const { rows: receivables } = await query(

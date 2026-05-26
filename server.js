@@ -23,7 +23,7 @@ app.use(session({
 }));
 
 // ── Role levels ───────────────────────────────────────────────────────────────
-const ROLE_LEVELS = { staff: 1, manager: 2, finance: 3, admin: 2, super_admin: 5 };
+const ROLE_LEVELS = { staff: 1, manager: 2, finance: 3, admin: 4, super_admin: 5 };
 
 function userRole(req)  { return req.session.user?.role  || 'staff'; }
 function userLevel(req) { return ROLE_LEVELS[userRole(req)] || 0; }

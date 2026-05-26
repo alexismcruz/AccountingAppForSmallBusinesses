@@ -225,6 +225,7 @@ router.put('/:id', async (req, res) => {
 
 // Replenish stock
 router.post('/:id/replenish', async (req, res) => {
+  const user = req.session.user;
   try {
     const { rows: [item] } = await query('SELECT * FROM inventory_items WHERE id = $1', [req.params.id]);
     if (!item) return res.status(404).json({ error: 'Item not found' });
@@ -254,10 +255,14 @@ router.post('/:id/replenish', async (req, res) => {
       );
 
       const { rows: [entry] } = await client.query(
-        'INSERT INTO journal_entries (date, reference, description, status, currency, exchange_rate, entry_type) VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING id',
+        `INSERT INTO journal_entries
+           (date, reference, description, status, currency, exchange_rate, entry_type,
+            created_by_email, created_by_name, created_by_role)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING id`,
         [date || new Date().toISOString().split('T')[0], reference,
          `Stock replenishment: ${item.name} (${quantity} ${item.unit})`,
-         'posted', cur, rate, 'regular']
+         'posted', cur, rate, 'regular',
+         user?.email || 'system', user?.name || 'System', user?.role || 'staff']
       );
       await client.query(
         'INSERT INTO journal_lines (entry_id, account_id, debit, credit, notes, base_debit, base_credit) VALUES ($1,$2,$3,$4,$5,$6,$7)',
