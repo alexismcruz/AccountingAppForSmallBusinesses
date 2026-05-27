@@ -27,11 +27,36 @@ router.get('/', async (req, res) => {
     const has_city_tax             = req.session?.has_city_tax             ?? false;
     const city_tax_rate            = parseFloat(req.session?.city_tax_rate) || 0;
     const default_filing_frequency = req.session?.default_filing_frequency  || 'monthly';
+
+    // Parse enabled_modules — default to all on if column missing or null
+    const ALL_MODULES = ['hr', 'inventory', 'payments', 'tax'];
+    let enabled_modules = ALL_MODULES;
+    try {
+      if (settings?.enabled_modules) enabled_modules = JSON.parse(settings.enabled_modules);
+    } catch (_) {}
+
     res.json({
       ...settings, tax_system, business_type, currency, currency_symbol,
       vat_exempt, has_state_tax, state_tax_rate, has_city_tax, city_tax_rate, default_filing_frequency,
       sandboxMode: !!process.env.SANDBOX_MODE,
+      enabled_modules,
     });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── PUT /api/settings/modules — super_admin only ──────────────────────────────
+router.put('/modules', async (req, res) => {
+  if (req.session?.user?.role !== 'super_admin')
+    return res.status(403).json({ error: 'Forbidden — super_admin only' });
+  const { enabled_modules } = req.body;
+  if (!Array.isArray(enabled_modules))
+    return res.status(400).json({ error: 'enabled_modules must be an array' });
+  try {
+    await query(
+      `UPDATE business_settings SET enabled_modules=$1, updated_at=NOW() WHERE id=1`,
+      [JSON.stringify(enabled_modules)]
+    );
+    res.json({ success: true, enabled_modules });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 

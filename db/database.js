@@ -155,6 +155,13 @@ async function initDB() {
     )
   `);
 
+  // ── Module flags — add column if it doesn't exist yet ──────────────────────
+  await pool.query(`
+    ALTER TABLE business_settings
+    ADD COLUMN IF NOT EXISTS enabled_modules TEXT
+      DEFAULT '["hr","inventory","payments","tax"]'
+  `);
+
   // ── Tax tables ──────────────────────────────────────────────────────────────
   await pool.query(`
     CREATE TABLE IF NOT EXISTS tax_rates (

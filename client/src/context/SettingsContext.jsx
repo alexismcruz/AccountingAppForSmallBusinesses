@@ -22,8 +22,16 @@ export function SettingsProvider({ children }) {
     return `${sym}${abs.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   };
 
+  // Returns true if the given module is enabled for this tenant.
+  // Defaults to true when enabled_modules hasn't loaded yet (prevents flicker).
+  const hasModule = (key) => {
+    const mods = settings.enabled_modules;
+    if (!mods || !Array.isArray(mods)) return true;
+    return mods.includes(key);
+  };
+
   return (
-    <SettingsContext.Provider value={{ settings, setSettings, fmt }}>
+    <SettingsContext.Provider value={{ settings, setSettings, fmt, hasModule }}>
       {children}
     </SettingsContext.Provider>
   );

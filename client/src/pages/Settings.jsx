@@ -4,6 +4,33 @@ import { useUser } from '../context/UserContext.jsx';
 import { CURRENCIES } from '../data/currencies.js';
 import CharCount from '../components/CharCount.jsx';
 
+const TOGGLEABLE_MODULES = [
+  {
+    key:         'hr',
+    icon:        '👥',
+    label:       'HR & Payroll',
+    description: 'Employees, payroll runs, leave management, and BIR payroll forms',
+  },
+  {
+    key:         'inventory',
+    icon:        '📦',
+    label:       'Inventory',
+    description: 'Track stock levels, SKUs, reorder points, and inventory costs',
+  },
+  {
+    key:         'payments',
+    icon:        '💳',
+    label:       'Payments (AR / AP)',
+    description: 'Incoming receivables, pending payables, and payment schedules',
+  },
+  {
+    key:         'tax',
+    icon:        '🧾',
+    label:       'Tax',
+    description: 'Tax rates, applications, projections, and filing tracker',
+  },
+];
+
 export default function Settings() {
   const { settings, setSettings } = useSettings();
   const { user } = useUser();
@@ -11,6 +38,34 @@ export default function Settings() {
   const [msg, setMsg] = useState(null);
   const [saving, setSaving] = useState(false);
   const [resetting, setResetting] = useState(false);
+  const [moduleMsg, setModuleMsg] = useState(null);
+  const [moduleSaving, setModuleSaving] = useState(false);
+
+  // Derive current module list from live settings
+  const enabledModules = Array.isArray(settings.enabled_modules)
+    ? settings.enabled_modules
+    : ['hr', 'inventory', 'payments', 'tax'];
+
+  const handleModuleToggle = async (key) => {
+    const next = enabledModules.includes(key)
+      ? enabledModules.filter(m => m !== key)
+      : [...enabledModules, key];
+    setModuleSaving(true); setModuleMsg(null);
+    try {
+      const res = await fetch('/api/settings/modules', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ enabled_modules: next }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setModuleMsg({ type: 'error', text: data.error || 'Failed to update modules.' }); return; }
+      setSettings(s => ({ ...s, enabled_modules: data.enabled_modules }));
+      setModuleMsg({ type: 'success', text: '✓ Module settings updated.' });
+      setTimeout(() => setModuleMsg(null), 3000);
+    } catch { setModuleMsg({ type: 'error', text: 'Network error.' }); }
+    finally { setModuleSaving(false); }
+  };
 
   const handleCurrencyChange = (code) => {
     const cur = CURRENCIES.find(c => c.code === code);
@@ -158,6 +213,77 @@ export default function Settings() {
           ))}
         </div>
       </div>
+
+      {/* Module Management — super_admin only */}
+      {user?.role === 'super_admin' && (
+        <div className="card mt-16" style={{ maxWidth: 640 }}>
+          <div className="section-title">🧩 Module Management</div>
+          <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 16 }}>
+            Turn modules on or off for this account. Disabled modules are hidden from all users
+            immediately — no logout required.
+          </p>
+
+          {moduleMsg && (
+            <div className={`alert alert-${moduleMsg.type === 'error' ? 'error' : 'success'} mb-16`}>
+              {moduleMsg.text}
+            </div>
+          )}
+
+          {/* Always-on modules (locked) */}
+          <div style={{ marginBottom: 8, fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            Always included
+          </div>
+          {[
+            { icon: '🏠', label: 'Core Accounting',   description: 'Dashboard, journal entries, chart of accounts, reports, approvals' },
+            { icon: '✨', label: 'AI Chatbot',         description: 'AI accounting assistant — always available to all users' },
+          ].map(m => (
+            <div key={m.label} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '12px 0', borderBottom: '1px solid var(--border)' }}>
+              <span style={{ fontSize: 20, width: 28, textAlign: 'center' }}>{m.icon}</span>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontWeight: 600, fontSize: 13 }}>{m.label}</div>
+                <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{m.description}</div>
+              </div>
+              <span style={{ fontSize: 11, color: 'var(--success)', fontWeight: 600, background: '#dcfce7', padding: '2px 10px', borderRadius: 999 }}>
+                Always On
+              </span>
+            </div>
+          ))}
+
+          {/* Toggleable modules */}
+          <div style={{ marginTop: 16, marginBottom: 8, fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            Optional modules
+          </div>
+          {TOGGLEABLE_MODULES.map(m => {
+            const isOn = enabledModules.includes(m.key);
+            return (
+              <div key={m.key} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '12px 0', borderBottom: '1px solid var(--border)' }}>
+                <span style={{ fontSize: 20, width: 28, textAlign: 'center' }}>{m.icon}</span>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontWeight: 600, fontSize: 13 }}>{m.label}</div>
+                  <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{m.description}</div>
+                </div>
+                {/* Toggle switch */}
+                <button
+                  onClick={() => !moduleSaving && handleModuleToggle(m.key)}
+                  disabled={moduleSaving}
+                  title={isOn ? 'Click to disable' : 'Click to enable'}
+                  style={{
+                    width: 44, height: 24, borderRadius: 12, border: 'none', cursor: moduleSaving ? 'not-allowed' : 'pointer',
+                    background: isOn ? 'var(--primary)' : '#cbd5e1',
+                    position: 'relative', transition: 'background 0.2s', flexShrink: 0,
+                  }}
+                >
+                  <span style={{
+                    position: 'absolute', top: 3, left: isOn ? 23 : 3,
+                    width: 18, height: 18, borderRadius: '50%', background: '#fff',
+                    transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+                  }} />
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       {/* Sandbox reset — only shown in SANDBOX_MODE and only to super_admin */}
       {settings.sandboxMode && user?.role === 'super_admin' && (

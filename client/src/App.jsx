@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { SettingsProvider } from './context/SettingsContext.jsx';
+import { SettingsProvider, useSettings } from './context/SettingsContext.jsx';
 import { UserContext, makeUserContext } from './context/UserContext.jsx';
 import Layout from './components/Layout.jsx';
 import Login from './pages/Login.jsx';
@@ -21,6 +21,12 @@ import Payroll         from './pages/Payroll.jsx';
 import Leaves          from './pages/Leaves.jsx';
 import BIRForms        from './pages/BIRForms.jsx';
 import ChartOfAccounts from './pages/ChartOfAccounts.jsx';
+
+// Redirects to / if the required module is disabled for this tenant
+function ModuleGuard({ moduleKey, element }) {
+  const { hasModule } = useSettings();
+  return hasModule(moduleKey) ? element : <Navigate to="/" replace />;
+}
 
 export default function App() {
   const [authChecked, setAuthChecked] = useState(false);
@@ -51,10 +57,10 @@ export default function App() {
           <Routes>
             <Route path="/"                         element={<Dashboard />} />
             <Route path="/journal"                  element={<JournalEntries />} />
-            <Route path="/inventory"                element={<Inventory />} />
-            <Route path="/payments/incoming"        element={<Payments tab="incoming" />} />
-            <Route path="/payments/pending"         element={<Payments tab="pending" />} />
-            <Route path="/payments/schedule"        element={<PaymentSchedule />} />
+            <Route path="/inventory"                element={<ModuleGuard moduleKey="inventory" element={<Inventory />} />} />
+            <Route path="/payments/incoming"        element={<ModuleGuard moduleKey="payments"  element={<Payments tab="incoming" />} />} />
+            <Route path="/payments/pending"         element={<ModuleGuard moduleKey="payments"  element={<Payments tab="pending" />} />} />
+            <Route path="/payments/schedule"        element={<ModuleGuard moduleKey="payments"  element={<PaymentSchedule />} />} />
             <Route path="/reports/balance-sheet"    element={<Reports type="balance-sheet" />} />
             <Route path="/reports/income-statement" element={<Reports type="income-statement" />} />
             <Route path="/reports/trial-balance"    element={<Reports type="trial-balance" />} />
@@ -63,15 +69,15 @@ export default function App() {
             <Route path="/settings"                 element={<Settings />} />
             <Route path="/approvals"                element={<Approvals />} />
             <Route path="/logs"                     element={<Logs />} />
-            <Route path="/tax/rates"                element={<Tax tab="rates" />} />
-            <Route path="/tax/applications"         element={<Tax tab="applications" />} />
-            <Route path="/tax/projections"          element={<Tax tab="projections" />} />
-            <Route path="/tax/filings"              element={<Tax tab="filings" />} />
+            <Route path="/tax/rates"                element={<ModuleGuard moduleKey="tax" element={<Tax tab="rates" />} />} />
+            <Route path="/tax/applications"         element={<ModuleGuard moduleKey="tax" element={<Tax tab="applications" />} />} />
+            <Route path="/tax/projections"          element={<ModuleGuard moduleKey="tax" element={<Tax tab="projections" />} />} />
+            <Route path="/tax/filings"              element={<ModuleGuard moduleKey="tax" element={<Tax tab="filings" />} />} />
             <Route path="/opening-balance"          element={<OpeningBalance />} />
-            <Route path="/hr/employees"             element={<Employees />} />
-            <Route path="/hr/payroll"               element={<Payroll />} />
-            <Route path="/hr/leaves"                element={<Leaves />} />
-            <Route path="/hr/bir"                   element={<BIRForms />} />
+            <Route path="/hr/employees"             element={<ModuleGuard moduleKey="hr" element={<Employees />} />} />
+            <Route path="/hr/payroll"               element={<ModuleGuard moduleKey="hr" element={<Payroll />} />} />
+            <Route path="/hr/leaves"                element={<ModuleGuard moduleKey="hr" element={<Leaves />} />} />
+            <Route path="/hr/bir"                   element={<ModuleGuard moduleKey="hr" element={<BIRForms />} />} />
             <Route path="/accounts"                 element={<ChartOfAccounts />} />
             <Route path="*"                         element={<Navigate to="/" replace />} />
           </Routes>

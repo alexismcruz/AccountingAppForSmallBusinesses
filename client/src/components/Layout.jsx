@@ -145,7 +145,7 @@ function NavItem({ to, icon, label, sub, onNavigate, badge }) {
 }
 
 export default function Layout({ children, onLogout }) {
-  const { settings } = useSettings();
+  const { settings, hasModule } = useSettings();
   const { user, can } = useUser();
   const location = useLocation();
   const [reportsOpen,     setReportsOpen]     = useState(location.pathname.startsWith('/reports'));
@@ -220,67 +220,73 @@ export default function Layout({ children, onLogout }) {
           <NavItem to="/"          icon="🏠" label="Dashboard"       onNavigate={closeSidebar} />
           <NavItem to="/approvals" label="↳ Approvals" sub          onNavigate={closeSidebar} badge={pendingCount} />
           <NavItem to="/journal"   icon="📝" label="Journal Entries"  onNavigate={closeSidebar} />
-          <NavItem to="/inventory" icon="📦" label="Inventory"        onNavigate={closeSidebar} />
+          {hasModule('inventory') && <NavItem to="/inventory" icon="📦" label="Inventory" onNavigate={closeSidebar} />}
         </div>
 
-        <div className="nav-section">
-          <div className="nav-label">Payments</div>
-          <div
-            className={`nav-item ${paymentsOpen ? 'active' : ''}`}
-            onClick={() => setPaymentsOpen(o => !o)}
-            style={{ cursor: 'pointer' }}
-          >
-            <span className="nav-icon">💳</span>
-            <span style={{ flex: 1 }}>Payments</span>
-            <span style={{ fontSize: 10 }}>{paymentsOpen ? '▲' : '▼'}</span>
-          </div>
-          {paymentsOpen && (
-            <div>
-              <NavItem to="/payments/schedule" label="↳ Schedule"      sub onNavigate={closeSidebar} />
-              <NavItem to="/payments/incoming" label="↳ Incoming (AR)" sub onNavigate={closeSidebar} />
-              <NavItem to="/payments/pending"  label="↳ Pending (AP)"  sub onNavigate={closeSidebar} />
+        {hasModule('payments') && (
+          <div className="nav-section">
+            <div className="nav-label">Payments</div>
+            <div
+              className={`nav-item ${paymentsOpen ? 'active' : ''}`}
+              onClick={() => setPaymentsOpen(o => !o)}
+              style={{ cursor: 'pointer' }}
+            >
+              <span className="nav-icon">💳</span>
+              <span style={{ flex: 1 }}>Payments</span>
+              <span style={{ fontSize: 10 }}>{paymentsOpen ? '▲' : '▼'}</span>
             </div>
-          )}
-        </div>
+            {paymentsOpen && (
+              <div>
+                <NavItem to="/payments/schedule" label="↳ Schedule"      sub onNavigate={closeSidebar} />
+                <NavItem to="/payments/incoming" label="↳ Incoming (AR)" sub onNavigate={closeSidebar} />
+                <NavItem to="/payments/pending"  label="↳ Pending (AP)"  sub onNavigate={closeSidebar} />
+              </div>
+            )}
+          </div>
+        )}
 
-        <div className="nav-section">
-          <div className="nav-label">HR &amp; Payroll</div>
-          <div className={`nav-item ${hrOpen ? 'active' : ''}`}
-            onClick={() => setHrOpen(o => !o)} style={{ cursor:'pointer' }}>
-            <span className="nav-icon">👥</span>
-            <span style={{ flex:1 }}>HR &amp; Payroll</span>
-            <span style={{ fontSize:10 }}>{hrOpen ? '▲' : '▼'}</span>
-          </div>
-          {hrOpen && (
-            <div>
-              <NavItem to="/hr/employees" label="↳ Employees"       sub onNavigate={closeSidebar} />
-              <NavItem to="/hr/payroll"   label="↳ Payroll Runs"    sub onNavigate={closeSidebar} />
-              <NavItem to="/hr/leaves"    label="↳ Leave Management" sub onNavigate={closeSidebar} />
-              <NavItem to="/hr/bir"       label="↳ BIR Forms"        sub onNavigate={closeSidebar} />
+        {hasModule('hr') && (
+          <div className="nav-section">
+            <div className="nav-label">HR &amp; Payroll</div>
+            <div className={`nav-item ${hrOpen ? 'active' : ''}`}
+              onClick={() => setHrOpen(o => !o)} style={{ cursor:'pointer' }}>
+              <span className="nav-icon">👥</span>
+              <span style={{ flex:1 }}>HR &amp; Payroll</span>
+              <span style={{ fontSize:10 }}>{hrOpen ? '▲' : '▼'}</span>
             </div>
-          )}
-        </div>
+            {hrOpen && (
+              <div>
+                <NavItem to="/hr/employees" label="↳ Employees"        sub onNavigate={closeSidebar} />
+                <NavItem to="/hr/payroll"   label="↳ Payroll Runs"     sub onNavigate={closeSidebar} />
+                <NavItem to="/hr/leaves"    label="↳ Leave Management" sub onNavigate={closeSidebar} />
+                <NavItem to="/hr/bir"       label="↳ BIR Forms"        sub onNavigate={closeSidebar} />
+              </div>
+            )}
+          </div>
+        )}
 
-        <div className="nav-section">
-          <div className="nav-label">Tax</div>
-          <div
-            className={`nav-item ${taxOpen ? 'active' : ''}`}
-            onClick={() => setTaxOpen(o => !o)}
-            style={{ cursor: 'pointer' }}
-          >
-            <span className="nav-icon">🧾</span>
-            <span style={{ flex: 1 }}>Tax</span>
-            <span style={{ fontSize: 10 }}>{taxOpen ? '▲' : '▼'}</span>
-          </div>
-          {taxOpen && (
-            <div>
-              <NavItem to="/tax/rates"        label="↳ Tax Rates"       sub onNavigate={closeSidebar} />
-              <NavItem to="/tax/applications" label="↳ Applications"    sub onNavigate={closeSidebar} />
-              <NavItem to="/tax/projections"  label="↳ Projections"     sub onNavigate={closeSidebar} />
-              <NavItem to="/tax/filings"      label="↳ Filing Tracker"  sub onNavigate={closeSidebar} />
+        {hasModule('tax') && (
+          <div className="nav-section">
+            <div className="nav-label">Tax</div>
+            <div
+              className={`nav-item ${taxOpen ? 'active' : ''}`}
+              onClick={() => setTaxOpen(o => !o)}
+              style={{ cursor: 'pointer' }}
+            >
+              <span className="nav-icon">🧾</span>
+              <span style={{ flex: 1 }}>Tax</span>
+              <span style={{ fontSize: 10 }}>{taxOpen ? '▲' : '▼'}</span>
             </div>
-          )}
-        </div>
+            {taxOpen && (
+              <div>
+                <NavItem to="/tax/rates"        label="↳ Tax Rates"      sub onNavigate={closeSidebar} />
+                <NavItem to="/tax/applications" label="↳ Applications"   sub onNavigate={closeSidebar} />
+                <NavItem to="/tax/projections"  label="↳ Projections"    sub onNavigate={closeSidebar} />
+                <NavItem to="/tax/filings"      label="↳ Filing Tracker" sub onNavigate={closeSidebar} />
+              </div>
+            )}
+          </div>
+        )}
 
         <div className="nav-section">
           <div className="nav-label">Reports</div>
