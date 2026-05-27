@@ -459,6 +459,18 @@ async function initDB() {
     )
   `);
 
+  // ── Performance indexes ────────────────────────────────────────────────────
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_je_date       ON journal_entries (date DESC)`);
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_je_status     ON journal_entries (status)`);
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_jl_entry_id   ON journal_lines (entry_id)`);
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_recv_status   ON receivables (status)`);
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_recv_due_date ON receivables (due_date)`);
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_pay_status    ON payables (status)`);
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_pay_due_date  ON payables (due_date)`);
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_inv_sku       ON inventory_items (sku)`);
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_accounts_code ON accounts (code)`);
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_audit_logs_ts ON audit_logs (created_at DESC)`);
+
   // ── Seed accounts if table is empty ────────────────────────────────────────
   const { rowCount: accountCount } = await pool.query('SELECT 1 FROM accounts LIMIT 1');
   if (accountCount === 0) await seedAccounts();

@@ -71,6 +71,9 @@ const DRAFT_TOOL = {
 
 router.post('/message', async (req, res) => {
   try {
+    if (!process.env.ANTHROPIC_API_KEY)
+      return res.status(503).json({ error: 'The AI assistant is not configured. Please contact your administrator.' });
+
     const { messages } = req.body;
     const user = req.session?.user;
     if (!user)            return res.status(401).json({ error: 'Not authenticated' });
@@ -187,9 +190,7 @@ ${'─'.repeat(65)}`;
 
   } catch (err) {
     console.error('Chatbot /message error:', err);
-    // Return the real error message so it's visible in the chat widget
-    const detail = err?.message || String(err);
-    res.status(500).json({ error: `Assistant error: ${detail}` });
+    res.status(500).json({ error: 'The assistant is temporarily unavailable. Please try again in a moment.' });
   }
 });
 

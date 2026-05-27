@@ -112,20 +112,37 @@ router.post('/import/csv', async (req, res) => {
 
       if (!entriesMap.has(r.reference)) {
         if (!r.date) { errors.push(`Row ${lineNum}: missing date`); continue; }
+
+        let exchangeRate = 1.0;
+        if (r.exchange_rate !== undefined && r.exchange_rate !== '') {
+          const parsed = Number(r.exchange_rate);
+          if (!isFinite(parsed) || parsed <= 0) {
+            errors.push(`Row ${lineNum}: invalid exchange_rate "${r.exchange_rate}" — must be a positive number`);
+            continue;
+          }
+          exchangeRate = parsed;
+        }
+
         entriesMap.set(r.reference, {
           date: r.date, reference: r.reference,
           description: r.description || r.reference,
           entry_type: r.entry_type || 'regular',
           currency: r.currency || 'USD',
-          exchange_rate: parseFloat(r.exchange_rate) || 1.0,
+          exchange_rate: exchangeRate,
           lines: [],
         });
       }
+
+      const debitN  = Number(r.debit  === '' || r.debit  === undefined ? '0' : r.debit);
+      const creditN = Number(r.credit === '' || r.credit === undefined ? '0' : r.credit);
+      if (!isFinite(debitN)  || debitN  < 0) { errors.push(`Row ${lineNum}: invalid debit "${r.debit}" — must be a non-negative number`);  continue; }
+      if (!isFinite(creditN) || creditN < 0) { errors.push(`Row ${lineNum}: invalid credit "${r.credit}" — must be a non-negative number`); continue; }
+
       entriesMap.get(r.reference).lines.push({
         account_id: byCode[r.account_code],
-        debit: parseFloat(r.debit) || 0,
-        credit: parseFloat(r.credit) || 0,
-        notes: r.line_notes || null,
+        debit:  debitN,
+        credit: creditN,
+        notes:  r.line_notes || null,
       });
     }
 
@@ -167,30 +184,42 @@ router.post('/import/csv', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// ── Get all entries ──────────────────────────────────────────────────────────
+// ── Get all entries (paginated) ──────────────────────────────────────────────
 
 router.get('/', async (req, res) => {
-  const { from, to, search } = req.query;
+  const { from, to, search, page, limit } = req.query;
+  const PAGE_SIZE   = Math.min(parseInt(limit) || 50, 200);
+  const currentPage = Math.max(1, parseInt(page) || 1);
+  const offset      = (currentPage - 1) * PAGE_SIZE;
+
   const params = [];
   let idx = 1;
-  let sql = `
-    SELECT je.*, COALESCE(SUM(jl.debit), 0) as total_amount
-    FROM journal_entries je
-    LEFT JOIN journal_lines jl ON je.id = jl.entry_id
-    WHERE 1=1
-  `;
-  if (from)   { sql += ` AND je.date >= $${idx++}`; params.push(from); }
-  if (to)     { sql += ` AND je.date <= $${idx++}`; params.push(to); }
+  let where = 'WHERE 1=1';
+  if (from)   { where += ` AND je.date >= $${idx++}`; params.push(from); }
+  if (to)     { where += ` AND je.date <= $${idx++}`; params.push(to); }
   if (search) {
-    sql += ` AND (je.description ILIKE $${idx} OR je.reference ILIKE $${idx+1})`;
+    where += ` AND (je.description ILIKE $${idx} OR je.reference ILIKE $${idx + 1})`;
     params.push(`%${search}%`, `%${search}%`);
     idx += 2;
   }
-  sql += ' GROUP BY je.id ORDER BY je.date DESC, je.id DESC';
+
+  const countSql = `SELECT COUNT(DISTINCT je.id) AS total FROM journal_entries je ${where}`;
+  const dataSql  = `
+    SELECT je.*, COALESCE(SUM(jl.debit), 0) AS total_amount
+    FROM journal_entries je
+    LEFT JOIN journal_lines jl ON je.id = jl.entry_id
+    ${where}
+    GROUP BY je.id ORDER BY je.date DESC, je.id DESC
+    LIMIT $${idx} OFFSET $${idx + 1}
+  `;
 
   try {
-    const { rows } = await query(sql, params);
-    res.json(rows);
+    const [{ rows }, { rows: countRows }] = await Promise.all([
+      query(dataSql,  [...params, PAGE_SIZE, offset]),
+      query(countSql, params),
+    ]);
+    const total = parseInt(countRows[0].total);
+    res.json({ rows, total, page: currentPage, pageSize: PAGE_SIZE, totalPages: Math.ceil(total / PAGE_SIZE) });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 

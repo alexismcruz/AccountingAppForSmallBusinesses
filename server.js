@@ -2,7 +2,8 @@ require('dotenv').config();          // load .env into process.env
 const express = require('express');
 const cors    = require('cors');
 const path    = require('path');
-const session = require('express-session');
+const session   = require('express-session');
+const pgSession  = require('connect-pg-simple')(session);
 const { initDB, query, pool } = require('./db/database');
 
 const app  = express();
@@ -13,13 +14,18 @@ app.use(cors({ origin: ['http://localhost:5173', 'http://localhost:3001'], crede
 app.use(express.json());
 
 app.use(session({
-  secret: process.env.SESSION_SECRET || 'dev-secret-change-in-production',
-  resave: false,
+  store: new pgSession({
+    pool,
+    tableName:            'user_sessions',
+    createTableIfMissing: true,
+  }),
+  secret:            process.env.SESSION_SECRET || 'dev-secret-change-in-production',
+  resave:            false,
   saveUninitialized: false,
   cookie: {
-    secure: process.env.NODE_ENV === 'production',
+    secure:  process.env.NODE_ENV === 'production',
     httpOnly: true,
-    maxAge: 7 * 24 * 60 * 60 * 1000,
+    maxAge:  7 * 24 * 60 * 60 * 1000,
   },
 }));
 

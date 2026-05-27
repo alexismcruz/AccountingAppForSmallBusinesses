@@ -288,6 +288,9 @@ export default function JournalEntries() {
   const [loading,      setLoading]      = useState(false);
   const [msg,          setMsg]          = useState(null);
   const [filters,      setFilters]      = useState({ from: '', to: '', search: '' });
+  const [page,         setPage]         = useState(1);
+  const [totalPages,   setTotalPages]   = useState(1);
+  const [totalEntries, setTotalEntries] = useState(0);
 
   // action modals
   const [submitModal,   setSubmitModal]   = useState(null);
@@ -306,12 +309,21 @@ export default function JournalEntries() {
   useEffect(() => { loadAccounts(); loadEntries(); }, []);
   useEffect(() => { if (showForm) loadNextRef(); }, [showForm]);
 
-  const loadEntries = () => {
+  const loadEntries = (pg = 1) => {
     const q = new URLSearchParams();
     if (filters.from)   q.set('from',   filters.from);
     if (filters.to)     q.set('to',     filters.to);
     if (filters.search) q.set('search', filters.search);
-    fetch(`/api/entries?${q}`).then(r => r.json()).then(setEntries).catch(() => {});
+    q.set('page', pg);
+    fetch(`/api/entries?${q}`)
+      .then(r => r.json())
+      .then(data => {
+        setEntries(data.rows || []);
+        setTotalPages(data.totalPages || 1);
+        setTotalEntries(data.total || 0);
+        setPage(pg);
+      })
+      .catch(() => {});
   };
 
   const loadAccounts = () =>
@@ -402,7 +414,7 @@ export default function JournalEntries() {
       setMsg({ type: 'success', text: successText });
       resetForm();
       setShowForm(false);
-      loadEntries();
+      loadEntries(1);
     } catch { setMsg({ type: 'error', text: 'Network error. Is the server running?' }); }
     finally { setLoading(false); }
   };
@@ -424,7 +436,7 @@ export default function JournalEntries() {
         ? `Entry "${entry.reference}" deleted.`
         : `Entry "${entry.reference}" cancelled.`;
     setMsg({ type: 'success', text: okText });
-    loadEntries();
+    loadEntries(page);
     if (expandedId === entry.id) setExpandedId(null);
   };
 
@@ -435,7 +447,7 @@ export default function JournalEntries() {
     const data = await res.json();
     if (res.ok) {
       setMsg({ type: 'success', text: `Entry "${entry.reference}" recalled to draft.` });
-      loadEntries();
+      loadEntries(page);
     } else {
       setMsg({ type: 'error', text: data.error });
     }
@@ -461,17 +473,17 @@ export default function JournalEntries() {
         <SubmitModal
           entry={submitModal}
           onClose={() => setSubmitModal(null)}
-          onDone={text => { setMsg({ type: 'success', text }); loadEntries(); }}
+          onDone={text => { setMsg({ type: 'success', text }); loadEntries(page); }}
         />
       )}
       {deletionModal && (
         <DeletionModal
           entry={deletionModal}
           onClose={() => setDeletionModal(null)}
-          onDone={text => { setMsg({ type: 'success', text }); loadEntries(); }}
+          onDone={text => { setMsg({ type: 'success', text }); loadEntries(page); }}
         />
       )}
-      {showImport && <ImportModal onClose={() => setShowImport(false)} onImported={loadEntries} />}
+      {showImport && <ImportModal onClose={() => setShowImport(false)} onImported={() => loadEntries(1)} />}
 
       {/* ── Page header ───────────────────────────────────────────────────── */}
       <div className="page-header">
@@ -705,16 +717,22 @@ export default function JournalEntries() {
             <input type="date" className="form-input" value={filters.to}
               onChange={e => setFilters(f => ({ ...f, to: e.target.value }))} />
           </div>
-          <button className="btn btn-primary" onClick={loadEntries}>Filter</button>
+          <button className="btn btn-primary" onClick={() => loadEntries(1)}>Filter</button>
           <button className="btn btn-ghost" onClick={() => {
             setFilters({ from: '', to: '', search: '' });
-            setTimeout(loadEntries, 50);
+            setTimeout(() => loadEntries(1), 50);
           }}>Clear</button>
         </div>
       </div>
 
       {/* ── Entries List ──────────────────────────────────────────────────── */}
       <div className="card">
+        {totalEntries > 0 && (
+          <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 12 }}>
+            {totalEntries} {totalEntries === 1 ? 'entry' : 'entries'} found
+            {totalPages > 1 && ` — page ${page} of ${totalPages}`}
+          </div>
+        )}
         {entries.length === 0 ? (
           <div className="empty-state">
             <div className="empty-state-icon">📝</div>
@@ -846,6 +864,24 @@ export default function JournalEntries() {
                 })}
               </tbody>
             </table>
+          </div>
+        )}
+
+        {/* ── Pagination controls ───────────────────────────────────────── */}
+        {totalPages > 1 && (
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 16, marginTop: 8, borderTop: '1px solid var(--border)' }}>
+            <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+              Showing {((page - 1) * 50) + 1}–{Math.min(page * 50, totalEntries)} of {totalEntries}
+            </span>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <button className="btn btn-ghost btn-sm" disabled={page <= 1} onClick={() => loadEntries(page - 1)}>
+                ← Prev
+              </button>
+              <span style={{ fontSize: 13 }}>Page {page} of {totalPages}</span>
+              <button className="btn btn-ghost btn-sm" disabled={page >= totalPages} onClick={() => loadEntries(page + 1)}>
+                Next →
+              </button>
+            </div>
           </div>
         )}
       </div>

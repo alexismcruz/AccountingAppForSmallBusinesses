@@ -112,6 +112,11 @@ router.post('/receivables/import/csv', async (req, res) => {
     const r = rows[i];
     if (!r.customer_name) errors.push(`Row ${i+2}: missing customer_name`);
     if (!r.amount || isNaN(parseFloat(r.amount))) errors.push(`Row ${i+2}: invalid amount`);
+    if (r.exchange_rate !== undefined && r.exchange_rate !== '') {
+      const rate = Number(r.exchange_rate);
+      if (!isFinite(rate) || rate <= 0)
+        errors.push(`Row ${i+2}: invalid exchange_rate "${r.exchange_rate}" — must be a positive number`);
+    }
     if (r.tax_rate_code) {
       const code = r.tax_rate_code.trim().toUpperCase();
       if (!taxRateCache[code]) {
@@ -130,6 +135,8 @@ router.post('/receivables/import/csv', async (req, res) => {
     const imported = [], skipped = [];
     for (const r of rows) {
       try {
+        const exchangeRate = (r.exchange_rate && isFinite(Number(r.exchange_rate)) && Number(r.exchange_rate) > 0)
+          ? Number(r.exchange_rate) : 1.0;
         const { rows: [rec] } = await query(
           `INSERT INTO receivables
              (customer_name, invoice_number, description, amount, currency, exchange_rate, due_date, scheduled_date)
@@ -137,7 +144,7 @@ router.post('/receivables/import/csv', async (req, res) => {
           [r.customer_name,
            r.invoice_number || `INV-${Date.now()}-${Math.random().toString(36).slice(2,6)}`,
            r.description || '', parseFloat(r.amount),
-           r.currency || 'USD', parseFloat(r.exchange_rate) || 1.0,
+           r.currency || 'USD', exchangeRate,
            r.due_date || null, r.scheduled_date || null]
         );
 
@@ -214,6 +221,11 @@ router.post('/payables/import/csv', async (req, res) => {
     const r = rows[i];
     if (!r.supplier_name) errors.push(`Row ${i+2}: missing supplier_name`);
     if (!r.amount || isNaN(parseFloat(r.amount))) errors.push(`Row ${i+2}: invalid amount`);
+    if (r.exchange_rate !== undefined && r.exchange_rate !== '') {
+      const rate = Number(r.exchange_rate);
+      if (!isFinite(rate) || rate <= 0)
+        errors.push(`Row ${i+2}: invalid exchange_rate "${r.exchange_rate}" — must be a positive number`);
+    }
     if (r.tax_rate_code) {
       const code = r.tax_rate_code.trim().toUpperCase();
       if (!taxRateCache[code]) {
@@ -232,12 +244,14 @@ router.post('/payables/import/csv', async (req, res) => {
     const imported = [], skipped = [];
     for (const r of rows) {
       try {
+        const exchangeRate = (r.exchange_rate && isFinite(Number(r.exchange_rate)) && Number(r.exchange_rate) > 0)
+          ? Number(r.exchange_rate) : 1.0;
         const { rows: [pay] } = await query(
           `INSERT INTO payables
              (supplier_name, reference_number, description, amount, currency, exchange_rate, due_date, scheduled_date)
            VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id`,
           [r.supplier_name, r.reference_number || '', r.description || '',
-           parseFloat(r.amount), r.currency || 'USD', parseFloat(r.exchange_rate) || 1.0,
+           parseFloat(r.amount), r.currency || 'USD', exchangeRate,
            r.due_date || null, r.scheduled_date || null]
         );
 
