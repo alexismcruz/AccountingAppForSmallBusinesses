@@ -51,7 +51,7 @@ export default function Login({ onLogin }) {
         <div style={{ textAlign: 'center', marginBottom: 36 }}>
           <div style={{ fontSize: 48, marginBottom: 14 }}>📊</div>
           <div style={{ fontWeight: 800, fontSize: 22, color: '#1e3a8a', letterSpacing: '-0.02em' }}>
-            Business Accounting
+            CuentaIQ
           </div>
           <div style={{ color: '#6b7280', fontSize: 14, marginTop: 6 }}>
             Sign in to access your books

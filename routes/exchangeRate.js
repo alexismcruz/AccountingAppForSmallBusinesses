@@ -12,7 +12,7 @@ router.get('/', async (req, res) => {
 
   try {
     const response = await fetch(url, {
-      headers: { 'Accept': 'application/json', 'User-Agent': 'SmallBusinessAccountingApp/1.0' },
+      headers: { 'Accept': 'application/json', 'User-Agent': 'CuentaIQ/1.0' },
     });
     const json = await response.json();
 

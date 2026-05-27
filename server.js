@@ -225,7 +225,7 @@ if (process.env.NODE_ENV === 'production') {
 
     app.listen(PORT, () => {
       console.log('\n====================================');
-      console.log('  Small Business Accounting App');
+      console.log('  CuentaIQ');
       console.log('====================================');
       console.log(`\n  API Server: http://localhost:${PORT}/api`);
       const mode = process.env.UAM_URL ? `UAM (${process.env.UAM_URL})` : 'Single password (APP_PASSWORD)';

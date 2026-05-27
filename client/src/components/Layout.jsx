@@ -213,7 +213,7 @@ export default function Layout({ children, onLogout }) {
       <nav className={`sidebar${sidebarOpen ? ' sidebar-open' : ''}`}>
         <div className="sidebar-logo">
           <h2>📊 {settings.business_name || 'My Business'}</h2>
-          <p>Accounting System</p>
+          <p>CuentaIQ</p>
         </div>
 
         <div className="nav-section">

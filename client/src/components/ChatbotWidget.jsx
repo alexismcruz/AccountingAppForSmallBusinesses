@@ -402,7 +402,7 @@ export default function ChatbotWidget() {
             </div>
             <div style={{ flex: 1 }}>
               <div style={{ color: '#fff', fontWeight: 700, fontSize: 14, lineHeight: 1.2 }}>
-                Accounting Assistant
+                CuentaIQ Assistant
               </div>
               <div style={{ color: '#bfdbfe', fontSize: 11, marginTop: 1 }}>
                 Powered by Claude · Ask me to record any transaction
@@ -509,7 +509,7 @@ export default function ChatbotWidget() {
       {/* ── Floating Bubble Button ── */}
       <button
         onClick={() => setOpen(o => !o)}
-        title="Accounting Assistant"
+        title="CuentaIQ Assistant"
         style={{
           position: 'fixed', bottom: 24, right: 24, zIndex: 1001,
           width: 58, height: 58, borderRadius: '50%',
