@@ -11,7 +11,10 @@ const PORT = process.env.PORT || 3001;
 
 app.set('trust proxy', 1);
 app.use(cors({ origin: ['http://localhost:5173', 'http://localhost:3001'], credentials: true }));
-app.use(express.json());
+// Capture raw body for webhook signature verification before JSON parsing
+app.use(express.json({
+  verify: (req, _res, buf) => { req.rawBody = buf; },
+}));
 
 app.use(session({
   store: new pgSession({
@@ -59,6 +62,9 @@ function validatePasswordStrength(password) {
     return 'Password must contain at least one special character (e.g. !@#$%)';
   return null;
 }
+
+// ── Public webhook receiver (HMAC-verified, no session needed) ───────────────
+app.use('/api/webhooks', require('./routes/webhooks'));
 
 // ── Auth routes (public) ──────────────────────────────────────────────────────
 app.post('/api/auth/login', async (req, res) => {
@@ -204,6 +210,7 @@ app.use('/api/employees',       require('./routes/employees'));
 app.use('/api/payroll',         require('./routes/payroll'));
 app.use('/api/leaves',          require('./routes/leaves'));
 app.use('/api/chatbot',         require('./routes/chatbot'));
+app.use('/api/integrations',    require('./routes/integrations/index'));
 
 // ── Serve built React app in production ──────────────────────────────────────
 if (process.env.NODE_ENV === 'production') {

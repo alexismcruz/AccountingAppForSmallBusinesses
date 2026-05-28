@@ -459,6 +459,20 @@ async function initDB() {
     )
   `);
 
+  // ── Integrations ───────────────────────────────────────────────────────────
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS integrations (
+      id           SERIAL PRIMARY KEY,
+      provider     VARCHAR(50) NOT NULL UNIQUE,
+      enabled      BOOLEAN     DEFAULT false,
+      credentials  JSONB       DEFAULT '{}',
+      settings     JSONB       DEFAULT '{}',
+      last_sync_at TIMESTAMPTZ,
+      created_at   TIMESTAMPTZ DEFAULT NOW(),
+      updated_at   TIMESTAMPTZ DEFAULT NOW()
+    )
+  `);
+
   // ── Performance indexes ────────────────────────────────────────────────────
   await pool.query(`CREATE INDEX IF NOT EXISTS idx_je_date       ON journal_entries (date DESC)`);
   await pool.query(`CREATE INDEX IF NOT EXISTS idx_je_status     ON journal_entries (status)`);

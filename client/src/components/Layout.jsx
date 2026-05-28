@@ -191,6 +191,7 @@ export default function Layout({ children, onLogout }) {
     '/hr/leaves':                'Leave Management',
     '/hr/bir':                   'BIR Forms',
     '/accounts':                 'Chart of Accounts',
+    '/integrations':             'Integrations',
     '/approvals':                'Approvals',
     '/logs':                     'Audit Logs',
     '/tax/rates':                'Tax Rates',
@@ -322,6 +323,12 @@ export default function Layout({ children, onLogout }) {
         {can('finance') && (
           <div className="nav-section">
             <NavItem to="/accounts" icon="📒" label="Chart of Accounts" onNavigate={closeSidebar} />
+          </div>
+        )}
+
+        {can('admin') && (
+          <div className="nav-section">
+            <NavItem to="/integrations" icon="🔗" label="Integrations" onNavigate={closeSidebar} />
           </div>
         )}
 

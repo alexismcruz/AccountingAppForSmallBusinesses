@@ -21,6 +21,7 @@ import Payroll         from './pages/Payroll.jsx';
 import Leaves          from './pages/Leaves.jsx';
 import BIRForms        from './pages/BIRForms.jsx';
 import ChartOfAccounts from './pages/ChartOfAccounts.jsx';
+import Integrations    from './pages/Integrations.jsx';
 
 // Redirects to / if the required module is disabled for this tenant
 function ModuleGuard({ moduleKey, element }) {
@@ -79,6 +80,7 @@ export default function App() {
             <Route path="/hr/leaves"                element={<ModuleGuard moduleKey="hr" element={<Leaves />} />} />
             <Route path="/hr/bir"                   element={<ModuleGuard moduleKey="hr" element={<BIRForms />} />} />
             <Route path="/accounts"                 element={<ChartOfAccounts />} />
+            <Route path="/integrations"             element={<Integrations />} />
             <Route path="*"                         element={<Navigate to="/" replace />} />
           </Routes>
         </Layout>
