@@ -473,6 +473,32 @@ async function initDB() {
     )
   `);
 
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS recurring_invoices (
+      id               SERIAL PRIMARY KEY,
+      customer_name    TEXT NOT NULL,
+      description      TEXT,
+      amount           DOUBLE PRECISION NOT NULL,
+      currency         TEXT    DEFAULT 'PHP',
+      exchange_rate    DOUBLE PRECISION DEFAULT 1.0,
+      frequency        TEXT    NOT NULL CHECK (frequency IN ('weekly','monthly','quarterly','annually')),
+      day_of_month     INTEGER,
+      due_days         INTEGER DEFAULT 30,
+      invoice_prefix   TEXT    DEFAULT 'REC',
+      start_date       TEXT    NOT NULL,
+      end_date         TEXT,
+      next_run_date    TEXT    NOT NULL,
+      last_run_date    TEXT,
+      run_count        INTEGER DEFAULT 0,
+      is_active        BOOLEAN DEFAULT true,
+      notes            TEXT,
+      created_by_email TEXT,
+      created_by_name  TEXT,
+      created_at       TIMESTAMPTZ DEFAULT NOW(),
+      updated_at       TIMESTAMPTZ DEFAULT NOW()
+    )
+  `);
+
   // ── Performance indexes ────────────────────────────────────────────────────
   await pool.query(`CREATE INDEX IF NOT EXISTS idx_je_date       ON journal_entries (date DESC)`);
   await pool.query(`CREATE INDEX IF NOT EXISTS idx_je_status     ON journal_entries (status)`);

@@ -210,7 +210,8 @@ app.use('/api/employees',       require('./routes/employees'));
 app.use('/api/payroll',         require('./routes/payroll'));
 app.use('/api/leaves',          require('./routes/leaves'));
 app.use('/api/chatbot',         require('./routes/chatbot'));
-app.use('/api/integrations',    require('./routes/integrations/index'));
+app.use('/api/integrations',       require('./routes/integrations/index'));
+app.use('/api/recurring-invoices', require('./routes/recurringInvoices'));
 
 // ── Serve built React app in production ──────────────────────────────────────
 if (process.env.NODE_ENV === 'production') {

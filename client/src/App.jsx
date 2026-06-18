@@ -21,7 +21,8 @@ import Payroll         from './pages/Payroll.jsx';
 import Leaves          from './pages/Leaves.jsx';
 import BIRForms        from './pages/BIRForms.jsx';
 import ChartOfAccounts from './pages/ChartOfAccounts.jsx';
-import Integrations    from './pages/Integrations.jsx';
+import Integrations        from './pages/Integrations.jsx';
+import RecurringInvoices   from './pages/RecurringInvoices.jsx';
 
 // Redirects to / if the required module is disabled for this tenant
 function ModuleGuard({ moduleKey, element }) {
@@ -62,6 +63,7 @@ export default function App() {
             <Route path="/payments/incoming"        element={<ModuleGuard moduleKey="payments"  element={<Payments tab="incoming" />} />} />
             <Route path="/payments/pending"         element={<ModuleGuard moduleKey="payments"  element={<Payments tab="pending" />} />} />
             <Route path="/payments/schedule"        element={<ModuleGuard moduleKey="payments"  element={<PaymentSchedule />} />} />
+            <Route path="/payments/recurring"       element={<ModuleGuard moduleKey="payments"  element={<RecurringInvoices />} />} />
             <Route path="/reports/balance-sheet"    element={<Reports type="balance-sheet" />} />
             <Route path="/reports/income-statement" element={<Reports type="income-statement" />} />
             <Route path="/reports/trial-balance"    element={<Reports type="trial-balance" />} />

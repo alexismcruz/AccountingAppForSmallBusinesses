@@ -179,6 +179,7 @@ export default function Layout({ children, onLogout }) {
     '/payments/incoming':        'Incoming Payments',
     '/payments/pending':         'Pending Payments',
     '/payments/schedule':        'Payment Schedule',
+    '/payments/recurring':       'Recurring Invoices',
     '/reports/balance-sheet':    'Balance Sheet',
     '/reports/income-statement': 'Income Statement',
     '/reports/trial-balance':    'Trial Balance',
@@ -238,9 +239,10 @@ export default function Layout({ children, onLogout }) {
             </div>
             {paymentsOpen && (
               <div>
-                <NavItem to="/payments/schedule" label="↳ Schedule"      sub onNavigate={closeSidebar} />
-                <NavItem to="/payments/incoming" label="↳ Incoming (AR)" sub onNavigate={closeSidebar} />
-                <NavItem to="/payments/pending"  label="↳ Pending (AP)"  sub onNavigate={closeSidebar} />
+                <NavItem to="/payments/schedule"   label="↳ Schedule"      sub onNavigate={closeSidebar} />
+                <NavItem to="/payments/incoming"  label="↳ Incoming (AR)" sub onNavigate={closeSidebar} />
+                <NavItem to="/payments/pending"   label="↳ Pending (AP)"  sub onNavigate={closeSidebar} />
+                <NavItem to="/payments/recurring" label="↳ Recurring"     sub onNavigate={closeSidebar} />
               </div>
             )}
           </div>

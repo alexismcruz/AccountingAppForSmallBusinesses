@@ -16,7 +16,7 @@ function StatCard({ label, value, sub, color, icon, onClick }) {
 }
 
 export default function Dashboard() {
-  const { fmt, settings } = useSettings();
+  const { fmt, settings, hasModule } = useSettings();
   const navigate = useNavigate();
   const [data,           setData]           = useState(null);
   const [loading,        setLoading]        = useState(true);
@@ -80,9 +80,9 @@ export default function Dashboard() {
       </div>
 
       {/* Alerts row */}
-      {(data.lowStock > 0 || data.overdueAR > 0 || data.overdueAP > 0) && (
+      {((data.lowStock > 0 && hasModule('inventory')) || data.overdueAR > 0 || data.overdueAP > 0) && (
         <div style={{ display: 'flex', gap: 12, marginBottom: 24, flexWrap: 'wrap' }}>
-          {data.lowStock > 0 && (
+          {data.lowStock > 0 && hasModule('inventory') && (
             <div className="alert alert-warning" style={{ flex: 1, minWidth: 240, cursor: 'pointer' }}
               onClick={() => navigate('/inventory')}>
               📦 <span><strong>{data.lowStock} item{data.lowStock > 1 ? 's' : ''}</strong> at or below reorder point — check inventory</span>
@@ -102,7 +102,7 @@ export default function Dashboard() {
           )}
         </div>
       )}
-      {data.lowStock === 0 && data.overdueAR === 0 && data.overdueAP === 0 && (
+      {(data.lowStock === 0 || !hasModule('inventory')) && data.overdueAR === 0 && data.overdueAP === 0 && (
         <div className="alert alert-success" style={{ marginBottom: 24 }}>
           ✓ Everything looks good — no alerts at this time.
         </div>

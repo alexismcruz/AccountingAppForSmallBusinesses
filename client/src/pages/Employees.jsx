@@ -15,6 +15,27 @@ const EMPTY = {
   tin: '', bank_name: '', bank_account: '', hire_date: '', notes: '',
 };
 
+function Field({ label, k, type = 'text', placeholder, half, form, onChange }) {
+  return (
+    <div className="form-group" style={half ? { gridColumn: 'span 1' } : { gridColumn: 'span 2' }}>
+      <label className="form-label">{label}</label>
+      <input className="form-input" type={type} placeholder={placeholder}
+        value={form[k]} onChange={e => onChange(k, e.target.value)} />
+    </div>
+  );
+}
+
+function SelectField({ label, k, options, half, form, onChange }) {
+  return (
+    <div className="form-group" style={half ? { gridColumn: 'span 1' } : { gridColumn: 'span 2' }}>
+      <label className="form-label">{label}</label>
+      <select className="form-input" value={form[k]} onChange={e => onChange(k, e.target.value)}>
+        {Object.entries(options).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+      </select>
+    </div>
+  );
+}
+
 function EmployeeModal({ employee, onClose, onSaved }) {
   const [form, setForm] = useState(employee
     ? { ...employee, basic_salary: String(employee.basic_salary || '') }
@@ -46,23 +67,6 @@ function EmployeeModal({ employee, onClose, onSaved }) {
     finally   { setSaving(false); }
   };
 
-  const Field = ({ label, k, type = 'text', placeholder, half }) => (
-    <div className="form-group" style={half ? { gridColumn: 'span 1' } : { gridColumn: 'span 2' }}>
-      <label className="form-label">{label}</label>
-      <input className="form-input" type={type} placeholder={placeholder}
-        value={form[k]} onChange={e => set(k, e.target.value)} />
-    </div>
-  );
-
-  const Select = ({ label, k, options, half }) => (
-    <div className="form-group" style={half ? { gridColumn: 'span 1' } : { gridColumn: 'span 2' }}>
-      <label className="form-label">{label}</label>
-      <select className="form-input" value={form[k]} onChange={e => set(k, e.target.value)}>
-        {Object.entries(options).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-      </select>
-    </div>
-  );
-
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal" style={{ maxWidth: 640 }} onClick={e => e.stopPropagation()}>
@@ -75,16 +79,16 @@ function EmployeeModal({ employee, onClose, onSaved }) {
 
           <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>Basic Information</div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 12px' }}>
-            <Field label="Employee Number *" k="employee_number" placeholder="EMP-001" half />
-            <Field label="Hire Date" k="hire_date" type="date" half />
-            <Field label="First Name *" k="first_name" placeholder="Juan" half />
-            <Field label="Last Name *" k="last_name" placeholder="Dela Cruz" half />
-            <Field label="Email" k="email" type="email" placeholder="juan@company.com" half />
-            <Field label="Phone" k="phone" placeholder="+63 9XX XXX XXXX" half />
-            <Field label="Position / Job Title" k="position" placeholder="Bookkeeper" half />
-            <Field label="Department" k="department" placeholder="Finance" half />
-            <Select label="Employment Type" k="employment_type" options={EMP_TYPES} half />
-            <Select label="Pay Frequency" k="pay_frequency" options={PAY_FREQ} half />
+            <Field label="Employee Number *" k="employee_number" placeholder="EMP-001" half form={form} onChange={set} />
+            <Field label="Hire Date" k="hire_date" type="date" half form={form} onChange={set} />
+            <Field label="First Name *" k="first_name" placeholder="Juan" half form={form} onChange={set} />
+            <Field label="Last Name *" k="last_name" placeholder="Dela Cruz" half form={form} onChange={set} />
+            <Field label="Email" k="email" type="email" placeholder="juan@company.com" half form={form} onChange={set} />
+            <Field label="Phone" k="phone" placeholder="+63 9XX XXX XXXX" half form={form} onChange={set} />
+            <Field label="Position / Job Title" k="position" placeholder="Bookkeeper" half form={form} onChange={set} />
+            <Field label="Department" k="department" placeholder="Finance" half form={form} onChange={set} />
+            <SelectField label="Employment Type" k="employment_type" options={EMP_TYPES} half form={form} onChange={set} />
+            <SelectField label="Pay Frequency" k="pay_frequency" options={PAY_FREQ} half form={form} onChange={set} />
           </div>
 
           <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '16px 0 8px' }}>Compensation</div>
@@ -100,16 +104,16 @@ function EmployeeModal({ employee, onClose, onSaved }) {
 
           <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '16px 0 8px' }}>Government Numbers</div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 12px' }}>
-            <Field label="SSS Number" k="sss_number" placeholder="00-0000000-0" half />
-            <Field label="TIN" k="tin" placeholder="000-000-000-000" half />
-            <Field label="PhilHealth Number" k="philhealth_number" placeholder="00-000000000-0" half />
-            <Field label="Pag-IBIG (HDMF) Number" k="pagibig_number" placeholder="0000-0000-0000" half />
+            <Field label="SSS Number" k="sss_number" placeholder="00-0000000-0" half form={form} onChange={set} />
+            <Field label="TIN" k="tin" placeholder="000-000-000-000" half form={form} onChange={set} />
+            <Field label="PhilHealth Number" k="philhealth_number" placeholder="00-000000000-0" half form={form} onChange={set} />
+            <Field label="Pag-IBIG (HDMF) Number" k="pagibig_number" placeholder="0000-0000-0000" half form={form} onChange={set} />
           </div>
 
           <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '16px 0 8px' }}>Bank Details</div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 12px' }}>
-            <Field label="Bank Name" k="bank_name" placeholder="BDO / BPI / GCash" half />
-            <Field label="Account Number" k="bank_account" placeholder="0000-0000-00" half />
+            <Field label="Bank Name" k="bank_name" placeholder="BDO / BPI / GCash" half form={form} onChange={set} />
+            <Field label="Account Number" k="bank_account" placeholder="0000-0000-00" half form={form} onChange={set} />
           </div>
 
           <div className="form-group" style={{ marginTop: 12 }}>
