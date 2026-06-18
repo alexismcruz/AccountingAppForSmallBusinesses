@@ -305,7 +305,7 @@ router.get('/entries/:id/payslip', async (req, res) => {
     const sym  = bizData.currency_symbol || '₱';
     const fmt  = (v) => `${sym}${parseFloat(v || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
     const name = `${entry.first_name} ${entry.last_name}`;
-    const filename = `Payslip-${entry.employee_number}-${entry.period_start}.pdf`.replace(/[^a-zA-Z0-9.\-_]/g, '-');
+    const filename = `Payslip-${entry.employee_number}-${entry.pay_date}.pdf`.replace(/[^a-zA-Z0-9.\-_]/g, '-');
 
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
