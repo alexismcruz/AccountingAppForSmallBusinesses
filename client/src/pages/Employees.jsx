@@ -37,14 +37,42 @@ function SelectField({ label, k, options, half, form, onChange }) {
 }
 
 function EmployeeModal({ employee, onClose, onSaved }) {
-  const [form, setForm] = useState(employee
+  const [form,        setForm]        = useState(employee
     ? { ...employee, basic_salary: String(employee.basic_salary || '') }
     : { ...EMPTY });
-  const [saving, setSaving] = useState(false);
-  const [error,  setError]  = useState('');
+  const [saving,      setSaving]      = useState(false);
+  const [error,       setError]       = useState('');
+  const [leaveTypes,  setLeaveTypes]  = useState([]);
+  const [entitlements, setEntitlements] = useState(null); // null = not loaded yet
   const isEdit = !!employee;
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+
+  useEffect(() => {
+    fetch('/api/leaves/types', { credentials: 'include' })
+      .then(r => r.json())
+      .then(data => {
+        const active = Array.isArray(data) ? data.filter(lt => lt.is_active) : [];
+        setLeaveTypes(active);
+        if (employee?.id) {
+          fetch(`/api/leaves/entitlements/${employee.id}`, { credentials: 'include' })
+            .then(r => r.json())
+            .then(ids => setEntitlements(new Set(Array.isArray(ids) ? ids : [])));
+        } else {
+          // New employee — default to all active leave types
+          setEntitlements(new Set(active.map(lt => lt.id)));
+        }
+      })
+      .catch(() => setEntitlements(new Set()));
+  }, [employee?.id]);
+
+  const toggleEntitlement = (ltId) => {
+    setEntitlements(prev => {
+      const next = new Set(prev);
+      next.has(ltId) ? next.delete(ltId) : next.add(ltId);
+      return next;
+    });
+  };
 
   const handleSave = async () => {
     if (!form.employee_number || !form.first_name || !form.last_name)
@@ -62,6 +90,14 @@ function EmployeeModal({ employee, onClose, onSaved }) {
       });
       const data = await res.json();
       if (!res.ok) { setError(data.error); return; }
+      // Save leave entitlements
+      if (entitlements !== null) {
+        await fetch(`/api/leaves/entitlements/${data.id}`, {
+          method: 'PUT', credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ leave_type_ids: [...entitlements] }),
+        });
+      }
       onSaved(data);
     } catch { setError('Network error.'); }
     finally   { setSaving(false); }
@@ -121,6 +157,28 @@ function EmployeeModal({ employee, onClose, onSaved }) {
             <textarea className="form-input" rows={2} value={form.notes}
               onChange={e => set('notes', e.target.value)} />
           </div>
+
+          {leaveTypes.length > 0 && (
+            <>
+              <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '16px 0 8px' }}>Leave Entitlements</div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px 12px' }}>
+                {leaveTypes.map(lt => (
+                  <label key={lt.id} style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13, padding: '6px 10px', borderRadius: 6, border: '1px solid var(--border)', background: entitlements?.has(lt.id) ? 'var(--bg-secondary)' : 'transparent' }}>
+                    <input
+                      type="checkbox"
+                      checked={entitlements?.has(lt.id) ?? false}
+                      onChange={() => toggleEntitlement(lt.id)}
+                    />
+                    <div>
+                      <span style={{ fontWeight: 600 }}>{lt.code}</span>
+                      <span style={{ color: 'var(--text-muted)', marginLeft: 6 }}>{lt.name}</span>
+                      <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{lt.days_per_year} days/yr</div>
+                    </div>
+                  </label>
+                ))}
+              </div>
+            </>
+          )}
         </div>
         <div className="modal-footer">
           <button className="btn btn-ghost" onClick={onClose}>Cancel</button>

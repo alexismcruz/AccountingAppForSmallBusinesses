@@ -374,6 +374,16 @@ async function initDB() {
     )
   `);
 
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS employee_leave_entitlements (
+      id            INTEGER PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+      employee_id   INTEGER NOT NULL REFERENCES employees(id) ON DELETE CASCADE,
+      leave_type_id INTEGER NOT NULL REFERENCES leave_types(id) ON DELETE CASCADE,
+      created_at    TIMESTAMPTZ DEFAULT NOW(),
+      UNIQUE (employee_id, leave_type_id)
+    )
+  `);
+
   // Seed default leave types (Philippines statutory + common)
   const { rowCount: ltCount } = await pool.query('SELECT 1 FROM leave_types LIMIT 1');
   if (ltCount === 0) {
@@ -390,6 +400,16 @@ async function initDB() {
       ON CONFLICT (code) DO NOTHING
     `);
   }
+
+  // Backfill entitlements: give all existing employees all active leave types they don't yet have
+  await pool.query(`
+    INSERT INTO employee_leave_entitlements (employee_id, leave_type_id)
+    SELECT e.id, lt.id
+    FROM employees e
+    CROSS JOIN leave_types lt
+    WHERE lt.is_active = 1
+    ON CONFLICT DO NOTHING
+  `);
 
   // ── Seed payroll GL accounts ───────────────────────────────────────────────
   const payrollAccts = [

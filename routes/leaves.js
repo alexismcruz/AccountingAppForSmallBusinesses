@@ -56,6 +56,38 @@ router.put('/types/:id', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// ── GET /api/leaves/entitlements/:employeeId ─────────────────────────────────
+router.get('/entitlements/:employeeId', async (req, res) => {
+  try {
+    const { rows } = await query(
+      'SELECT leave_type_id FROM employee_leave_entitlements WHERE employee_id = $1',
+      [req.params.employeeId]
+    );
+    res.json(rows.map(r => r.leave_type_id));
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── PUT /api/leaves/entitlements/:employeeId ──────────────────────────────────
+router.put('/entitlements/:employeeId', async (req, res) => {
+  const user = req.session.user;
+  if (!['finance', 'super_admin'].includes(user?.role))
+    return res.status(403).json({ error: 'Finance role or above required' });
+  const { leave_type_ids } = req.body;
+  if (!Array.isArray(leave_type_ids))
+    return res.status(400).json({ error: 'leave_type_ids must be an array' });
+  try {
+    await query('DELETE FROM employee_leave_entitlements WHERE employee_id = $1', [req.params.employeeId]);
+    for (const ltId of leave_type_ids) {
+      await query(
+        'INSERT INTO employee_leave_entitlements (employee_id, leave_type_id) VALUES ($1,$2) ON CONFLICT DO NOTHING',
+        [req.params.employeeId, ltId]
+      );
+    }
+    logAction(user, 'UPDATE_LEAVE_ENTITLEMENTS', 'employee', req.params.employeeId, `${leave_type_ids.length} types`);
+    res.json({ success: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // ── GET /api/leaves/balances — for management view ────────────────────────────
 router.get('/balances', async (req, res) => {
   const year = parseInt(req.query.year) || new Date().getFullYear();
@@ -91,9 +123,20 @@ router.post('/balances/allocate', async (req, res) => {
   try {
     const { rows: employees  } = await query('SELECT id FROM employees WHERE is_active = 1');
     const { rows: leaveTypes } = await query('SELECT * FROM leave_types WHERE is_active = 1');
+    // Build entitlement lookup: employeeId → Set of leave_type_ids
+    const { rows: entRows } = await query('SELECT employee_id, leave_type_id FROM employee_leave_entitlements');
+    const entitled = {};
+    for (const r of entRows) {
+      if (!entitled[r.employee_id]) entitled[r.employee_id] = new Set();
+      entitled[r.employee_id].add(r.leave_type_id);
+    }
     let inserted = 0, skipped = 0;
     for (const emp of employees) {
       for (const lt of leaveTypes) {
+        // Skip if employee has no entitlement record for this leave type
+        // (if no entitlements at all yet, allow all — backward compat)
+        const empEntitlements = entitled[emp.id];
+        if (empEntitlements && !empEntitlements.has(lt.id)) { skipped++; continue; }
         // Carry-over from previous year if applicable
         let carryOver = 0;
         if (lt.carry_over_days > 0) {

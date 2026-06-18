@@ -92,9 +92,24 @@ function LeaveTypeModal({ lt, onClose, onSaved }) {
 // ── Apply Leave Modal ─────────────────────────────────────────────────────────
 function ApplyLeaveModal({ employees, leaveTypes, onClose, onFiled }) {
   const today = new Date().toISOString().split('T')[0];
-  const [form,   setForm]   = useState({ employee_id:'', leave_type_id:'', start_date: today, end_date: today, days:'1', reason:'' });
-  const [saving, setSaving] = useState(false);
-  const [error,  setError]  = useState('');
+  const [form,         setForm]         = useState({ employee_id:'', leave_type_id:'', start_date: today, end_date: today, days:'1', reason:'' });
+  const [saving,       setSaving]       = useState(false);
+  const [error,        setError]        = useState('');
+  const [entitledIds,  setEntitledIds]  = useState(null); // null = no employee selected yet
+
+  useEffect(() => {
+    if (!form.employee_id) { setEntitledIds(null); return; }
+    fetch(`/api/leaves/entitlements/${form.employee_id}`, { credentials: 'include' })
+      .then(r => r.json())
+      .then(ids => setEntitledIds(new Set(Array.isArray(ids) ? ids : [])))
+      .catch(() => setEntitledIds(null));
+    // Reset leave type when employee changes
+    setForm(f => ({ ...f, leave_type_id: '' }));
+  }, [form.employee_id]);
+
+  const availableLeaveTypes = leaveTypes.filter(l =>
+    l.is_active && (entitledIds === null || entitledIds.has(l.id))
+  );
 
   const handleFile = async () => {
     if (!form.employee_id || !form.leave_type_id || !form.start_date || !form.end_date)
@@ -133,7 +148,7 @@ function ApplyLeaveModal({ employees, leaveTypes, onClose, onFiled }) {
             <label className="form-label">Leave Type *</label>
             <select className="form-input" value={form.leave_type_id} onChange={e => setForm(f => ({ ...f, leave_type_id: e.target.value }))}>
               <option value="">— Select Leave Type —</option>
-              {leaveTypes.filter(l => l.is_active).map(l => <option key={l.id} value={l.id}>{l.name} ({l.code})</option>)}
+              {availableLeaveTypes.map(l => <option key={l.id} value={l.id}>{l.name} ({l.code})</option>)}
             </select>
           </div>
           <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 80px', gap:'0 10px' }}>
