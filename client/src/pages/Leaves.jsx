@@ -262,6 +262,19 @@ export default function Leaves() {
 
   useEffect(() => { loadAll(); }, [loadAll]);
 
+  const handleToggleLeaveType = async (lt) => {
+    const newActive = lt.is_active ? 0 : 1;
+    try {
+      const res = await fetch(`/api/leaves/types/${lt.id}`, {
+        method: 'PUT', credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...lt, is_active: newActive }),
+      });
+      if (!res.ok) { const d = await res.json(); setError(d.error); return; }
+      setLeaveTypes(prev => prev.map(t => t.id === lt.id ? { ...t, is_active: newActive } : t));
+    } catch { setError('Network error.'); }
+  };
+
   const handleAllocate = async () => {
     if (!window.confirm(`Allocate leave balances for all active employees for ${yearFilter}? Existing allocations will not be overwritten.`)) return;
     try {
@@ -478,6 +491,7 @@ export default function Leaves() {
                   <th style={{ textAlign:'center' }}>Max Carry-over</th>
                   <th style={{ textAlign:'center' }}>Monetizable</th>
                   <th>Description</th>
+                  <th>STATUS</th>
                   <th></th>
                 </tr>
               </thead>
@@ -493,8 +507,26 @@ export default function Leaves() {
                     </td>
                     <td style={{ fontSize:12, color:'var(--text-muted)' }}>{lt.description || '—'}</td>
                     <td>
+                      <span style={{
+                        display:'inline-block', fontSize:11, fontWeight:600, padding:'2px 8px',
+                        borderRadius:10, background: lt.is_active ? '#dcfce7' : '#f1f5f9',
+                        color: lt.is_active ? '#15803d' : '#64748b',
+                      }}>
+                        {lt.is_active ? 'Active' : 'Inactive'}
+                      </span>
+                    </td>
+                    <td>
                       {can('finance') && (
-                        <button className="btn btn-ghost btn-sm" onClick={() => { setActiveItem(lt); setModal('type-edit'); }}>Edit</button>
+                        <div style={{ display:'flex', gap:6 }}>
+                          <button className="btn btn-ghost btn-sm" onClick={() => { setActiveItem(lt); setModal('type-edit'); }}>Edit</button>
+                          <button
+                            className="btn btn-ghost btn-sm"
+                            style={{ color: lt.is_active ? '#b91c1c' : '#15803d' }}
+                            onClick={() => handleToggleLeaveType(lt)}
+                          >
+                            {lt.is_active ? 'Deactivate' : 'Activate'}
+                          </button>
+                        </div>
                       )}
                     </td>
                   </tr>
