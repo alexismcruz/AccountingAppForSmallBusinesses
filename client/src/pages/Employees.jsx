@@ -42,8 +42,9 @@ function EmployeeModal({ employee, onClose, onSaved }) {
     : { ...EMPTY });
   const [saving,      setSaving]      = useState(false);
   const [error,       setError]       = useState('');
-  const [leaveTypes,  setLeaveTypes]  = useState([]);
-  const [entitlements, setEntitlements] = useState(null); // null = not loaded yet
+  const [leaveTypes,   setLeaveTypes]   = useState([]);
+  // Map<leave_type_id, days_override | null> — presence = entitled, value = override (null = use default)
+  const [entitlements, setEntitlements] = useState(null);
   const isEdit = !!employee;
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
@@ -57,19 +58,33 @@ function EmployeeModal({ employee, onClose, onSaved }) {
         if (employee?.id) {
           fetch(`/api/leaves/entitlements/${employee.id}`, { credentials: 'include' })
             .then(r => r.json())
-            .then(ids => setEntitlements(new Set(Array.isArray(ids) ? ids : [])));
+            .then(rows => {
+              const map = new Map(
+                Array.isArray(rows) ? rows.map(r => [r.leave_type_id, r.days_override ?? null]) : []
+              );
+              setEntitlements(map);
+            });
         } else {
-          // New employee — default to all active leave types
-          setEntitlements(new Set(active.map(lt => lt.id)));
+          // New employee — default to all active leave types with no override
+          setEntitlements(new Map(active.map(lt => [lt.id, null])));
         }
       })
-      .catch(() => setEntitlements(new Set()));
+      .catch(() => setEntitlements(new Map()));
   }, [employee?.id]);
 
   const toggleEntitlement = (ltId) => {
     setEntitlements(prev => {
-      const next = new Set(prev);
-      next.has(ltId) ? next.delete(ltId) : next.add(ltId);
+      const next = new Map(prev);
+      if (next.has(ltId)) next.delete(ltId);
+      else next.set(ltId, null);
+      return next;
+    });
+  };
+
+  const setDaysOverride = (ltId, raw) => {
+    setEntitlements(prev => {
+      const next = new Map(prev);
+      next.set(ltId, raw === '' ? null : raw);
       return next;
     });
   };
@@ -90,12 +105,16 @@ function EmployeeModal({ employee, onClose, onSaved }) {
       });
       const data = await res.json();
       if (!res.ok) { setError(data.error); return; }
-      // Save leave entitlements
       if (entitlements !== null) {
         await fetch(`/api/leaves/entitlements/${data.id}`, {
           method: 'PUT', credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ leave_type_ids: [...entitlements] }),
+          body: JSON.stringify({
+            entitlements: [...entitlements.entries()].map(([leave_type_id, days_override]) => ({
+              leave_type_id,
+              days_override: days_override !== null && days_override !== '' ? parseFloat(days_override) : null,
+            })),
+          }),
         });
       }
       onSaved(data);
@@ -160,22 +179,54 @@ function EmployeeModal({ employee, onClose, onSaved }) {
 
           {leaveTypes.length > 0 && (
             <>
-              <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '16px 0 8px' }}>Leave Entitlements</div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px 12px' }}>
-                {leaveTypes.map(lt => (
-                  <label key={lt.id} style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13, padding: '6px 10px', borderRadius: 6, border: '1px solid var(--border)', background: entitlements?.has(lt.id) ? 'var(--bg-secondary)' : 'transparent' }}>
-                    <input
-                      type="checkbox"
-                      checked={entitlements?.has(lt.id) ?? false}
-                      onChange={() => toggleEntitlement(lt.id)}
-                    />
-                    <div>
-                      <span style={{ fontWeight: 600 }}>{lt.code}</span>
-                      <span style={{ color: 'var(--text-muted)', marginLeft: 6 }}>{lt.name}</span>
-                      <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{lt.days_per_year} days/yr</div>
+              <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '16px 0 4px' }}>Leave Entitlements</div>
+              <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 10 }}>
+                Check the leave types this employee is entitled to. Leave the days blank to use the default for that leave type, or enter a custom amount for pro-rated entitlements.
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {leaveTypes.map(lt => {
+                  const checked  = entitlements?.has(lt.id) ?? false;
+                  const override = entitlements?.get(lt.id);
+                  return (
+                    <div key={lt.id} style={{
+                      borderRadius: 6, border: '1px solid var(--border)',
+                      background: checked ? '#f0fdf4' : 'transparent',
+                      padding: '8px 12px',
+                    }}>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+                        <input type="checkbox" checked={checked} onChange={() => toggleEntitlement(lt.id)} />
+                        <div>
+                          <span style={{ fontWeight: 700, fontSize: 13 }}>{lt.code}</span>
+                          <span style={{ color: 'var(--text-muted)', marginLeft: 6, fontSize: 13 }}>{lt.name}</span>
+                        </div>
+                      </label>
+                      {checked && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8, paddingLeft: 24 }}>
+                          <input
+                            type="number" min="0" step="0.5"
+                            className="form-input"
+                            style={{ width: 80, padding: '4px 8px', fontSize: 12 }}
+                            placeholder={String(lt.days_per_year)}
+                            value={override ?? ''}
+                            onChange={e => setDaysOverride(lt.id, e.target.value)}
+                          />
+                          <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                            days
+                            {override == null || override === ''
+                              ? <span style={{ marginLeft: 4, color: '#15803d' }}>— using default ({lt.days_per_year})</span>
+                              : <span style={{ marginLeft: 4, color: '#d97706' }}>— custom (default is {lt.days_per_year})</span>
+                            }
+                          </span>
+                        </div>
+                      )}
+                      {!checked && (
+                        <div style={{ fontSize: 11, color: 'var(--text-light)', paddingLeft: 24, marginTop: 2 }}>
+                          Not entitled · {lt.days_per_year} days/yr default
+                        </div>
+                      )}
                     </div>
-                  </label>
-                ))}
+                  );
+                })}
               </div>
             </>
           )}

@@ -60,10 +60,13 @@ router.put('/types/:id', async (req, res) => {
 router.get('/entitlements/:employeeId', async (req, res) => {
   try {
     const { rows } = await query(
-      'SELECT leave_type_id FROM employee_leave_entitlements WHERE employee_id = $1',
+      'SELECT leave_type_id, days_override FROM employee_leave_entitlements WHERE employee_id = $1',
       [req.params.employeeId]
     );
-    res.json(rows.map(r => r.leave_type_id));
+    res.json(rows.map(r => ({
+      leave_type_id: r.leave_type_id,
+      days_override: r.days_override != null ? parseFloat(r.days_override) : null,
+    })));
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -72,18 +75,20 @@ router.put('/entitlements/:employeeId', async (req, res) => {
   const user = req.session.user;
   if (!['finance', 'super_admin'].includes(user?.role))
     return res.status(403).json({ error: 'Finance role or above required' });
-  const { leave_type_ids } = req.body;
-  if (!Array.isArray(leave_type_ids))
-    return res.status(400).json({ error: 'leave_type_ids must be an array' });
+  const { entitlements } = req.body;
+  if (!Array.isArray(entitlements))
+    return res.status(400).json({ error: 'entitlements must be an array' });
   try {
     await query('DELETE FROM employee_leave_entitlements WHERE employee_id = $1', [req.params.employeeId]);
-    for (const ltId of leave_type_ids) {
+    for (const { leave_type_id, days_override } of entitlements) {
       await query(
-        'INSERT INTO employee_leave_entitlements (employee_id, leave_type_id) VALUES ($1,$2) ON CONFLICT DO NOTHING',
-        [req.params.employeeId, ltId]
+        `INSERT INTO employee_leave_entitlements (employee_id, leave_type_id, days_override)
+         VALUES ($1,$2,$3) ON CONFLICT (employee_id, leave_type_id)
+         DO UPDATE SET days_override = EXCLUDED.days_override`,
+        [req.params.employeeId, leave_type_id, days_override ?? null]
       );
     }
-    logAction(user, 'UPDATE_LEAVE_ENTITLEMENTS', 'employee', req.params.employeeId, `${leave_type_ids.length} types`);
+    logAction(user, 'UPDATE_LEAVE_ENTITLEMENTS', 'employee', req.params.employeeId, `${entitlements.length} types`);
     res.json({ success: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -129,11 +134,13 @@ router.post('/balances/allocate', async (req, res) => {
       : await query('SELECT id FROM employees WHERE is_active = 1');
     const { rows: leaveTypes } = await query('SELECT * FROM leave_types WHERE is_active = 1');
     // Build entitlement lookup: employeeId → Set of leave_type_ids
-    const { rows: entRows } = await query('SELECT employee_id, leave_type_id FROM employee_leave_entitlements');
+    const { rows: entRows } = await query('SELECT employee_id, leave_type_id, days_override FROM employee_leave_entitlements');
     const entitled = {};
     for (const r of entRows) {
-      if (!entitled[r.employee_id]) entitled[r.employee_id] = new Set();
-      entitled[r.employee_id].add(r.leave_type_id);
+      if (!entitled[r.employee_id]) entitled[r.employee_id] = {};
+      entitled[r.employee_id][r.leave_type_id] = {
+        days_override: r.days_override != null ? parseFloat(r.days_override) : null,
+      };
     }
     let inserted = 0, skipped = 0;
     for (const emp of employees) {
@@ -141,7 +148,9 @@ router.post('/balances/allocate', async (req, res) => {
         // Skip if employee has no entitlement record for this leave type
         // (if no entitlements at all yet, allow all — backward compat)
         const empEntitlements = entitled[emp.id];
-        if (empEntitlements && !empEntitlements.has(lt.id)) { skipped++; continue; }
+        if (empEntitlements && !empEntitlements[lt.id]) { skipped++; continue; }
+        // Use per-employee days override if set, otherwise use the leave type default
+        const entitledDays = empEntitlements?.[lt.id]?.days_override ?? lt.days_per_year;
         // Carry-over from previous year if applicable
         let carryOver = 0;
         if (lt.carry_over_days > 0) {
@@ -160,7 +169,7 @@ router.post('/balances/allocate', async (req, res) => {
             `INSERT INTO leave_balances (employee_id, leave_type_id, year, entitled_days, carry_over)
              VALUES ($1,$2,$3,$4,$5)
              ON CONFLICT (employee_id, leave_type_id, year) DO NOTHING`,
-            [emp.id, lt.id, year, lt.days_per_year, carryOver]
+            [emp.id, lt.id, year, entitledDays, carryOver]
           );
           inserted++;
         } catch { skipped++; }

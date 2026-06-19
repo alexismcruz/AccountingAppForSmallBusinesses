@@ -101,7 +101,7 @@ function ApplyLeaveModal({ employees, leaveTypes, onClose, onFiled }) {
     if (!form.employee_id) { setEntitledIds(null); return; }
     fetch(`/api/leaves/entitlements/${form.employee_id}`, { credentials: 'include' })
       .then(r => r.json())
-      .then(ids => setEntitledIds(new Set(Array.isArray(ids) ? ids : [])))
+      .then(rows => setEntitledIds(new Set(Array.isArray(rows) ? rows.map(r => r.leave_type_id) : [])))
       .catch(() => setEntitledIds(null));
     // Reset leave type when employee changes
     setForm(f => ({ ...f, leave_type_id: '' }));

@@ -379,10 +379,12 @@ async function initDB() {
       id            INTEGER PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
       employee_id   INTEGER NOT NULL REFERENCES employees(id) ON DELETE CASCADE,
       leave_type_id INTEGER NOT NULL REFERENCES leave_types(id) ON DELETE CASCADE,
+      days_override NUMERIC(6,2) DEFAULT NULL,
       created_at    TIMESTAMPTZ DEFAULT NOW(),
       UNIQUE (employee_id, leave_type_id)
     )
   `);
+  await pool.query(`ALTER TABLE employee_leave_entitlements ADD COLUMN IF NOT EXISTS days_override NUMERIC(6,2) DEFAULT NULL`);
 
   // Seed default leave types (Philippines statutory + common)
   const { rowCount: ltCount } = await pool.query('SELECT 1 FROM leave_types LIMIT 1');
