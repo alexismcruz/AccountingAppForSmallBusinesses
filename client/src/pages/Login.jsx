@@ -1,5 +1,19 @@
 import { useState } from 'react';
 
+function CuentaIQLogo({ size = 60 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 60 60" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="30" cy="30" r="28" fill="#2D6A4F" />
+      <text x="30" y="42" textAnchor="middle"
+        fontFamily="Georgia, 'Times New Roman', serif"
+        fontWeight="700" fontSize="32" fill="#FFFFFF">Q</text>
+      <circle cx="44" cy="16" r="10" fill="#D4A017" />
+      <polyline points="39,16 43,20 50,12"
+        stroke="#FFFFFF" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+    </svg>
+  );
+}
+
 export default function Login({ onLogin }) {
   const [email,    setEmail]    = useState('');
   const [password, setPassword] = useState('');
@@ -30,37 +44,60 @@ export default function Login({ onLogin }) {
     }
   };
 
+  const disabled = loading || !email || !password;
+
   const inputStyle = {
-    width: '100%', padding: '11px 14px', fontSize: 15,
-    border: '1.5px solid #d1d5db', borderRadius: 8,
+    width: '100%', padding: '11px 14px', fontSize: 14,
+    fontFamily: 'var(--font-body, Inter, sans-serif)',
+    background: '#FFFFFF',
+    border: '1px solid #E2DDD4', borderRadius: 6,
     outline: 'none', boxSizing: 'border-box',
-    transition: 'border-color 0.15s',
+    color: '#1B2E24',
+    transition: 'border-color 0.15s, box-shadow 0.15s',
   };
 
   return (
     <div style={{
       minHeight: '100vh',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
-      background: 'linear-gradient(135deg, #1e3a8a 0%, #1e40af 50%, #1d4ed8 100%)',
+      background: 'radial-gradient(ellipse at 60% 40%, #EAF2EE 0%, #F8F5EF 60%)',
+      fontFamily: 'var(--font-body, Inter, sans-serif)',
     }}>
       <div style={{
-        background: 'white', borderRadius: 16, padding: '48px 52px',
-        boxShadow: '0 20px 60px rgba(0,0,0,0.25)',
+        background: '#FFFFFF',
+        borderRadius: 14,
+        padding: '48px 52px',
+        boxShadow: '0 8px 32px rgba(27,46,36,0.12)',
         width: '100%', maxWidth: 400, margin: '0 16px',
       }}>
+        {/* Logo + wordmark */}
         <div style={{ textAlign: 'center', marginBottom: 36 }}>
-          <div style={{ fontSize: 48, marginBottom: 14 }}>📊</div>
-          <div style={{ fontWeight: 800, fontSize: 22, color: '#1e3a8a', letterSpacing: '-0.02em' }}>
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 14 }}>
+            <CuentaIQLogo size={60} />
+          </div>
+          <div style={{
+            fontFamily: "'DM Serif Display', Georgia, serif",
+            fontWeight: 400, fontSize: 26,
+            color: '#2D6A4F', letterSpacing: '-0.01em',
+            lineHeight: 1,
+          }}>
             CuentaIQ
           </div>
-          <div style={{ color: '#6b7280', fontSize: 14, marginTop: 6 }}>
+          <div style={{
+            fontFamily: 'var(--font-body, Inter, sans-serif)',
+            color: '#4A5E52', fontSize: 13, marginTop: 7,
+          }}>
             Sign in to access your books
           </div>
         </div>
 
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <div>
-            <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 7 }}>
+            <label style={{
+              display: 'block', fontSize: 12, fontWeight: 500,
+              color: '#4A5E52', marginBottom: 6,
+              fontFamily: 'var(--font-body, Inter, sans-serif)',
+            }}>
               Email
             </label>
             <input
@@ -71,13 +108,23 @@ export default function Login({ onLogin }) {
               autoFocus
               required
               style={inputStyle}
-              onFocus={e => e.target.style.borderColor = '#1e40af'}
-              onBlur={e => e.target.style.borderColor = '#d1d5db'}
+              onFocus={e => {
+                e.target.style.borderColor = '#2D6A4F';
+                e.target.style.boxShadow = '0 0 0 3px #EAF2EE';
+              }}
+              onBlur={e => {
+                e.target.style.borderColor = '#E2DDD4';
+                e.target.style.boxShadow = 'none';
+              }}
             />
           </div>
 
           <div>
-            <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 7 }}>
+            <label style={{
+              display: 'block', fontSize: 12, fontWeight: 500,
+              color: '#4A5E52', marginBottom: 6,
+              fontFamily: 'var(--font-body, Inter, sans-serif)',
+            }}>
               Password
             </label>
             <input
@@ -87,37 +134,52 @@ export default function Login({ onLogin }) {
               placeholder="••••••••"
               required
               style={inputStyle}
-              onFocus={e => e.target.style.borderColor = '#1e40af'}
-              onBlur={e => e.target.style.borderColor = '#d1d5db'}
+              onFocus={e => {
+                e.target.style.borderColor = '#2D6A4F';
+                e.target.style.boxShadow = '0 0 0 3px #EAF2EE';
+              }}
+              onBlur={e => {
+                e.target.style.borderColor = '#E2DDD4';
+                e.target.style.boxShadow = 'none';
+              }}
             />
           </div>
 
           {error && (
             <div style={{
               background: '#fef2f2', border: '1px solid #fecaca', color: '#dc2626',
-              borderRadius: 8, padding: '10px 14px', fontSize: 13,
+              borderRadius: 6, padding: '10px 14px', fontSize: 13,
+              fontFamily: 'var(--font-body, Inter, sans-serif)',
             }}>
-              ⚠ {error}
+              {error}
             </div>
           )}
 
           <button
             type="submit"
-            disabled={loading || !email || !password}
+            disabled={disabled}
             style={{
               width: '100%', padding: '12px',
-              background: loading || !email || !password ? '#93c5fd' : '#1e40af',
-              color: 'white', border: 'none', borderRadius: 8,
-              fontSize: 15, fontWeight: 700,
-              cursor: loading || !email || !password ? 'not-allowed' : 'pointer',
+              background: disabled ? '#8A9E92' : '#2D6A4F',
+              color: 'white', border: 'none', borderRadius: 10,
+              fontSize: 14, fontWeight: 600,
+              fontFamily: 'var(--font-body, Inter, sans-serif)',
+              cursor: disabled ? 'not-allowed' : 'pointer',
               transition: 'background 0.15s',
+              letterSpacing: '0.01em',
             }}
+            onMouseEnter={e => { if (!disabled) e.target.style.background = '#245740'; }}
+            onMouseLeave={e => { if (!disabled) e.target.style.background = '#2D6A4F'; }}
           >
             {loading ? 'Signing in…' : 'Sign In'}
           </button>
         </form>
 
-        <div style={{ textAlign: 'center', marginTop: 24, fontSize: 12, color: '#9ca3af' }}>
+        <div style={{
+          textAlign: 'center', marginTop: 24, fontSize: 12,
+          color: '#8A9E92',
+          fontFamily: 'var(--font-body, Inter, sans-serif)',
+        }}>
           Your financial data is private and encrypted in transit.
         </div>
       </div>
