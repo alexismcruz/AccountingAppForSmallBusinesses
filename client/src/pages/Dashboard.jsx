@@ -1,13 +1,35 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSettings } from '../context/SettingsContext.jsx';
+import {
+  Landmark, Wallet, ArrowDownToLine, ArrowUpFromLine,
+  CheckSquare, CheckCircle2, Package, BookOpen, BarChart3, AlertTriangle,
+} from 'lucide-react';
 
-function StatCard({ label, value, sub, color, icon, onClick }) {
+const BRAND = {
+  primary:  '#2D6A4F',
+  accent:   '#D4A017',
+  success:  '#1B5E3B',
+  warning:  '#7A5C0A',
+  danger:   '#8B2020',
+  blue:     '#1D4ED8',
+  slate:    '#475569',
+};
+
+function StatCard({ label, value, sub, color, icon: Icon, onClick }) {
   return (
-    <div className="stat-card" onClick={onClick} style={{ cursor: onClick ? 'pointer' : 'default', borderLeft: `4px solid ${color}` }}>
+    <div
+      className="stat-card"
+      onClick={onClick}
+      style={{ cursor: onClick ? 'pointer' : 'default', borderLeft: `4px solid ${color}` }}
+    >
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <div className="stat-label">{label}</div>
-        <span style={{ fontSize: 22 }}>{icon}</span>
+        {Icon && (
+          <div className="stat-icon-badge" style={{ background: `${color}18` }}>
+            <Icon size={20} color={color} strokeWidth={1.8} />
+          </div>
+        )}
       </div>
       <div className="stat-value" style={{ color }}>{value}</div>
       {sub && <div className="stat-sub">{sub}</div>}
@@ -34,14 +56,16 @@ export default function Dashboard() {
       .catch(() => {});
   }, []);
 
-  if (loading) return <div className="text-muted text-center" style={{ padding: 60 }}>Loading…</div>;
-  if (!data) return <div className="alert alert-error">Could not load dashboard data.</div>;
+  if (loading) return <div className="page-loading">Loading…</div>;
+  if (!data)   return <div className="alert alert-error">Could not load dashboard data.</div>;
+
+  const hasAlerts = (data.lowStock > 0 && hasModule('inventory')) || data.overdueAR > 0 || data.overdueAP > 0;
 
   return (
     <div>
       <div className="page-header">
         <div>
-          <div className="page-title">Welcome back 👋</div>
+          <div className="page-title">Welcome back</div>
           <div className="page-subtitle">{settings.business_name} — Overview</div>
         </div>
         <button className="btn btn-primary" onClick={() => navigate('/journal')}>
@@ -49,20 +73,22 @@ export default function Dashboard() {
         </button>
       </div>
 
-      {/* Stats grid */}
+      {/* KPI grid */}
       <div className="grid-4" style={{ marginBottom: 24 }}>
-        <StatCard label="Total Assets" value={fmt(data.totalAssets)} color="#2563eb" icon="🏦" />
-        <StatCard label="Cash & Bank" value={fmt(data.cashBalance)} color="#15803d" icon="💵" />
+        <StatCard label="Total Assets"     value={fmt(data.totalAssets)} color={BRAND.blue}    icon={Landmark} />
+        <StatCard label="Cash & Bank"      value={fmt(data.cashBalance)} color={BRAND.primary} icon={Wallet} />
         <StatCard
           label="Receivable (AR)" value={fmt(data.arBalance)}
-          sub={data.overdueAR > 0 ? `⚠ ${data.overdueAR} overdue` : 'All current'}
-          color={data.overdueAR > 0 ? '#b45309' : '#0369a1'} icon="📥"
+          sub={data.overdueAR > 0 ? `${data.overdueAR} overdue` : 'All current'}
+          color={data.overdueAR > 0 ? BRAND.warning : BRAND.primary}
+          icon={ArrowDownToLine}
           onClick={() => navigate('/payments/incoming')}
         />
         <StatCard
           label="Payable (AP)" value={fmt(data.apBalance)}
-          sub={data.overdueAP > 0 ? `⚠ ${data.overdueAP} overdue` : 'All current'}
-          color={data.overdueAP > 0 ? '#b91c1c' : '#7c3aed'} icon="📤"
+          sub={data.overdueAP > 0 ? `${data.overdueAP} overdue` : 'All current'}
+          color={data.overdueAP > 0 ? BRAND.danger : BRAND.slate}
+          icon={ArrowUpFromLine}
           onClick={() => navigate('/payments/pending')}
         />
       </div>
@@ -73,38 +99,49 @@ export default function Dashboard() {
           label="Pending Approvals"
           value={pendingApprove > 0 ? pendingApprove : '—'}
           sub={pendingApprove > 0 ? 'Action required — click to review' : 'No pending approvals'}
-          color={pendingApprove > 0 ? '#ea580c' : '#64748b'}
-          icon="✅"
+          color={pendingApprove > 0 ? '#EA580C' : BRAND.slate}
+          icon={CheckSquare}
           onClick={() => navigate('/approvals')}
         />
       </div>
 
-      {/* Alerts row */}
-      {((data.lowStock > 0 && hasModule('inventory')) || data.overdueAR > 0 || data.overdueAP > 0) && (
+      {/* Alerts */}
+      {hasAlerts && (
         <div style={{ display: 'flex', gap: 12, marginBottom: 24, flexWrap: 'wrap' }}>
           {data.lowStock > 0 && hasModule('inventory') && (
             <div className="alert alert-warning" style={{ flex: 1, minWidth: 240, cursor: 'pointer' }}
               onClick={() => navigate('/inventory')}>
-              📦 <span><strong>{data.lowStock} item{data.lowStock > 1 ? 's' : ''}</strong> at or below reorder point — check inventory</span>
+              <Package size={16} strokeWidth={2} style={{ flexShrink: 0, marginTop: 1 }} />
+              <span>
+                <strong>{data.lowStock} item{data.lowStock > 1 ? 's' : ''}</strong> at or below reorder point — check inventory
+              </span>
             </div>
           )}
           {data.overdueAR > 0 && (
             <div className="alert alert-warning" style={{ flex: 1, minWidth: 240, cursor: 'pointer' }}
               onClick={() => navigate('/payments/incoming')}>
-              📥 <span><strong>{data.overdueAR} overdue invoice{data.overdueAR > 1 ? 's' : ''}</strong> — customers owe you money</span>
+              <ArrowDownToLine size={16} strokeWidth={2} style={{ flexShrink: 0, marginTop: 1 }} />
+              <span>
+                <strong>{data.overdueAR} overdue invoice{data.overdueAR > 1 ? 's' : ''}</strong> — customers owe you money
+              </span>
             </div>
           )}
           {data.overdueAP > 0 && (
-            <div className="alert alert-danger" style={{ flex: 1, minWidth: 240, cursor: 'pointer' }}
+            <div className="alert alert-error" style={{ flex: 1, minWidth: 240, cursor: 'pointer' }}
               onClick={() => navigate('/payments/pending')}>
-              📤 <span><strong>{data.overdueAP} overdue bill{data.overdueAP > 1 ? 's' : ''}</strong> — you owe suppliers money</span>
+              <ArrowUpFromLine size={16} strokeWidth={2} style={{ flexShrink: 0, marginTop: 1 }} />
+              <span>
+                <strong>{data.overdueAP} overdue bill{data.overdueAP > 1 ? 's' : ''}</strong> — you owe suppliers money
+              </span>
             </div>
           )}
         </div>
       )}
-      {(data.lowStock === 0 || !hasModule('inventory')) && data.overdueAR === 0 && data.overdueAP === 0 && (
+
+      {!hasAlerts && (
         <div className="alert alert-success" style={{ marginBottom: 24 }}>
-          ✓ Everything looks good — no alerts at this time.
+          <CheckCircle2 size={16} strokeWidth={2} style={{ flexShrink: 0, marginTop: 1 }} />
+          <span>Everything looks good — no alerts at this time.</span>
         </div>
       )}
 
@@ -115,9 +152,17 @@ export default function Dashboard() {
           <button className="btn btn-ghost btn-sm" onClick={() => navigate('/journal')}>View all →</button>
         </div>
         {data.recentEntries.length === 0 ? (
-          <div className="empty-state" style={{ padding: '24px 0' }}>
-            <div className="empty-state-icon">📝</div>
-            <p>No journal entries yet. <span style={{ color: 'var(--primary)', cursor: 'pointer' }} onClick={() => navigate('/journal')}>Create your first entry →</span></p>
+          <div className="empty-state" style={{ padding: '32px 0' }}>
+            <div className="empty-state-icon">
+              <BookOpen size={40} strokeWidth={1.4} />
+            </div>
+            <div className="empty-state-title">No journal entries yet</div>
+            <div className="empty-state-sub">
+              <span style={{ color: 'var(--color-primary)', cursor: 'pointer' }}
+                onClick={() => navigate('/journal')}>
+                Create your first entry →
+              </span>
+            </div>
           </div>
         ) : (
           <div className="table-wrap">
@@ -150,14 +195,20 @@ export default function Dashboard() {
         <div className="section-title">Quick Actions</div>
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
           {[
-            { label: '📝 New Journal Entry', to: '/journal' },
-            { label: '📦 Add Inventory Item', to: '/inventory' },
-            { label: '📥 Record Incoming Payment', to: '/payments/incoming' },
-            { label: '📤 Record Pending Bill', to: '/payments/pending' },
-            { label: '📊 View Balance Sheet', to: '/reports/balance-sheet' },
-          ].map(({ label, to }) => (
-            <button key={to} className="btn btn-ghost" onClick={() => navigate(to)}>{label}</button>
-          ))}
+            { label: 'New Journal Entry',      icon: BookOpen,          to: '/journal' },
+            { label: 'Add Inventory Item',     icon: Package,           to: '/inventory', guard: 'inventory' },
+            { label: 'Record Incoming Payment',icon: ArrowDownToLine,   to: '/payments/incoming' },
+            { label: 'Record Pending Bill',    icon: ArrowUpFromLine,   to: '/payments/pending' },
+            { label: 'View Balance Sheet',     icon: BarChart3,         to: '/reports/balance-sheet' },
+          ]
+            .filter(a => !a.guard || hasModule(a.guard))
+            .map(({ label, icon: Icon, to }) => (
+              <button key={to} className="btn btn-ghost" onClick={() => navigate(to)}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                <Icon size={14} strokeWidth={2} />
+                {label}
+              </button>
+            ))}
         </div>
       </div>
     </div>
