@@ -240,6 +240,108 @@ function ReviewModal({ request, onClose, onReviewed }) {
   );
 }
 
+// ── Allocate Balances Modal ───────────────────────────────────────────────────
+function AllocateModal({ employees, year, onClose, onAllocated }) {
+  const [selectedIds, setSelectedIds] = useState(new Set());
+  const [search,      setSearch]      = useState('');
+  const [saving,      setSaving]      = useState(false);
+  const [error,       setError]       = useState('');
+
+  const filtered = employees.filter(e =>
+    `${e.first_name} ${e.last_name} ${e.employee_number} ${e.department || ''}`
+      .toLowerCase().includes(search.toLowerCase())
+  );
+
+  const toggleAll = () => {
+    setSelectedIds(prev =>
+      prev.size === employees.length ? new Set() : new Set(employees.map(e => e.id))
+    );
+  };
+
+  const toggle = (id) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const handleAllocate = async () => {
+    if (selectedIds.size === 0) return setError('Select at least one employee.');
+    setSaving(true); setError('');
+    try {
+      const res  = await fetch('/api/leaves/balances/allocate', {
+        method: 'POST', credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ year, employee_ids: [...selectedIds] }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setError(data.error); return; }
+      onAllocated(data);
+    } catch { setError('Network error.'); }
+    finally   { setSaving(false); }
+  };
+
+  const allSelected = employees.length > 0 && selectedIds.size === employees.length;
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal" style={{ maxWidth: 480 }} onClick={e => e.stopPropagation()}>
+        <div className="modal-header">
+          <div className="modal-title">Allocate Leave Balances — {year}</div>
+          <button className="btn btn-ghost btn-icon" onClick={onClose}>✕</button>
+        </div>
+        <div className="modal-body">
+          {error && <div className="alert alert-error mb-12">⚠ {error}</div>}
+          <p style={{ fontSize:13, color:'var(--text-muted)', marginBottom:12 }}>
+            Select the employees to allocate leave balances for. Existing allocations will not be overwritten.
+          </p>
+
+          <div className="form-group" style={{ marginBottom:10 }}>
+            <input className="form-input" placeholder="Search employees…"
+              value={search} onChange={e => setSearch(e.target.value)} />
+          </div>
+
+          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:8 }}>
+            <label style={{ display:'flex', alignItems:'center', gap:8, cursor:'pointer', fontSize:13, userSelect:'none' }}>
+              <input type="checkbox" checked={allSelected} onChange={toggleAll} />
+              <span>Select all ({employees.length})</span>
+            </label>
+            <span style={{ fontSize:12, color:'var(--text-muted)' }}>{selectedIds.size} selected</span>
+          </div>
+
+          <div style={{ maxHeight:280, overflowY:'auto', border:'1px solid var(--border)', borderRadius:'var(--radius-sm)' }}>
+            {filtered.length === 0 ? (
+              <div style={{ padding:'20px', textAlign:'center', color:'var(--text-muted)', fontSize:13 }}>No employees match.</div>
+            ) : filtered.map((emp, i) => (
+              <label key={emp.id} style={{
+                display:'flex', alignItems:'center', gap:10, padding:'9px 12px', cursor:'pointer',
+                borderBottom: i < filtered.length - 1 ? '1px solid var(--border)' : 'none',
+                background: selectedIds.has(emp.id) ? '#eff6ff' : 'transparent',
+                transition:'background 0.1s', userSelect:'none',
+              }}>
+                <input type="checkbox" checked={selectedIds.has(emp.id)} onChange={() => toggle(emp.id)} />
+                <div style={{ flex:1 }}>
+                  <div style={{ fontWeight:600, fontSize:13 }}>{emp.first_name} {emp.last_name}</div>
+                  <div style={{ fontSize:11, color:'var(--text-muted)' }}>
+                    {emp.employee_number}{emp.department ? ` · ${emp.department}` : ''}
+                  </div>
+                </div>
+              </label>
+            ))}
+          </div>
+        </div>
+        <div className="modal-footer">
+          <button className="btn btn-ghost" onClick={onClose}>Cancel</button>
+          <button className="btn btn-primary" onClick={handleAllocate} disabled={saving || selectedIds.size === 0}>
+            {saving ? 'Allocating…' : `Allocate for ${selectedIds.size || ''} Employee${selectedIds.size !== 1 ? 's' : ''}`}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Main Leaves Page ──────────────────────────────────────────────────────────
 export default function Leaves() {
   const { can } = useUser();
@@ -290,18 +392,10 @@ export default function Leaves() {
     } catch { setError('Network error.'); }
   };
 
-  const handleAllocate = async () => {
-    if (!window.confirm(`Allocate leave balances for all active employees for ${yearFilter}? Existing allocations will not be overwritten.`)) return;
-    try {
-      const res  = await fetch('/api/leaves/balances/allocate', {
-        method: 'POST', credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ year: yearFilter }),
-      });
-      const data = await res.json();
-      if (!res.ok) { setError(data.error); return; }
-      loadAll();
-    } catch { setError('Network error.'); }
+  const handleAllocated = (data) => {
+    setModal(null);
+    setError('');
+    loadAll();
   };
 
   const handleCancel = async (req) => {
@@ -435,7 +529,7 @@ export default function Leaves() {
               {balances.length === 0 ? `No balances allocated for ${yearFilter} yet.` : `${balances.length} balance record(s) for ${yearFilter}`}
             </div>
             {can('finance') && (
-              <button className="btn btn-primary" onClick={handleAllocate}>
+              <button className="btn btn-primary" onClick={() => setModal('allocate')}>
                 Allocate Balances for {yearFilter}
               </button>
             )}
@@ -564,6 +658,10 @@ export default function Leaves() {
       {modal === 'review' && activeItem && (
         <ReviewModal request={activeItem}
           onClose={() => setModal(null)} onReviewed={() => { setModal(null); loadAll(); }} />
+      )}
+      {modal === 'allocate' && (
+        <AllocateModal employees={employees} year={yearFilter}
+          onClose={() => setModal(null)} onAllocated={handleAllocated} />
       )}
     </div>
   );

@@ -119,9 +119,14 @@ router.post('/balances/allocate', async (req, res) => {
   const user = req.session.user;
   if (!['finance','super_admin'].includes(user?.role))
     return res.status(403).json({ error: 'Finance role or above required' });
-  const year = parseInt(req.body.year) || new Date().getFullYear();
+  const year         = parseInt(req.body.year) || new Date().getFullYear();
+  const employee_ids = Array.isArray(req.body.employee_ids) ? req.body.employee_ids.map(Number) : null;
+  if (employee_ids && employee_ids.length === 0)
+    return res.status(400).json({ error: 'At least one employee must be selected' });
   try {
-    const { rows: employees  } = await query('SELECT id FROM employees WHERE is_active = 1');
+    const { rows: employees } = employee_ids
+      ? await query('SELECT id FROM employees WHERE is_active = 1 AND id = ANY($1)', [employee_ids])
+      : await query('SELECT id FROM employees WHERE is_active = 1');
     const { rows: leaveTypes } = await query('SELECT * FROM leave_types WHERE is_active = 1');
     // Build entitlement lookup: employeeId → Set of leave_type_ids
     const { rows: entRows } = await query('SELECT employee_id, leave_type_id FROM employee_leave_entitlements');
