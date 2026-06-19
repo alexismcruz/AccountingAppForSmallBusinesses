@@ -5,6 +5,8 @@ import AmountInput from '../components/AmountInput.jsx';
 import CharCount from '../components/CharCount.jsx';
 import { useSettings } from '../context/SettingsContext.jsx';
 import { useUser } from '../context/UserContext.jsx';
+import StatusPill from '../components/StatusPill.jsx';
+import { X, Download, Trash2, FileText } from 'lucide-react';
 
 const TEMPLATES = [
   { name: 'Owner Investment',       desc: 'Owner puts money into the business',           lines: [{ code: '1010', side: 'debit' }, { code: '3000', side: 'credit' }] },
@@ -41,18 +43,14 @@ function triggerDownload(url, filename) {
 // ── Entry status badge ────────────────────────────────────────────────────────
 function EntryStatusBadge({ entry }) {
   switch (entry.status) {
-    case 'draft':
-      return <span className="badge" style={{ background: '#94a3b8', color: '#fff' }}>Draft</span>;
-    case 'pending_approval':
-      return <span className="badge badge-warning">Pending Approval</span>;
-    case 'pending_deletion':
-      return <span className="badge badge-warning">Pending Deletion</span>;
+    case 'draft':             return <StatusPill status="draft" />;
+    case 'pending_approval':  return <StatusPill status="pending" label="Pending Approval" />;
+    case 'pending_deletion':  return <StatusPill status="pending" label="Pending Deletion" />;
     case 'posted':
       return entry.entry_type === 'closing'
-        ? <span className="badge badge-warning">Closing</span>
-        : <span className="badge badge-success">Posted</span>;
-    default:
-      return <span className="badge" style={{ background: '#94a3b8', color: '#fff' }}>{entry.status}</span>;
+        ? <StatusPill status="pending" label="Closing" />
+        : <StatusPill status="posted" />;
+    default: return <StatusPill status={entry.status} />;
   }
 }
 
@@ -106,8 +104,8 @@ function ImportModal({ onClose, onImported }) {
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal" onClick={e => e.stopPropagation()}>
         <div className="modal-header">
-          <div className="modal-title">📥 Import Journal Entries</div>
-          <button className="btn btn-ghost btn-icon" onClick={onClose}>✕</button>
+          <div className="modal-title">Import Journal Entries</div>
+          <button className="modal-close" onClick={onClose}><X size={18} /></button>
         </div>
         <div className="modal-body">
           {phase === 'pick' && (
@@ -116,18 +114,18 @@ function ImportModal({ onClose, onImported }) {
                 Upload a CSV file with your journal entries. Each row is one debit or credit line.
                 Rows with the same <strong>reference</strong> are grouped into one entry.
               </div>
-              {error && <div className="alert alert-error mb-16" style={{ whiteSpace: 'pre-line' }}>⚠ {error}</div>}
+              {error && <div className="alert alert-error mb-16" style={{ whiteSpace: 'pre-line' }}>{error}</div>}
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
                 <button className="btn btn-ghost btn-sm"
                   onClick={() => triggerDownload('/api/entries/import/template', 'journal-entries-template.csv')}>
-                  📄 Download Template
+                  <Download size={14} style={{ marginRight: 4 }} />Download Template
                 </button>
               </div>
-              <label style={{ display: 'block', border: '2px dashed var(--border)', borderRadius: 8,
-                padding: 32, textAlign: 'center', cursor: 'pointer', color: 'var(--text-muted)' }}
+              <label style={{ display: 'block', border: '2px dashed var(--color-border)', borderRadius: 'var(--radius)',
+                padding: 32, textAlign: 'center', cursor: 'pointer', color: 'var(--color-ink-mid)' }}
                 onDragOver={e => e.preventDefault()}
                 onDrop={e => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f) handleFile({ target: { files: [f] } }); }}>
-                {loading ? '⏳ Validating…' : '📂 Click to choose CSV file or drag & drop here'}
+                {loading ? 'Validating…' : 'Click to choose CSV file or drag & drop here'}
                 <input type="file" accept=".csv,text/csv" style={{ display: 'none' }} onChange={handleFile} />
               </label>
             </>
@@ -135,7 +133,7 @@ function ImportModal({ onClose, onImported }) {
           {phase === 'preview' && preview && (
             <>
               <div className="alert alert-success mb-16">
-                ✓ File is valid — <strong>{preview.count} journal entr{preview.count !== 1 ? 'ies' : 'y'}</strong> ready to import.
+                File is valid — <strong>{preview.count} journal entr{preview.count !== 1 ? 'ies' : 'y'}</strong> ready to import.
               </div>
               <div className="text-muted text-sm">Existing entries with the same reference number will be skipped.</div>
             </>
@@ -143,7 +141,7 @@ function ImportModal({ onClose, onImported }) {
           {phase === 'result' && result && (
             <>
               <div className="alert alert-success mb-16">
-                ✓ Import complete — <strong>{result.imported}</strong> entr{result.imported !== 1 ? 'ies' : 'y'} imported.
+                Import complete — <strong>{result.imported}</strong> entr{result.imported !== 1 ? 'ies' : 'y'} imported.
                 {result.skipped > 0 && ` ${result.skipped} skipped (already exist).`}
               </div>
               {result.skippedRefs?.length > 0 && (
@@ -157,7 +155,7 @@ function ImportModal({ onClose, onImported }) {
           {phase === 'preview' && <>
             <button className="btn btn-ghost" onClick={() => setPhase('pick')}>← Back</button>
             <button className="btn btn-primary" onClick={handleConfirm} disabled={loading}>
-              {loading ? 'Importing…' : `✓ Import ${preview?.count} Entr${preview?.count !== 1 ? 'ies' : 'y'}`}
+              {loading ? 'Importing…' : `Import ${preview?.count} Entr${preview?.count !== 1 ? 'ies' : 'y'}`}
             </button>
           </>}
           {phase === 'result'  && <button className="btn btn-primary" onClick={onClose}>Done</button>}
@@ -193,14 +191,14 @@ function SubmitModal({ entry, onClose, onDone }) {
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal" style={{ maxWidth: 440 }} onClick={e => e.stopPropagation()}>
         <div className="modal-header">
-          <div className="modal-title">📤 Submit for Approval</div>
-          <button className="btn btn-ghost btn-icon" onClick={onClose}>✕</button>
+          <div className="modal-title">Submit for Approval</div>
+          <button className="modal-close" onClick={onClose}><X size={18} /></button>
         </div>
         <div className="modal-body">
           <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 16 }}>
             Submit <strong>{entry.reference}</strong> to the approval queue.
           </div>
-          {error && <div className="alert alert-error mb-12">⚠ {error}</div>}
+          {error && <div className="alert alert-error mb-12">{error}</div>}
           <div className="form-group">
             <label className="form-label">Note for Approver <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>(optional)</span></label>
             <textarea className="form-textarea" rows={3} value={note}
@@ -211,7 +209,7 @@ function SubmitModal({ entry, onClose, onDone }) {
         <div className="modal-footer">
           <button className="btn btn-ghost" onClick={onClose}>Cancel</button>
           <button className="btn btn-primary" onClick={handleSubmit} disabled={saving}>
-            {saving ? 'Submitting…' : '📤 Submit for Approval'}
+            {saving ? 'Submitting…' : 'Submit for Approval'}
           </button>
         </div>
       </div>
@@ -245,15 +243,15 @@ function DeletionModal({ entry, onClose, onDone }) {
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal" style={{ maxWidth: 440 }} onClick={e => e.stopPropagation()}>
         <div className="modal-header">
-          <div className="modal-title">🗑 Request Entry Deletion</div>
-          <button className="btn btn-ghost btn-icon" onClick={onClose}>✕</button>
+          <div className="modal-title">Request Entry Deletion</div>
+          <button className="modal-close" onClick={onClose}><X size={18} /></button>
         </div>
         <div className="modal-body">
           <div className="alert alert-warning mb-16">
             You are requesting deletion of <strong>{entry.reference}</strong>.
             An approver must review and approve before it is permanently removed.
           </div>
-          {error && <div className="alert alert-error mb-12">⚠ {error}</div>}
+          {error && <div className="alert alert-error mb-12">{error}</div>}
           <div className="form-group">
             <label className="form-label">Reason for Deletion <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>(optional)</span></label>
             <textarea className="form-textarea" rows={3} value={note}
@@ -264,7 +262,7 @@ function DeletionModal({ entry, onClose, onDone }) {
         <div className="modal-footer">
           <button className="btn btn-ghost" onClick={onClose}>Cancel</button>
           <button className="btn btn-danger" onClick={handleRequest} disabled={saving}>
-            {saving ? 'Submitting…' : '🗑 Submit Deletion Request'}
+            {saving ? 'Submitting…' : 'Submit Deletion Request'}
           </button>
         </div>
       </div>
@@ -516,7 +514,7 @@ export default function JournalEntries() {
 
       {msg && (
         <div className={`alert alert-${msg.type === 'error' ? 'error' : 'success'} mb-16`}>
-          {msg.type === 'error' ? '⚠ ' : '✓ '}{msg.text}
+          {msg.text}
         </div>
       )}
 
@@ -526,7 +524,7 @@ export default function JournalEntries() {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
             <div style={{ fontWeight: 700, fontSize: 15 }}>New Journal Entry</div>
             <button className="btn btn-ghost btn-sm" onClick={() => setShowTemplates(t => !t)}>
-              📋 Use Template
+              <FileText size={14} style={{ marginRight: 4 }} />Use Template
             </button>
           </div>
 
@@ -653,9 +651,9 @@ export default function JournalEntries() {
                     {totalDebit === 0 && totalCredit === 0
                       ? <span className="text-muted text-sm">Enter debit and credit amounts above.</span>
                       : isBalanced
-                        ? <span style={{ color: 'var(--success)', fontWeight: 600, fontSize: 13 }}>✓ Entry is balanced</span>
+                        ? <span style={{ color: 'var(--success)', fontWeight: 600, fontSize: 13 }}>Entry is balanced</span>
                         : <span style={{ color: 'var(--danger)', fontWeight: 600, fontSize: 13 }}>
-                            ⚠ Not balanced — difference: {fmt(Math.abs(totalDebit - totalCredit))}
+                            Not balanced — difference: {fmt(Math.abs(totalDebit - totalCredit))}
                           </span>
                     }
                   </td>
@@ -682,16 +680,16 @@ export default function JournalEntries() {
             <button className="btn btn-ghost" onClick={() => { setShowForm(false); setMsg(null); }}>Cancel</button>
             {isSuperAdmin ? (
               <button className="btn btn-success" onClick={() => handleSubmit(false)} disabled={loading || !isBalanced}>
-                {loading ? 'Posting…' : '✓ Post Entry'}
+                {loading ? 'Posting…' : 'Post Entry'}
               </button>
             ) : (
               <>
                 <button className="btn btn-ghost" style={{ border: '1px solid var(--border)' }}
                   onClick={() => handleSubmit(false)} disabled={loading || !isBalanced}>
-                  {loading ? 'Saving…' : '💾 Save as Draft'}
+                  {loading ? 'Saving…' : 'Save as Draft'}
                 </button>
                 <button className="btn btn-primary" onClick={() => handleSubmit(true)} disabled={loading || !isBalanced}>
-                  {loading ? 'Submitting…' : '📤 Submit for Approval'}
+                  {loading ? 'Submitting…' : 'Submit for Approval'}
                 </button>
               </>
             )}
@@ -766,7 +764,7 @@ export default function JournalEntries() {
                         <td className="td-right tabular">{fmt(entry.total_amount)}</td>
                         <td>
                           {entry.currency && entry.currency !== baseCurrency
-                            ? <span className="badge badge-info">{entry.currency}</span>
+                            ? <span className="pill pill-primary">{entry.currency}</span>
                             : <span style={{ color: 'var(--text-light)', fontSize: 12 }}>{entry.currency || baseCurrency}</span>}
                         </td>
                         <td><EntryStatusBadge entry={entry} /></td>
@@ -785,7 +783,7 @@ export default function JournalEntries() {
                                 <button className="btn btn-ghost btn-sm"
                                   title="Delete draft"
                                   style={{ color: 'var(--danger)', borderColor: 'transparent' }}
-                                  onClick={e => { e.stopPropagation(); handleDelete(entry); }}>🗑</button>
+                                  onClick={e => { e.stopPropagation(); handleDelete(entry); }}><Trash2 size={14} /></button>
                               </>
                             )}
 
@@ -803,10 +801,10 @@ export default function JournalEntries() {
                               isSuperAdmin
                                 ? <button className="btn btn-ghost btn-sm" title="Delete entry"
                                     style={{ color: 'var(--danger)', borderColor: 'transparent' }}
-                                    onClick={e => { e.stopPropagation(); handleDelete(entry); }}>🗑</button>
+                                    onClick={e => { e.stopPropagation(); handleDelete(entry); }}><Trash2 size={14} /></button>
                                 : <button className="btn btn-ghost btn-sm" title="Request deletion"
                                     style={{ color: 'var(--danger)', borderColor: 'transparent' }}
-                                    onClick={e => { e.stopPropagation(); setDeletionModal(entry); }}>🗑</button>
+                                    onClick={e => { e.stopPropagation(); setDeletionModal(entry); }}><Trash2 size={14} /></button>
                             )}
 
                             {/* Pending Deletion: informational */}

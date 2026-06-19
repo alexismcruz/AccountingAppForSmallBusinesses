@@ -1,14 +1,16 @@
 import { useState, useEffect, useCallback } from 'react';
+import StatusPill from '../components/StatusPill.jsx';
+import { X, CheckCircle2, XCircle, ClipboardList } from 'lucide-react';
 
 const TYPE_LABELS = {
-  create_entry:       '📝 New Journal Entry',
-  delete_entry:       '🗑 Delete Journal Entry',
-  create_receivable:  '📥 New Invoice (AR)',
-  delete_receivable:  '🗑 Delete Receivable (AR)',
-  create_payable:     '📤 New Bill (AP)',
-  delete_payable:     '🗑 Delete Payable (AP)',
-  create_inventory:   '📦 New Inventory Item',
-  delete_inventory:   '🗑 Delete Inventory Item',
+  create_entry:       'New Journal Entry',
+  delete_entry:       'Delete Journal Entry',
+  create_receivable:  'New Invoice (AR)',
+  delete_receivable:  'Delete Receivable (AR)',
+  create_payable:     'New Bill (AP)',
+  delete_payable:     'Delete Payable (AP)',
+  create_inventory:   'New Inventory Item',
+  delete_inventory:   'Delete Inventory Item',
 };
 
 const ROLE_LABELS = {
@@ -57,21 +59,21 @@ function ReviewModal({ request, onClose, onDone }) {
       <div className="modal" style={{ maxWidth: 560 }} onClick={e => e.stopPropagation()}>
         <div className="modal-header">
           <div className="modal-title">{TYPE_LABELS[request.type] || request.type}</div>
-          <button className="btn btn-ghost btn-icon" onClick={onClose}>✕</button>
+          <button className="modal-close" onClick={onClose}><X size={18} /></button>
         </div>
         <div className="modal-body">
           {/* Request details */}
-          <div style={{ background: 'var(--bg)', borderRadius: 8, padding: '14px 16px', marginBottom: 16 }}>
+          <div style={{ background: 'var(--color-surface-2)', borderRadius: 'var(--radius-sm)', padding: '14px 16px', marginBottom: 16 }}>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 20px', fontSize: 13 }}>
-              <div><span style={{ color: 'var(--text-muted)' }}>Reference:</span> <strong>{request.entity_ref || '—'}</strong></div>
-              <div><span style={{ color: 'var(--text-muted)' }}>Submitted:</span> {fmtDate(request.created_at)}</div>
-              <div><span style={{ color: 'var(--text-muted)' }}>Submitted by:</span> {request.submitted_by_name || request.submitted_by_email}</div>
-              <div><span style={{ color: 'var(--text-muted)' }}>Role:</span> {ROLE_LABELS[request.submitted_by_role] || request.submitted_by_role}</div>
-              <div style={{ gridColumn: '1/-1' }}><span style={{ color: 'var(--text-muted)' }}>Email:</span> {request.submitted_by_email}</div>
+              <div><span style={{ color: 'var(--color-ink-mid)' }}>Reference:</span> <strong>{request.entity_ref || '—'}</strong></div>
+              <div><span style={{ color: 'var(--color-ink-mid)' }}>Submitted:</span> {fmtDate(request.created_at)}</div>
+              <div><span style={{ color: 'var(--color-ink-mid)' }}>Submitted by:</span> {request.submitted_by_name || request.submitted_by_email}</div>
+              <div><span style={{ color: 'var(--color-ink-mid)' }}>Role:</span> {ROLE_LABELS[request.submitted_by_role] || request.submitted_by_role}</div>
+              <div style={{ gridColumn: '1/-1' }}><span style={{ color: 'var(--color-ink-mid)' }}>Email:</span> {request.submitted_by_email}</div>
             </div>
             {request.submitter_note && (
-              <div style={{ marginTop: 10, padding: '8px 12px', background: 'white', borderRadius: 6, border: '1px solid var(--border)', fontSize: 13 }}>
-                <span style={{ color: 'var(--text-muted)', fontSize: 11, display: 'block', marginBottom: 4 }}>SUBMITTER NOTE</span>
+              <div style={{ marginTop: 10, padding: '8px 12px', background: 'var(--color-surface)', borderRadius: 6, border: '1px solid var(--color-border)', fontSize: 13 }}>
+                <span style={{ color: 'var(--color-ink-mid)', fontSize: 11, display: 'block', marginBottom: 4 }}>SUBMITTER NOTE</span>
                 {request.submitter_note}
               </div>
             )}
@@ -79,8 +81,8 @@ function ReviewModal({ request, onClose, onDone }) {
 
           {/* Snapshot for create requests */}
           {snapshot && (request.type === 'create_receivable' || request.type === 'create_payable') && (
-            <div style={{ background: '#f0fdf4', border: '1px solid #86efac', borderRadius: 8, padding: '12px 16px', marginBottom: 16, fontSize: 12 }}>
-              <div style={{ fontWeight: 700, color: '#15803d', marginBottom: 8 }}>📋 Record to be created</div>
+            <div style={{ background: 'var(--color-primary-light)', border: '1px solid var(--color-primary-mid)', borderRadius: 'var(--radius-sm)', padding: '12px 16px', marginBottom: 16, fontSize: 12 }}>
+              <div style={{ fontWeight: 700, color: 'var(--color-primary)', marginBottom: 8 }}>Record to be created</div>
               {snapshot.customer_name && <div><strong>Customer:</strong> {snapshot.customer_name}</div>}
               {snapshot.supplier_name && <div><strong>Supplier:</strong> {snapshot.supplier_name}</div>}
               {snapshot.invoice_number && <div><strong>Invoice #:</strong> {snapshot.invoice_number}</div>}
@@ -91,8 +93,8 @@ function ReviewModal({ request, onClose, onDone }) {
             </div>
           )}
           {snapshot && request.type === 'create_inventory' && (
-            <div style={{ background: '#f0fdf4', border: '1px solid #86efac', borderRadius: 8, padding: '12px 16px', marginBottom: 16, fontSize: 12 }}>
-              <div style={{ fontWeight: 700, color: '#15803d', marginBottom: 8 }}>📋 Item to be added</div>
+            <div style={{ background: 'var(--color-primary-light)', border: '1px solid var(--color-primary-mid)', borderRadius: 'var(--radius-sm)', padding: '12px 16px', marginBottom: 16, fontSize: 12 }}>
+              <div style={{ fontWeight: 700, color: 'var(--color-primary)', marginBottom: 8 }}>Item to be added</div>
               {snapshot.sku && <div><strong>SKU:</strong> {snapshot.sku}</div>}
               {snapshot.name && <div><strong>Name:</strong> {snapshot.name}</div>}
               {snapshot.category && <div><strong>Category:</strong> {snapshot.category}</div>}
@@ -103,8 +105,8 @@ function ReviewModal({ request, onClose, onDone }) {
           )}
           {/* Snapshot for delete requests */}
           {snapshot && (request.type === 'delete_entry' || request.type === 'delete_receivable' || request.type === 'delete_payable' || request.type === 'delete_inventory') && (
-            <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 8, padding: '12px 16px', marginBottom: 16, fontSize: 12 }}>
-              <div style={{ fontWeight: 700, color: '#dc2626', marginBottom: 8 }}>⚠ Record to be deleted</div>
+            <div style={{ background: 'var(--danger-bg)', border: '1px solid var(--danger-border)', borderRadius: 'var(--radius-sm)', padding: '12px 16px', marginBottom: 16, fontSize: 12 }}>
+              <div style={{ fontWeight: 700, color: 'var(--danger)', marginBottom: 8 }}>Record to be deleted</div>
               {snapshot.description && <div><strong>Description:</strong> {snapshot.description}</div>}
               {snapshot.customer_name && <div><strong>Customer:</strong> {snapshot.customer_name}</div>}
               {snapshot.supplier_name && <div><strong>Supplier:</strong> {snapshot.supplier_name}</div>}
@@ -118,17 +120,17 @@ function ReviewModal({ request, onClose, onDone }) {
           {/* Already reviewed */}
           {request.status !== 'pending' && (
             <div className={`alert ${request.status === 'approved' ? 'alert-success' : 'alert-error'} mb-16`}>
-              {request.status === 'approved' ? '✓ Approved' : '✕ Rejected'} by {request.reviewed_by_name || request.reviewed_by_email} on {fmtDate(request.reviewed_at)}
+              {request.status === 'approved' ? 'Approved' : 'Rejected'} by {request.reviewed_by_name || request.reviewed_by_email} on {fmtDate(request.reviewed_at)}
               {request.reviewer_note && <div style={{ marginTop: 4, fontSize: 12 }}>Note: {request.reviewer_note}</div>}
             </div>
           )}
 
-          {/* Action area — only show for pending + eligible approver */}
+          {/* Action area */}
           {request.status === 'pending' && request.can_approve && (
             <>
-              {error && <div className="alert alert-error mb-12">⚠ {error}</div>}
+              {error && <div className="alert alert-error mb-12">{error}</div>}
               <div className="form-group">
-                <label className="form-label">Note * <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>(required before approving or rejecting)</span></label>
+                <label className="form-label">Note * <span style={{ fontWeight: 400, color: 'var(--color-ink-mid)' }}>(required before approving or rejecting)</span></label>
                 <textarea className="form-textarea" rows={3} value={note}
                   onChange={e => setNote(e.target.value)}
                   placeholder="Add your review notes here…" />
@@ -136,7 +138,6 @@ function ReviewModal({ request, onClose, onDone }) {
             </>
           )}
 
-          {/* Read-only note for non-approvers on pending requests */}
           {request.status === 'pending' && !request.can_approve && (
             <div className="alert alert-info">
               This request is pending approval. You do not have permission to approve or reject it based on your role.
@@ -151,10 +152,10 @@ function ReviewModal({ request, onClose, onDone }) {
           {request.status === 'pending' && request.can_approve && (
             <>
               <button className="btn btn-danger" onClick={() => act('reject')} disabled={saving || !note.trim()}>
-                {saving ? 'Saving…' : '✕ Reject'}
+                {saving ? 'Saving…' : 'Reject'}
               </button>
               <button className="btn btn-success" onClick={() => act('approve')} disabled={saving || !note.trim()}>
-                {saving ? 'Saving…' : '✓ Approve'}
+                {saving ? 'Saving…' : 'Approve'}
               </button>
             </>
           )}
@@ -186,12 +187,14 @@ export default function Approvals() {
 
   useEffect(() => { load(); }, [load]);
 
-  const statusBadge = (r) => {
-    if (r.status === 'approved') return <span className="badge badge-success">Approved</span>;
-    if (r.status === 'rejected') return <span className="badge badge-danger">Rejected</span>;
-    if (r.can_approve)           return <span className="badge badge-warning">Action Required</span>;
-    return <span className="badge badge-info">Pending</span>;
+  const statusPill = (r) => {
+    if (r.status === 'approved') return <StatusPill status="approved" />;
+    if (r.status === 'rejected') return <StatusPill status="rejected" />;
+    if (r.can_approve)           return <StatusPill status="pending" label="Action Required" />;
+    return <StatusPill status="pending" />;
   };
+
+  const actionCount = requests.filter(r => r.can_approve).length;
 
   return (
     <div>
@@ -203,30 +206,36 @@ export default function Approvals() {
       </div>
 
       {/* Tabs */}
-      <div className="card mb-16" style={{ padding: '10px 16px', display: 'flex', gap: 8 }}>
-        {[['pending','⏳ Pending'],['approved','✓ Approved'],['rejected','✕ Rejected'],['all','All']].map(([val, label]) => (
+      <div className="tab-bar mb-16">
+        {[
+          { val: 'pending',  label: 'Pending' },
+          { val: 'approved', label: 'Approved' },
+          { val: 'rejected', label: 'Rejected' },
+          { val: 'all',      label: 'All' },
+        ].map(({ val, label }) => (
           <button key={val}
-            className={`btn btn-sm ${tab === val ? 'btn-primary' : 'btn-ghost'}`}
+            className={`tab-btn${tab === val ? ' active' : ''}`}
             onClick={() => setTab(val)}>
             {label}
-            {val === 'pending' && requests.filter(r => r.can_approve).length > 0 && tab !== 'pending' &&
+            {val === 'pending' && actionCount > 0 && tab !== 'pending' && (
               <span style={{ marginLeft: 6, background: 'var(--danger)', color: 'white', borderRadius: 10, padding: '1px 6px', fontSize: 10 }}>
-                {requests.filter(r => r.can_approve).length}
+                {actionCount}
               </span>
-            }
+            )}
           </button>
         ))}
       </div>
 
-      {error && <div className="alert alert-error mb-16">⚠ {error}</div>}
+      {error && <div className="alert alert-error mb-16">{error}</div>}
 
       {loading ? (
-        <div className="card" style={{ textAlign: 'center', padding: 60, color: 'var(--text-muted)' }}>Loading…</div>
+        <div className="page-loading">Loading…</div>
       ) : requests.length === 0 ? (
         <div className="card">
           <div className="empty-state">
-            <div className="empty-state-icon">✅</div>
-            <p>{tab === 'pending' ? 'No pending requests.' : 'No records found.'}</p>
+            <div className="empty-state-icon"><ClipboardList size={40} strokeWidth={1.4} /></div>
+            <div className="empty-state-title">{tab === 'pending' ? 'No pending requests' : 'No records found'}</div>
+            <div className="empty-state-sub">{tab === 'pending' ? 'You\'re all caught up.' : 'Nothing to display for this filter.'}</div>
           </div>
         </div>
       ) : (
@@ -252,12 +261,12 @@ export default function Approvals() {
                     <td><span className="td-mono">{r.entity_ref || '—'}</span></td>
                     <td>
                       <div style={{ fontSize: 13, fontWeight: 500 }}>{r.submitted_by_name || r.submitted_by_email}</div>
-                      <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{ROLE_LABELS[r.submitted_by_role]}</div>
+                      <div style={{ fontSize: 11, color: 'var(--color-ink-mid)' }}>{ROLE_LABELS[r.submitted_by_role]}</div>
                     </td>
-                    <td style={{ fontSize: 12, color: 'var(--text-muted)' }}>{fmtDate(r.created_at)}</td>
+                    <td style={{ fontSize: 12, color: 'var(--color-ink-mid)' }}>{fmtDate(r.created_at)}</td>
                     {tab !== 'pending' && <td style={{ fontSize: 12 }}>{r.reviewed_by_name || r.reviewed_by_email || '—'}</td>}
-                    {tab !== 'pending' && <td style={{ fontSize: 12, color: 'var(--text-muted)' }}>{fmtDate(r.reviewed_at)}</td>}
-                    <td>{statusBadge(r)}</td>
+                    {tab !== 'pending' && <td style={{ fontSize: 12, color: 'var(--color-ink-mid)' }}>{fmtDate(r.reviewed_at)}</td>}
+                    <td>{statusPill(r)}</td>
                     <td>
                       <button className={`btn btn-sm ${r.can_approve ? 'btn-primary' : 'btn-ghost'}`}
                         onClick={e => { e.stopPropagation(); setSelected(r); }}>

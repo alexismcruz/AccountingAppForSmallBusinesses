@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useSettings } from '../context/SettingsContext.jsx';
 import { useUser }     from '../context/UserContext.jsx';
+import StatusPill      from '../components/StatusPill.jsx';
+import { X, FileText, CheckCircle2 } from 'lucide-react';
 
 const PAY_FREQ = { semi_monthly: 'Semi-monthly', monthly: 'Monthly' };
 
@@ -51,10 +53,10 @@ function CreatePeriodModal({ onClose, onCreated }) {
       <div className="modal" style={{ maxWidth: 440 }} onClick={e => e.stopPropagation()}>
         <div className="modal-header">
           <div className="modal-title">New Payroll Run</div>
-          <button className="btn btn-ghost btn-icon" onClick={onClose}>✕</button>
+          <button className="modal-close" onClick={onClose}><X size={18} /></button>
         </div>
         <div className="modal-body">
-          {error && <div className="alert alert-error mb-12">⚠ {error}</div>}
+          {error && <div className="alert alert-error mb-12">{error}</div>}
           <div className="alert alert-info mb-16" style={{ fontSize: 12 }}>
             All active employees will be included automatically with computed SSS, PhilHealth, Pag-IBIG, and withholding tax. You can adjust individual entries after creating the run.
           </div>
@@ -143,7 +145,7 @@ function EditEntryModal({ entry, onClose, onSaved }) {
   const Row = ({ label, value, bold, color }) => (
     <div style={{ display: 'flex', justifyContent: 'space-between', padding: '5px 0', borderBottom: '1px solid var(--border)' }}>
       <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{label}</span>
-      <span style={{ fontSize: 13, fontWeight: bold ? 700 : 400, color: color || 'var(--text-primary)' }}>{value}</span>
+      <span style={{ fontSize: 13, fontWeight: bold ? 700 : 400, color: color || 'var(--color-ink)' }}>{value}</span>
     </div>
   );
 
@@ -154,10 +156,10 @@ function EditEntryModal({ entry, onClose, onSaved }) {
       <div className="modal" style={{ maxWidth: 560 }} onClick={e => e.stopPropagation()}>
         <div className="modal-header">
           <div className="modal-title">Adjust Entry — {name}</div>
-          <button className="btn btn-ghost btn-icon" onClick={onClose}>✕</button>
+          <button className="modal-close" onClick={onClose}><X size={18} /></button>
         </div>
         <div className="modal-body">
-          {error && <div className="alert alert-error mb-12">⚠ {error}</div>}
+          {error && <div className="alert alert-error mb-12">{error}</div>}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 16px' }}>
             <div>
               <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: 8 }}>Adjustments</div>
@@ -172,7 +174,7 @@ function EditEntryModal({ entry, onClose, onSaved }) {
             </div>
             <div>
               <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: 8 }}>Current Computation</div>
-              <div style={{ background: 'var(--bg-secondary)', borderRadius: 8, padding: '10px 12px' }}>
+              <div style={{ background: 'var(--color-surface-2)', borderRadius: 'var(--radius-sm)', padding: '10px 12px' }}>
                 <Row label="Basic Pay"         value={fmt(entry.basic_pay)} />
                 <Row label="Gross Pay"         value={fmt(entry.gross_pay)} bold />
                 <div style={{ height: 6 }} />
@@ -298,7 +300,7 @@ export default function Payroll() {
             + New Payroll Run
           </button>
         )}
-        {error && <div className="alert alert-error mb-12" style={{ fontSize: 12 }}>⚠ {error}</div>}
+        {error && <div className="alert alert-error mb-12" style={{ fontSize: 12 }}>{error}</div>}
         {loading ? <div style={{ padding: 20, textAlign: 'center', color: 'var(--text-muted)' }}>Loading…</div> : periods.length === 0 ? (
           <div className="card" style={{ padding: 20, textAlign: 'center', fontSize: 13, color: 'var(--text-muted)' }}>
             No payroll runs yet.
@@ -309,28 +311,22 @@ export default function Payroll() {
             className="card"
             style={{
               padding: '12px 14px', marginBottom: 8, cursor: 'pointer',
-              border: selected?.id === p.id ? '2px solid var(--primary)' : '1px solid var(--border)',
-              background: selected?.id === p.id ? '#eff6ff' : '#fff',
+              border: selected?.id === p.id ? '2px solid var(--color-primary)' : '1px solid var(--color-border)',
+              background: selected?.id === p.id ? 'var(--color-primary-light)' : 'var(--color-surface)',
             }}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
               <div>
-                <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary)' }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-ink)' }}>
                   {fmtDate(p.period_start)} – {fmtDate(p.period_end)}
                 </div>
                 <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
                   Pay Date: {fmtDate(p.pay_date)} · {p.employee_count} employee{p.employee_count !== 1 ? 's' : ''}
                 </div>
               </div>
-              <span style={{
-                fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 999,
-                background: p.status === 'posted' ? '#d1fae5' : '#fef3c7',
-                color: p.status === 'posted' ? '#15803d' : '#92400e',
-              }}>
-                {p.status === 'posted' ? 'Posted' : 'Draft'}
-              </span>
+              <StatusPill status={p.status === 'posted' ? 'posted' : 'draft'} />
             </div>
-            <div style={{ marginTop: 6, fontSize: 12, fontWeight: 600, color: '#2563eb' }}>
+            <div style={{ marginTop: 6, fontSize: 12, fontWeight: 600, color: 'var(--color-primary)' }}>
               Net: {fmt(p.total_net_pay)}
             </div>
           </div>
@@ -366,12 +362,14 @@ export default function Payroll() {
                         Delete Draft
                       </button>
                       <button className="btn btn-primary btn-sm" onClick={handlePost} disabled={posting}>
-                        {posting ? 'Posting…' : '✓ Post Payroll'}
+                        {posting ? 'Posting…' : 'Post Payroll'}
                       </button>
                     </>
                   )}
                   {selected.status === 'posted' && (
-                    <span style={{ fontSize: 12, color: '#15803d', fontWeight: 600 }}>✓ Posted</span>
+                    <span style={{ display:'flex', alignItems:'center', gap:4, fontSize: 12, color: 'var(--success)', fontWeight: 600 }}>
+                      <CheckCircle2 size={14} strokeWidth={2} />Posted
+                    </span>
                   )}
                 </div>
               </div>
@@ -379,12 +377,12 @@ export default function Payroll() {
               {/* Summary stats */}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginTop: 14 }}>
                 {[
-                  { label: 'Gross Payroll', value: fmt(totals.gross), color: '#2563eb' },
-                  { label: 'SSS (employer)', value: fmt(totals.sssEr), color: '#64748b' },
-                  { label: 'PhilHealth (employer)', value: fmt(totals.phEr), color: '#64748b' },
-                  { label: 'Net Payroll', value: fmt(totals.net), color: '#15803d' },
+                  { label: 'Gross Payroll', value: fmt(totals.gross), color: 'var(--color-primary)' },
+                  { label: 'SSS (employer)', value: fmt(totals.sssEr), color: 'var(--color-ink-mid)' },
+                  { label: 'PhilHealth (employer)', value: fmt(totals.phEr), color: 'var(--color-ink-mid)' },
+                  { label: 'Net Payroll', value: fmt(totals.net), color: 'var(--success)' },
                 ].map(({ label, value, color }) => (
-                  <div key={label} style={{ background: 'var(--bg-secondary)', borderRadius: 8, padding: '10px 12px' }}>
+                  <div key={label} style={{ background: 'var(--color-surface-2)', borderRadius: 'var(--radius-sm)', padding: '10px 12px' }}>
                     <div style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 3 }}>{label}</div>
                     <div style={{ fontSize: 15, fontWeight: 700, color }}>{value}</div>
                   </div>
@@ -418,19 +416,20 @@ export default function Payroll() {
                         </td>
                         <td style={{ textAlign: 'right' }}>{fmt(e.basic_pay)}</td>
                         <td style={{ textAlign: 'right', fontWeight: 600 }}>{fmt(e.gross_pay)}</td>
-                        <td style={{ textAlign: 'right', color: '#dc2626' }}>{fmt(e.sss_employee)}</td>
-                        <td style={{ textAlign: 'right', color: '#dc2626' }}>{fmt(e.philhealth_employee)}</td>
-                        <td style={{ textAlign: 'right', color: '#dc2626' }}>{fmt(e.pagibig_employee)}</td>
-                        <td style={{ textAlign: 'right', color: '#dc2626' }}>{fmt(e.wtax)}</td>
-                        <td style={{ textAlign: 'right', fontWeight: 700, color: '#15803d' }}>{fmt(e.net_pay)}</td>
+                        <td style={{ textAlign: 'right', color: 'var(--danger)' }}>{fmt(e.sss_employee)}</td>
+                        <td style={{ textAlign: 'right', color: 'var(--danger)' }}>{fmt(e.philhealth_employee)}</td>
+                        <td style={{ textAlign: 'right', color: 'var(--danger)' }}>{fmt(e.pagibig_employee)}</td>
+                        <td style={{ textAlign: 'right', color: 'var(--danger)' }}>{fmt(e.wtax)}</td>
+                        <td style={{ textAlign: 'right', fontWeight: 700, color: 'var(--success)' }}>{fmt(e.net_pay)}</td>
                         <td>
                           <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end' }}>
                             {selected.status === 'draft' && can('finance') && (
                               <button className="btn btn-ghost btn-sm" onClick={() => setEditEntry(e)}>Adjust</button>
                             )}
                             <button className="btn btn-ghost btn-sm"
-                              onClick={() => triggerDownload(`/api/payroll/entries/${e.id}/payslip`, `Payslip-${e.employee_number}-${selected.period_start}.pdf`)}>
-                              📄 Payslip
+                              onClick={() => triggerDownload(`/api/payroll/entries/${e.id}/payslip`, `Payslip-${e.employee_number}-${selected.period_start}.pdf`)}
+                              style={{ display:'inline-flex', alignItems:'center', gap:5 }}>
+                              <FileText size={13} strokeWidth={2} />Payslip
                             </button>
                           </div>
                         </td>
@@ -439,15 +438,15 @@ export default function Payroll() {
                   </tbody>
                   {/* Totals row */}
                   <tfoot>
-                    <tr style={{ background: '#f1f5f9', fontWeight: 700 }}>
+                    <tr style={{ background: 'var(--color-surface-2)', fontWeight: 700 }}>
                       <td>TOTALS ({entries.length} employees)</td>
                       <td style={{ textAlign: 'right' }}>{fmt(entries.reduce((s, e) => s + e.basic_pay, 0))}</td>
                       <td style={{ textAlign: 'right' }}>{fmt(totals.gross)}</td>
-                      <td style={{ textAlign: 'right', color: '#dc2626' }}>{fmt(totals.sssEe)}</td>
-                      <td style={{ textAlign: 'right', color: '#dc2626' }}>{fmt(totals.phEe)}</td>
-                      <td style={{ textAlign: 'right', color: '#dc2626' }}>{fmt(totals.piEe)}</td>
-                      <td style={{ textAlign: 'right', color: '#dc2626' }}>{fmt(totals.wtax)}</td>
-                      <td style={{ textAlign: 'right', color: '#15803d' }}>{fmt(totals.net)}</td>
+                      <td style={{ textAlign: 'right', color: 'var(--danger)' }}>{fmt(totals.sssEe)}</td>
+                      <td style={{ textAlign: 'right', color: 'var(--danger)' }}>{fmt(totals.phEe)}</td>
+                      <td style={{ textAlign: 'right', color: 'var(--danger)' }}>{fmt(totals.piEe)}</td>
+                      <td style={{ textAlign: 'right', color: 'var(--danger)' }}>{fmt(totals.wtax)}</td>
+                      <td style={{ textAlign: 'right', color: 'var(--success)' }}>{fmt(totals.net)}</td>
                       <td></td>
                     </tr>
                   </tfoot>

@@ -4,6 +4,8 @@ import { useUser } from '../context/UserContext.jsx';
 import CurrencySelect from '../components/CurrencySelect.jsx';
 import AmountInput from '../components/AmountInput.jsx';
 import CharCount from '../components/CharCount.jsx';
+import StatusPill from '../components/StatusPill.jsx';
+import { X, Download, Upload, FileText, Receipt, Trash2, CalendarDays, CheckCircle2, BookOpen } from 'lucide-react';
 
 // ── Download helpers ──────────────────────────────────────────────────────────
 function triggerDownload(url, filename) {
@@ -92,8 +94,8 @@ function ImportModal({ type, onClose, onImported }) {
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal" onClick={e => e.stopPropagation()}>
         <div className="modal-header">
-          <div className="modal-title">📥 Import {label}</div>
-          <button className="btn btn-ghost btn-icon" onClick={onClose}>✕</button>
+          <div className="modal-title">Import {label}</div>
+          <button className="modal-close" onClick={onClose}><X size={18} /></button>
         </div>
         <div className="modal-body">
           {phase === 'pick' && (
@@ -102,18 +104,19 @@ function ImportModal({ type, onClose, onImported }) {
                 Upload a CSV file to bulk-import {isAR ? 'customer invoices' : 'supplier bills'}.
                 Only <strong>pending</strong> records are imported — paid status must be updated manually.
               </div>
-              {error && <div className="alert alert-error mb-16" style={{ whiteSpace: 'pre-line' }}>⚠ {error}</div>}
+              {error && <div className="alert alert-error mb-16" style={{ whiteSpace: 'pre-line' }}>{error}</div>}
               <div style={{ marginBottom: 16 }}>
                 <button className="btn btn-ghost btn-sm"
+                  style={{ display:'inline-flex', alignItems:'center', gap:5 }}
                   onClick={() => triggerDownload(`${endpoint}/import/template`, templateFile)}>
-                  📄 Download Template
+                  <Download size={13} strokeWidth={2} /> Download Template
                 </button>
               </div>
-              <label style={{ display: 'block', border: '2px dashed var(--border)', borderRadius: 8,
-                padding: 32, textAlign: 'center', cursor: 'pointer', color: 'var(--text-muted)' }}
+              <label style={{ display: 'block', border: '2px dashed var(--color-border)', borderRadius: 'var(--radius-sm)',
+                padding: 32, textAlign: 'center', cursor: 'pointer', color: 'var(--color-ink-mid)' }}
                 onDragOver={e => e.preventDefault()}
                 onDrop={e => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f) handleFile({ target: { files: [f] } }); }}>
-                {loading ? '⏳ Validating…' : '📂 Click to choose CSV file or drag & drop here'}
+                {loading ? 'Validating…' : 'Click to choose CSV file or drag & drop here'}
                 <input type="file" accept=".csv,text/csv" style={{ display: 'none' }} onChange={handleFile} />
               </label>
             </>
@@ -140,7 +143,7 @@ function ImportModal({ type, onClose, onImported }) {
           {phase === 'preview' && <>
             <button className="btn btn-ghost" onClick={() => setPhase('pick')}>← Back</button>
             <button className="btn btn-primary" onClick={handleConfirm} disabled={loading}>
-              {loading ? 'Importing…' : `✓ Import ${preview?.count} Record${preview?.count !== 1 ? 's' : ''}`}
+              {loading ? 'Importing…' : `Import ${preview?.count} Record${preview?.count !== 1 ? 's' : ''}`}
             </button>
           </>}
           {phase === 'result'  && <button className="btn btn-primary" onClick={onClose}>Done</button>}
@@ -151,13 +154,13 @@ function ImportModal({ type, onClose, onImported }) {
 }
 
 const statusBadge = (rec) => {
-  if (rec.pending_approval) return <span className="badge badge-info">Pending Approval</span>;
-  if (rec.pending_deletion) return <span className="badge badge-warning">Pending Deletion</span>;
+  if (rec.pending_approval) return <StatusPill status="pending" label="Pending Approval" />;
+  if (rec.pending_deletion) return <StatusPill status="pending" label="Pending Deletion" />;
   const today = new Date().toISOString().split('T')[0];
-  if (rec.status === 'paid')    return <span className="badge badge-success">Paid</span>;
-  if (rec.status === 'partial') return <span className="badge badge-blue">Partial</span>;
-  if (rec.due_date && rec.due_date < today) return <span className="badge badge-danger">Overdue</span>;
-  return <span className="badge badge-warning">Pending</span>;
+  if (rec.status === 'paid')    return <StatusPill status="paid" />;
+  if (rec.status === 'partial') return <StatusPill status="partial" />;
+  if (rec.due_date && rec.due_date < today) return <StatusPill status="overdue" />;
+  return <StatusPill status="pending" />;
 };
 
 function AddModal({ type, onClose, onSaved }) {
@@ -195,7 +198,7 @@ function AddModal({ type, onClose, onSaved }) {
       <div className="modal" onClick={e => e.stopPropagation()}>
         <div className="modal-header">
           <div className="modal-title">{isAR ? 'Add Invoice (Incoming)' : 'Add Bill (Pending)'}</div>
-          <button className="btn btn-ghost btn-icon" onClick={onClose}>✕</button>
+          <button className="modal-close" onClick={onClose}><X size={18} /></button>
         </div>
         <div className="modal-body">
           {msg && <div className="alert alert-error mb-16">{msg}</div>}
@@ -306,7 +309,7 @@ function PayModal({ record, type, onClose, onSaved }) {
       <div className="modal" onClick={e => e.stopPropagation()}>
         <div className="modal-header">
           <div className="modal-title">Record Payment</div>
-          <button className="btn btn-ghost btn-icon" onClick={onClose}>✕</button>
+          <button className="modal-close" onClick={onClose}><X size={18} /></button>
         </div>
         <div className="modal-body">
           <div className="alert alert-info mb-16">
@@ -344,7 +347,7 @@ function PayModal({ record, type, onClose, onSaved }) {
         </div>
         <div className="modal-footer">
           <button className="btn btn-ghost" onClick={onClose}>Cancel</button>
-          <button className="btn btn-success" onClick={handlePay} disabled={saving}>{saving ? 'Saving…' : '✓ Record Payment'}</button>
+          <button className="btn btn-success" onClick={handlePay} disabled={saving}>{saving ? 'Saving…' : 'Record Payment'}</button>
         </div>
       </div>
     </div>
@@ -445,16 +448,16 @@ function ApplyTaxModal({ record, entityType, onClose, onApplied }) {
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal" style={{ maxWidth: 500 }} onClick={e => e.stopPropagation()}>
         <div className="modal-header">
-          <div className="modal-title">🧾 Apply Tax</div>
-          <button className="btn btn-ghost btn-icon" onClick={onClose}>✕</button>
+          <div className="modal-title">Apply Tax</div>
+          <button className="modal-close" onClick={onClose}><X size={18} /></button>
         </div>
         <div className="modal-body">
           <div className="alert alert-info mb-16">
             Applying tax to <strong>{ref}</strong> — {name}
           </div>
-          {error && <div className="alert alert-error mb-12">⚠ {error}</div>}
+          {error && <div className="alert alert-error mb-12">{error}</div>}
           {loading ? (
-            <div style={{ textAlign: 'center', padding: 24, color: 'var(--text-muted)' }}>Loading tax rates…</div>
+            <div style={{ textAlign: 'center', padding: 24, color: 'var(--color-ink-mid)' }}>Loading tax rates…</div>
           ) : taxRates.length === 0 ? (
             <div className="alert alert-warning">
               No active tax rates available for {entityType === 'receivable' ? 'sales' : 'purchases'}.
@@ -519,7 +522,7 @@ function ApplyTaxModal({ record, entityType, onClose, onApplied }) {
           {taxRates.length > 0 && (
             <button className="btn btn-primary" onClick={handleApply}
               disabled={saving || !selectedId || !base}>
-              {saving ? 'Applying…' : '✓ Apply Tax'}
+              {saving ? 'Applying…' : 'Apply Tax'}
             </button>
           )}
         </div>
@@ -566,8 +569,8 @@ function TaxJournalModal({ application, accounts, onClose, onRecorded }) {
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal" style={{ maxWidth: 500 }} onClick={e => e.stopPropagation()}>
         <div className="modal-header">
-          <div className="modal-title">📒 Record Tax Journal Entry</div>
-          <button className="btn btn-ghost btn-icon" onClick={onClose}>✕</button>
+          <div className="modal-title">Record Tax Journal Entry</div>
+          <button className="modal-close" onClick={onClose}><X size={18} /></button>
         </div>
         <div className="modal-body">
           <div className="alert alert-success mb-16">
@@ -608,7 +611,7 @@ function TaxJournalModal({ application, accounts, onClose, onRecorded }) {
         <div className="modal-footer">
           <button className="btn btn-ghost" onClick={onClose}>I'll do it later</button>
           <button className="btn btn-primary" onClick={handleRecord} disabled={saving}>
-            {saving ? 'Saving…' : '📒 Record Journal Entry'}
+            {saving ? 'Saving…' : 'Record Journal Entry'}
           </button>
         </div>
       </div>
@@ -644,15 +647,15 @@ function DeletionModal({ rec, isAR, onClose, onDone }) {
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal" style={{ maxWidth: 440 }} onClick={e => e.stopPropagation()}>
         <div className="modal-header">
-          <div className="modal-title">🗑 Request Record Deletion</div>
-          <button className="btn btn-ghost btn-icon" onClick={onClose}>✕</button>
+          <div className="modal-title">Request Record Deletion</div>
+          <button className="modal-close" onClick={onClose}><X size={18} /></button>
         </div>
         <div className="modal-body">
           <div className="alert alert-warning mb-16">
             Requesting deletion of <strong>{ref}</strong> ({name}).
             An approver must review this before the record is permanently removed.
           </div>
-          {error && <div className="alert alert-error mb-12">⚠ {error}</div>}
+          {error && <div className="alert alert-error mb-12">{error}</div>}
           <div className="form-group">
             <label className="form-label">Reason for Deletion <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>(optional)</span></label>
             <textarea className="form-textarea" rows={3} value={note}
@@ -663,7 +666,7 @@ function DeletionModal({ rec, isAR, onClose, onDone }) {
         <div className="modal-footer">
           <button className="btn btn-ghost" onClick={onClose}>Cancel</button>
           <button className="btn btn-danger" onClick={handleRequest} disabled={saving}>
-            {saving ? 'Submitting…' : '🗑 Submit Deletion Request'}
+            {saving ? 'Submitting…' : 'Submit Deletion Request'}
           </button>
         </div>
       </div>
@@ -759,13 +762,15 @@ export default function Payments({ tab }) {
         </div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           {can('manager') && (
-            <button className="btn btn-ghost btn-sm" onClick={() => triggerDownload(exportUrl, exportFile)}>
-              ⬇ Export CSV
+            <button className="btn btn-ghost btn-sm" onClick={() => triggerDownload(exportUrl, exportFile)}
+              style={{ display:'inline-flex', alignItems:'center', gap:5 }}>
+              <Download size={13} strokeWidth={2} /> Export CSV
             </button>
           )}
           {can('finance') && (
-            <button className="btn btn-ghost btn-sm" onClick={() => setShowImport(true)}>
-              ⬆ Import CSV
+            <button className="btn btn-ghost btn-sm" onClick={() => setShowImport(true)}
+              style={{ display:'inline-flex', alignItems:'center', gap:5 }}>
+              <Upload size={13} strokeWidth={2} /> Import CSV
             </button>
           )}
           {user?.role !== 'admin' && (
@@ -777,7 +782,7 @@ export default function Payments({ tab }) {
       </div>
 
       <div className="grid-3 mb-20">
-        <div className="stat-card" style={{ borderLeft: `4px solid ${isAR ? '#0369a1' : '#7c3aed'}` }}>
+        <div className="stat-card" style={{ borderLeft: '4px solid var(--color-primary)' }}>
           <div className="stat-label">Total Outstanding</div>
           <div className="stat-value">{fmt(totalOutstanding)}</div>
           <div className="stat-sub">{pending.length} open record{pending.length !== 1 ? 's' : ''}</div>
@@ -801,8 +806,11 @@ export default function Payments({ tab }) {
       <div className="card">
         {records.length === 0 ? (
           <div className="empty-state">
-            <div className="empty-state-icon">{isAR ? '📥' : '📤'}</div>
-            <p>No {isAR ? 'invoices' : 'bills'} recorded yet.</p>
+            <div className="empty-state-icon">
+              <FileText size={40} strokeWidth={1.4} />
+            </div>
+            <div className="empty-state-title">No {isAR ? 'invoices' : 'bills'} recorded yet</div>
+            <div className="empty-state-sub">Add your first {isAR ? 'invoice' : 'bill'} to get started.</div>
           </div>
         ) : (
           <div className="table-wrap">
@@ -846,7 +854,7 @@ export default function Payments({ tab }) {
                       <td className="td-right tabular" style={{ fontWeight: 600 }}>{fmt(total)}</td>
                       <td>
                         {rec.currency && rec.currency !== baseCurrency
-                          ? <span className="badge badge-info">{rec.currency}</span>
+                          ? <span className="pill pill-primary">{rec.currency}</span>
                           : <span style={{ fontSize: 12, color: 'var(--text-light)' }}>{rec.currency || baseCurrency}</span>}
                       </td>
                       <td className="td-right tabular text-muted">{rec.paid_amount > 0 ? fmt(rec.paid_amount) : '—'}</td>
@@ -856,7 +864,7 @@ export default function Payments({ tab }) {
                       </td>
                       <td style={{ color: rec.scheduled_date && rec.scheduled_date < today && rec.status !== 'paid' ? 'var(--danger)' : 'var(--text-muted)', fontSize: 12 }}>
                         {rec.scheduled_date
-                          ? <>📅 {new Date(rec.scheduled_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</>
+                          ? new Date(rec.scheduled_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })</>
                           : <span style={{ color: 'var(--text-light)' }}>—</span>}
                       </td>
                       <td>{statusBadge(rec)}</td>
@@ -869,28 +877,32 @@ export default function Payments({ tab }) {
                           )}
                           {rec.status !== 'paid' && !rec.pending_deletion && !rec.pending_approval && can('manager') && (
                             <button className="btn btn-success btn-sm" onClick={() => setPayRecord(rec)}>
-                              ✓ Pay
+                              Pay
                             </button>
                           )}
                           {isAR && !rec.pending_approval && (
                             <button className="btn btn-ghost btn-sm"
                               title="Download PDF Invoice"
+                              style={{ display:'inline-flex', alignItems:'center', gap:4 }}
                               onClick={() => triggerBinaryDownload(`/api/invoices/receivable/${rec.id}`, `Invoice-${rec.invoice_number || rec.id}.pdf`)}>
-                              📄 PDF
+                              <FileText size={13} strokeWidth={2} />PDF
                             </button>
                           )}
                           {!rec.pending_deletion && !rec.pending_approval && (
                             <button className="btn btn-ghost btn-sm"
                               title="Apply a tax rate to this record"
+                              style={{ display:'inline-flex', alignItems:'center', gap:4 }}
                               onClick={() => setTaxRecord(rec)}>
-                              🧾 Tax
+                              <Receipt size={13} strokeWidth={2} />Tax
                             </button>
                           )}
                           {!rec.pending_deletion && !rec.pending_approval && user?.role !== 'admin' && (
                             <button className="btn btn-ghost btn-sm"
-                              style={{ color: 'var(--danger)', borderColor: 'transparent' }}
+                              style={{ color: 'var(--danger)', borderColor: 'transparent', display:'inline-flex', alignItems:'center' }}
                               title="Request deletion"
-                              onClick={() => setDeletionModal(rec)}>🗑</button>
+                              onClick={() => setDeletionModal(rec)}>
+                              <Trash2 size={13} strokeWidth={2} />
+                            </button>
                           )}
                         </div>
                       </td>

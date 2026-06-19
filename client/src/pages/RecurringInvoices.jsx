@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { X, Play, Pause, Pencil, Trash2, RefreshCw, Plus } from 'lucide-react';
 
 const FREQUENCIES = [
   { value: 'weekly',    label: 'Weekly' },
@@ -86,13 +87,13 @@ function TemplateModal({ template, onSave, onClose }) {
       <div className="modal" style={{ maxWidth: 600 }} onClick={e => e.stopPropagation()}>
         <div className="modal-header">
           <div className="modal-title">
-            {template ? '✏️ Edit Recurring Invoice' : '➕ New Recurring Invoice'}
+            {template ? 'Edit Recurring Invoice' : 'New Recurring Invoice'}
           </div>
-          <button className="btn btn-ghost btn-icon" onClick={onClose}>✕</button>
+          <button className="modal-close" onClick={onClose}><X size={18} /></button>
         </div>
 
         <div className="modal-body">
-          {error && <div className="alert alert-error mb-12">⚠ {error}</div>}
+          {error && <div className="alert alert-error mb-12">{error}</div>}
 
           <div className="grid-2">
             <div className="form-group">
@@ -211,7 +212,7 @@ export default function RecurringInvoices() {
       if (!res.ok) { if (!silent) showMsg('error', data.error); return; }
       if (data.generated > 0) {
         setRunResult(data);
-        showMsg('success', `✓ ${data.generated} invoice(s) generated automatically.`);
+        showMsg('success', `${data.generated} invoice(s) generated automatically.`);
         load();
       }
     } catch { if (!silent) showMsg('error', 'Network error during run.'); }
@@ -235,7 +236,7 @@ export default function RecurringInvoices() {
       const data = await res.json();
       if (!res.ok) { showMsg('error', data.error); return; }
       setTemplates(ts => ts.map(t => t.id === tmpl.id ? data : t));
-      showMsg('success', data.is_active ? '✓ Template activated.' : '✓ Template paused.');
+      showMsg('success', data.is_active ? 'Template activated.' : 'Template paused.');
     } catch { showMsg('error', 'Network error.'); }
   };
 
@@ -246,7 +247,7 @@ export default function RecurringInvoices() {
         { method: 'DELETE', credentials: 'include' });
       if (!res.ok) { const d = await res.json(); showMsg('error', d.error); return; }
       setTemplates(ts => ts.filter(t => t.id !== tmpl.id));
-      showMsg('success', '✓ Template deleted.');
+      showMsg('success', 'Template deleted.');
     } catch { showMsg('error', 'Network error.'); }
   };
 
@@ -256,7 +257,7 @@ export default function RecurringInvoices() {
       return exists ? ts.map(t => t.id === saved.id ? saved : t) : [saved, ...ts];
     });
     setModal(null);
-    showMsg('success', '✓ Template saved.');
+    showMsg('success', 'Template saved.');
   };
 
   const active   = templates.filter(t =>  t.is_active);
@@ -279,10 +280,10 @@ export default function RecurringInvoices() {
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
           <button className="btn btn-ghost" onClick={handleManualRun} disabled={running}>
-            {running ? '⏳ Running…' : '▶ Run Now'}
+            <RefreshCw size={15} style={{ marginRight: 6 }} />{running ? 'Running…' : 'Run Now'}
           </button>
           <button className="btn btn-primary" onClick={() => setModal('new')}>
-            ➕ New Template
+            <Plus size={15} style={{ marginRight: 4 }} />New Template
           </button>
         </div>
       </div>
@@ -307,11 +308,15 @@ export default function RecurringInvoices() {
       {loading ? (
         <div className="text-muted text-center" style={{ padding: 60 }}>Loading…</div>
       ) : templates.length === 0 ? (
-        <div className="card" style={{ textAlign: 'center', padding: '48px 24px', color: 'var(--text-muted)' }}>
-          <div style={{ fontSize: 40, marginBottom: 12 }}>🔁</div>
-          <div style={{ fontWeight: 600, marginBottom: 6 }}>No recurring invoice templates yet</div>
-          <div style={{ fontSize: 13, marginBottom: 20 }}>Create a template and CuentaIQ will automatically generate AR invoices on your chosen schedule.</div>
-          <button className="btn btn-primary" onClick={() => setModal('new')}>➕ Create First Template</button>
+        <div className="card">
+          <div className="empty-state">
+            <div className="empty-state-icon"><RefreshCw size={40} strokeWidth={1.4} /></div>
+            <div className="empty-state-title">No recurring invoice templates yet</div>
+            <div className="empty-state-sub">Create a template and CuentaIQ will automatically generate AR invoices on your chosen schedule.</div>
+            <div style={{ marginTop: 16 }}>
+              <button className="btn btn-primary" onClick={() => setModal('new')}>Create First Template</button>
+            </div>
+          </div>
         </div>
       ) : (
         <>
@@ -398,27 +403,27 @@ function TemplateRow({ t, onEdit, onToggle, onDelete }) {
       </td>
       <td style={{ fontWeight: 600 }}>{fmtAmt(t.amount, t.currency)}</td>
       <td>
-        <span className="badge" style={{ background: 'var(--primary-light)', color: 'var(--primary)' }}>
+        <span className="pill pill-primary">
           {FREQ_LABEL[t.frequency] || t.frequency}
         </span>
         <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>Due +{t.due_days}d</div>
       </td>
       <td style={{ color: isOverdue ? 'var(--danger)' : undefined, fontWeight: isOverdue ? 600 : 400 }}>
         {fmtDate(t.next_run_date)}
-        {isOverdue && <div style={{ fontSize: 11, color: 'var(--danger)' }}>⚠ Overdue — click Run Now</div>}
+        {isOverdue && <div style={{ fontSize: 11, color: 'var(--danger)' }}>Overdue — click Run Now</div>}
       </td>
       <td style={{ color: 'var(--text-muted)' }}>{fmtDate(t.last_run_date)}</td>
       <td style={{ textAlign: 'center' }}>{t.run_count || 0}</td>
       <td style={{ color: 'var(--text-muted)' }}>{t.end_date ? fmtDate(t.end_date) : '∞ Ongoing'}</td>
       <td>
         <div style={{ display: 'flex', gap: 4 }}>
-          <button className="btn btn-ghost btn-sm" onClick={onEdit} title="Edit">✏️</button>
+          <button className="btn btn-ghost btn-sm" onClick={onEdit} title="Edit"><Pencil size={14} /></button>
           <button className="btn btn-ghost btn-sm" onClick={onToggle}
             title={t.is_active ? 'Pause' : 'Resume'}>
-            {t.is_active ? '⏸' : '▶'}
+            {t.is_active ? <Pause size={14} /> : <Play size={14} />}
           </button>
           <button className="btn btn-ghost btn-sm" onClick={onDelete} title="Delete"
-            style={{ color: 'var(--danger)' }}>🗑</button>
+            style={{ color: 'var(--danger)' }}><Trash2 size={14} /></button>
         </div>
       </td>
     </tr>

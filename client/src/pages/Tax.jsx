@@ -2,6 +2,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { useSettings } from '../context/SettingsContext.jsx';
 import { useUser }     from '../context/UserContext.jsx';
 import AmountInput     from '../components/AmountInput.jsx';
+import StatusPill      from '../components/StatusPill.jsx';
+import { X, Receipt, BookOpen, Trash2 } from 'lucide-react';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 const fmtDate = (d) => {
@@ -43,12 +45,6 @@ function InfoTip({ text }) {
     </span>
   );
 }
-const STATUS_COLORS  = {
-  pending: { bg: '#fef3c7', color: '#92400e', label: 'Pending' },
-  filed:   { bg: '#dbeafe', color: '#1e40af', label: 'Filed' },
-  paid:    { bg: '#d1fae5', color: '#065f46', label: 'Paid' },
-};
-
 // ── Journal-entry prompt after applying a tax ─────────────────────────────────
 function JournalEntryModal({ application, accounts, onClose, onRecorded }) {
   const defaultDebit  = accounts.find(a => a.code === '4000')?.id || '';
@@ -89,14 +85,14 @@ function JournalEntryModal({ application, accounts, onClose, onRecorded }) {
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal" style={{ maxWidth: 500 }} onClick={e => e.stopPropagation()}>
         <div className="modal-header">
-          <div className="modal-title">📋 Record Tax Journal Entry</div>
-          <button className="btn btn-ghost btn-icon" onClick={onClose}>✕</button>
+          <div className="modal-title">Record Tax Journal Entry</div>
+          <button className="modal-close" onClick={onClose}><X size={18} /></button>
         </div>
         <div className="modal-body">
           <div className="alert alert-success mb-16">
-            ✓ Tax applied! <strong>{application.tax_name}</strong> — Tax Amount: <strong>{fmt(application.tax_amount)}</strong>
+            Tax applied! <strong>{application.tax_name}</strong> — Tax Amount: <strong>{fmt(application.tax_amount)}</strong>
           </div>
-          <div style={{ background: '#f8fafc', border: '1px solid var(--border)', borderRadius: 8, padding: '12px 14px', marginBottom: 16, fontSize: 13 }}>
+          <div style={{ background: 'var(--color-surface-2)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-sm)', padding: '12px 14px', marginBottom: 16, fontSize: 13 }}>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
               <div><span style={{ color: 'var(--text-muted)' }}>Tax:</span> <strong>{application.tax_name} ({application.tax_code})</strong></div>
               <div><span style={{ color: 'var(--text-muted)' }}>Applies To:</span> <strong>{APPLIES_LABELS[application.applies_to] || application.applies_to}</strong></div>
@@ -107,7 +103,7 @@ function JournalEntryModal({ application, accounts, onClose, onRecorded }) {
           <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 16 }}>
             Would you like to record this tax in a journal entry now?
           </p>
-          {error && <div className="alert alert-error mb-12">⚠ {error}</div>}
+          {error && <div className="alert alert-error mb-12">{error}</div>}
           <div className="grid-2 gap-16">
             <div className="form-group">
               <label className="form-label">Date</label>
@@ -143,7 +139,7 @@ function JournalEntryModal({ application, accounts, onClose, onRecorded }) {
         <div className="modal-footer">
           <button className="btn btn-ghost" onClick={onClose}>I'll Do It Later</button>
           <button className="btn btn-primary" onClick={handleRecord} disabled={saving}>
-            {saving ? 'Recording…' : '✓ Record Journal Entry'}
+            {saving ? 'Recording…' : 'Record Journal Entry'}
           </button>
         </div>
       </div>
@@ -219,10 +215,10 @@ function TaxRateModal({ rate, accounts, onClose, onSaved }) {
       <div className="modal" style={{ maxWidth: 600 }} onClick={e => e.stopPropagation()}>
         <div className="modal-header">
           <div className="modal-title">{rate ? 'Edit Tax Rate' : '+ Add Tax Rate'}</div>
-          <button className="btn btn-ghost btn-icon" onClick={onClose}>✕</button>
+          <button className="modal-close" onClick={onClose}><X size={18} /></button>
         </div>
         <div className="modal-body">
-          {error && <div className="alert alert-error mb-16">⚠ {error}</div>}
+          {error && <div className="alert alert-error mb-16">{error}</div>}
           <div className="grid-2 gap-16">
             <div className="form-group">
               <label className="form-label">Tax Name *</label>
@@ -242,8 +238,8 @@ function TaxRateModal({ rate, accounts, onClose, onSaved }) {
                 {Object.entries(TYPE_LABELS).map(([val, label]) => (
                   <label key={val} style={{
                     flex: 1, padding: '10px 12px', borderRadius: 8, cursor: 'pointer',
-                    border: `2px solid ${form.type === val ? 'var(--primary)' : 'var(--border)'}`,
-                    background: form.type === val ? '#eff6ff' : '#fafafa',
+                    border: `2px solid ${form.type === val ? 'var(--color-primary)' : 'var(--color-border)'}`,
+                    background: form.type === val ? 'var(--color-primary-light)' : 'var(--color-surface-2)',
                     display: 'flex', alignItems: 'center', gap: 8, fontSize: 13,
                   }}>
                     <input type="radio" name="type" value={val} checked={form.type === val}
@@ -286,7 +282,7 @@ function TaxRateModal({ rate, accounts, onClose, onSaved }) {
                       <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>%</span>
                       {form.tiers.length > 1 && (
                         <button className="btn btn-ghost btn-sm" style={{ color: 'var(--danger)', padding: '4px 8px' }}
-                          onClick={() => removeTier(i)}>✕</button>
+                          onClick={() => removeTier(i)}><X size={14} /></button>
                       )}
                     </div>
                   ))}
@@ -438,10 +434,10 @@ function ApplyTaxModal({ taxRates, onClose, onApplied }) {
       <div className="modal" onClick={e => e.stopPropagation()}>
         <div className="modal-header">
           <div className="modal-title">Apply Tax to Invoice / Bill</div>
-          <button className="btn btn-ghost btn-icon" onClick={onClose}>✕</button>
+          <button className="modal-close" onClick={onClose}><X size={18} /></button>
         </div>
         <div className="modal-body">
-          {error && <div className="alert alert-error mb-16">⚠ {error}</div>}
+          {error && <div className="alert alert-error mb-16">{error}</div>}
           <div className="grid-2 gap-16">
             <div className="form-group">
               <label className="form-label">Tax Rate *</label>
@@ -490,7 +486,7 @@ function ApplyTaxModal({ taxRates, onClose, onApplied }) {
             </div>
             <div className="form-group">
               <label className="form-label">Estimated Tax</label>
-              <div style={{ padding: '9px 12px', border: '1px solid var(--border)', borderRadius: 6, background: '#f8fafc', fontSize: 14, fontWeight: 600, color: 'var(--primary)' }}>
+              <div style={{ padding: '9px 12px', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-sm)', background: 'var(--color-surface-2)', fontSize: 14, fontWeight: 600, color: 'var(--color-primary)' }}>
                 {previewTax !== null ? fmt(Math.round(previewTax * 100) / 100) : selectedRate?.type === 'tiered' ? 'Calculated on save' : '—'}
               </div>
             </div>
@@ -552,10 +548,10 @@ function FilingModal({ filing, taxRates, onClose, onSaved }) {
       <div className="modal" onClick={e => e.stopPropagation()}>
         <div className="modal-header">
           <div className="modal-title">{filing ? 'Edit Filing' : '+ Add Filing Record'}</div>
-          <button className="btn btn-ghost btn-icon" onClick={onClose}>✕</button>
+          <button className="modal-close" onClick={onClose}><X size={18} /></button>
         </div>
         <div className="modal-body">
-          {error && <div className="alert alert-error mb-16">⚠ {error}</div>}
+          {error && <div className="alert alert-error mb-16">{error}</div>}
           <div className="grid-2 gap-16">
             <div className="form-group">
               <label className="form-label">Tax Rate <span style={{ fontWeight: 400, color: 'var(--text-muted)', fontSize: 11 }}>(optional)</span></label>
@@ -617,9 +613,9 @@ export default function Tax({ tab = 'rates' }) {
   const isGeneric      = settings.tax_system === 'generic' || !settings.tax_system;
   const businessType   = settings.business_type || 'corporate';
   const BIZ_LABELS     = {
-    corporate:           '🏢 Corporate',
-    sole_proprietorship: '👤 Sole Prop',
-    mixed_income:        '🔀 Mixed Income',
+    corporate:           'Corporate',
+    sole_proprietorship: 'Sole Prop',
+    mixed_income:        'Mixed Income',
   };
   const BIZ_PRESETS    = {
     corporate:           { label: 'VAT-OUT, VAT-IN, EWT-10, CIT-25, PT-3', count: 5 },
@@ -680,7 +676,7 @@ export default function Tax({ tab = 'rates' }) {
       });
       const data = await res.json();
       if (!res.ok) { setMsg({ type: 'error', text: data.error }); return; }
-      setMsg({ type: 'success', text: `✓ Seeded ${data.inserted} Philippines tax rate${data.inserted !== 1 ? 's' : ''} for ${BIZ_LABELS[businessType]}${data.skipped > 0 ? ` (${data.skipped} already existed)` : ''}.` });
+      setMsg({ type: 'success', text: `Seeded ${data.inserted} Philippines tax rate${data.inserted !== 1 ? 's' : ''} for ${BIZ_LABELS[businessType]}${data.skipped > 0 ? ` (${data.skipped} already existed)` : ''}.` });
       loadRates();
     } catch { setMsg({ type: 'error', text: 'Network error.' }); }
     finally { setSeeding(false); }
@@ -696,7 +692,7 @@ export default function Tax({ tab = 'rates' }) {
       if (data.inserted === 0) {
         setMsg({ type: 'success', text: 'Admin configuration applied — rates already existed, nothing new to add.' });
       } else {
-        setMsg({ type: 'success', text: `✓ Created ${data.inserted} tax rate${data.inserted !== 1 ? 's' : ''} from admin configuration. Edit each rate below to adjust the values.` });
+        setMsg({ type: 'success', text: `Created ${data.inserted} tax rate${data.inserted !== 1 ? 's' : ''} from admin configuration. Edit each rate below to adjust the values.` });
       }
       loadRates();
     } catch { setMsg({ type: 'error', text: 'Network error.' }); }
@@ -767,10 +763,10 @@ export default function Tax({ tab = 'rates' }) {
   };
 
   const TABS = [
-    { key: 'rates',       label: '📋 Tax Rates' },
-    { key: 'applications',label: '🔗 Applications' },
-    { key: 'projections', label: '📊 Projections' },
-    { key: 'filings',     label: '🗂 Filing Tracker' },
+    { key: 'rates',        label: 'Tax Rates' },
+    { key: 'applications', label: 'Applications' },
+    { key: 'projections',  label: 'Projections' },
+    { key: 'filings',      label: 'Filing Tracker' },
   ];
 
   return (
@@ -800,19 +796,13 @@ export default function Tax({ tab = 'rates' }) {
       <div className="page-header">
         <div>
           <div className="page-title">
-            🧾 Tax Management
+            Tax Management
             {isPhilippines && (
-              <span style={{ marginLeft: 10, padding: '2px 10px', borderRadius: 999, fontSize: 11, fontWeight: 600, background: '#fef3c7', color: '#92400e', border: '1px solid #fcd34d' }}>
-                🇵🇭 Philippines Mode
-              </span>
+              <span style={{ marginLeft: 10 }} className="pill pill-warning">PH Mode</span>
             )}
             {isPhilippines && (
-              <span style={{ marginLeft: 6, padding: '2px 10px', borderRadius: 999, fontSize: 11, fontWeight: 600,
-                background: businessType === 'corporate' ? '#eff6ff' : businessType === 'sole_proprietorship' ? '#f0fdf4' : '#faf5ff',
-                color:      businessType === 'corporate' ? '#1e40af' : businessType === 'sole_proprietorship' ? '#166534' : '#6b21a8',
-                border:     `1px solid ${businessType === 'corporate' ? '#bfdbfe' : businessType === 'sole_proprietorship' ? '#bbf7d0' : '#e9d5ff'}`,
-              }}>
-                {BIZ_LABELS[businessType] || '🏢 Corporate'}
+              <span style={{ marginLeft: 6 }} className="pill pill-primary">
+                {BIZ_LABELS[businessType] || 'Corporate'}
               </span>
             )}
           </div>
@@ -828,15 +818,11 @@ export default function Tax({ tab = 'rates' }) {
       )}
 
       {/* Tabs */}
-      <div style={{ display: 'flex', gap: 2, marginBottom: 24, borderBottom: '2px solid var(--border)' }}>
+      <div className="tab-bar mb-24">
         {TABS.map(t => (
-          <button key={t.key} onClick={() => setActiveTab(t.key)} style={{
-            padding: '8px 18px', border: 'none', background: 'none', cursor: 'pointer',
-            fontWeight: activeTab === t.key ? 700 : 400,
-            fontSize: 13, color: activeTab === t.key ? 'var(--primary)' : 'var(--text-muted)',
-            borderBottom: activeTab === t.key ? '2px solid var(--primary)' : '2px solid transparent',
-            marginBottom: -2,
-          }}>
+          <button key={t.key}
+            className={`tab-btn${activeTab === t.key ? ' active' : ''}`}
+            onClick={() => setActiveTab(t.key)}>
             {t.label}
           </button>
         ))}
@@ -872,15 +858,15 @@ export default function Tax({ tab = 'rates' }) {
           </div>
 
           {isGeneric && (
-            <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 10, padding: '14px 18px', marginBottom: 16 }}>
-              <div style={{ fontWeight: 600, color: '#1e40af', marginBottom: 4 }}>🌐 Generic Tax System</div>
-              <div style={{ fontSize: 13, color: '#1e40af', lineHeight: 1.6 }}>
+            <div style={{ background: 'var(--color-primary-light)', border: '1px solid var(--color-primary-mid)', borderRadius: 'var(--radius)', padding: '14px 18px', marginBottom: 16 }}>
+              <div style={{ fontWeight: 600, color: 'var(--color-primary)', marginBottom: 4 }}>Generic Tax System</div>
+              <div style={{ fontSize: 13, color: 'var(--color-primary)', lineHeight: 1.6 }}>
                 Add your own tax rates below — percentage, fixed amount, or tiered brackets.
                 Each rate you create will appear in the tax dropdown on invoices and payments.
               </div>
               {(settings.has_state_tax || settings.has_city_tax || settings.vat_exempt) && (
-                <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid #bfdbfe', display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-                  <span style={{ fontSize: 12, color: '#1e40af' }}>
+                <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--color-primary-mid)', display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                  <span style={{ fontSize: 12, color: 'var(--color-primary)' }}>
                     Admin configured:
                     {settings.has_state_tax  && <strong style={{ marginLeft: 6 }}>State Tax ({settings.state_tax_rate || 0}%)</strong>}
                     {settings.has_city_tax   && <strong style={{ marginLeft: 6 }}>City Tax ({settings.city_tax_rate || 0}%)</strong>}
@@ -897,8 +883,9 @@ export default function Tax({ tab = 'rates' }) {
           <div className="card">
             {taxRates.length === 0 ? (
               <div className="empty-state">
-                <div className="empty-state-icon">🧾</div>
-                <p>No tax rates defined yet.{isPhilippines ? ` Click "🇵🇭 Load ${BIZ_LABELS[businessType]} Presets" to get started.` : ' Click "+ Add Tax Rate" to create your first rate.'}</p>
+                <div className="empty-state-icon"><Receipt size={40} strokeWidth={1.4} /></div>
+                <div className="empty-state-title">No tax rates defined yet</div>
+                <div className="empty-state-sub">{isPhilippines ? `Click "Load ${BIZ_LABELS[businessType]} Presets" to get started.` : 'Click "+ Add Tax Rate" to create your first rate.'}</div>
               </div>
             ) : (
               <div className="table-wrap">
@@ -930,16 +917,14 @@ export default function Tax({ tab = 'rates' }) {
                           {r.type === 'fixed_amount' && fmt(r.amount)}
                           {r.type === 'tiered'      && `${r.tiers?.length || 0} brackets`}
                         </td>
-                        <td><span className="badge badge-info">{APPLIES_LABELS[r.applies_to]}</span></td>
+                        <td><span className="pill pill-primary">{APPLIES_LABELS[r.applies_to]}</span></td>
                         <td style={{ fontSize: 12 }}>{FREQ_LABELS[r.filing_frequency]}</td>
                         <td style={{ fontSize: 11, color: 'var(--text-muted)' }}>
                           {r.effective_from ? fmtDate(r.effective_from) : '—'}
                           {r.effective_to   ? ` → ${fmtDate(r.effective_to)}`   : ''}
                         </td>
                         <td>
-                          <span className={`badge ${r.is_active ? 'badge-success' : 'badge-gray'}`}>
-                            {r.is_active ? 'Active' : 'Inactive'}
-                          </span>
+                          <StatusPill status={r.is_active ? 'active' : 'inactive'} />
                         </td>
                         <td>
                           <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end' }}>
@@ -950,7 +935,7 @@ export default function Tax({ tab = 'rates' }) {
                                   {r.is_active ? 'Deactivate' : 'Activate'}
                                 </button>
                                 <button className="btn btn-ghost btn-sm" style={{ color: 'var(--danger)' }}
-                                  onClick={() => handleDeleteRate(r)}>🗑</button>
+                                  onClick={() => handleDeleteRate(r)}><Trash2 size={14} /></button>
                               </>
                             )}
                           </div>
@@ -981,8 +966,9 @@ export default function Tax({ tab = 'rates' }) {
           <div className="card">
             {applications.length === 0 ? (
               <div className="empty-state">
-                <div className="empty-state-icon">🔗</div>
-                <p>No tax applications yet. Apply a tax rate to an invoice or bill to get started.</p>
+                <div className="empty-state-icon"><Receipt size={40} strokeWidth={1.4} /></div>
+                <div className="empty-state-title">No tax applications yet</div>
+                <div className="empty-state-sub">Apply a tax rate to an invoice or bill to get started.</div>
               </div>
             ) : (
               <div className="table-wrap">
@@ -1006,7 +992,7 @@ export default function Tax({ tab = 'rates' }) {
                           <code style={{ fontSize: 11, color: 'var(--text-muted)' }}>{app.tax_code}</code>
                         </td>
                         <td>
-                          <span className={`badge ${app.entity_type === 'receivable' ? 'badge-blue' : 'badge-info'}`}>
+                          <span className="pill pill-primary">
                             {app.entity_type === 'receivable' ? 'Invoice' : 'Bill'} #{app.entity_id}
                           </span>
                         </td>
@@ -1014,17 +1000,17 @@ export default function Tax({ tab = 'rates' }) {
                         <td className="td-right tabular" style={{ fontWeight: 700, color: 'var(--primary)' }}>{fmt(app.tax_amount)}</td>
                         <td>
                           {app.journal_entry_id
-                            ? <span className="badge badge-success">✓ Recorded</span>
+                            ? <StatusPill status="posted" label="Recorded" />
                             : <button className="btn btn-ghost btn-sm"
                                 onClick={() => setJeApp(app)} style={{ fontSize: 11 }}>
-                                📋 Record JE
+                                Record JE
                               </button>}
                         </td>
                         <td style={{ fontSize: 12, color: 'var(--text-muted)' }}>{fmtDate(app.created_at)}</td>
                         <td>
                           {!app.journal_entry_id && can('finance') && (
                             <button className="btn btn-ghost btn-sm" style={{ color: 'var(--danger)' }}
-                              onClick={() => handleDeleteApplication(app)}>🗑</button>
+                              onClick={() => handleDeleteApplication(app)}><Trash2 size={14} /></button>
                           )}
                         </td>
                       </tr>
@@ -1059,14 +1045,14 @@ export default function Tax({ tab = 'rates' }) {
               </select>
             </div>
             <button className="btn btn-ghost btn-sm" onClick={loadProjections} disabled={projLoading}>
-              {projLoading ? '⏳ Loading…' : '↺ Refresh'}
+              {projLoading ? 'Loading…' : '↺ Refresh'}
             </button>
             {projections && (
-              <button className="btn btn-ghost btn-sm" onClick={exportProjectionsCSV}>⬇ Export CSV</button>
+              <button className="btn btn-ghost btn-sm" onClick={exportProjectionsCSV}>Export CSV</button>
             )}
           </div>
 
-          {projLoading && <div style={{ textAlign: 'center', padding: 40, color: 'var(--text-muted)' }}>⏳ Calculating projections…</div>}
+          {projLoading && <div style={{ textAlign: 'center', padding: 40, color: 'var(--color-ink-mid)' }}>Calculating projections…</div>}
 
           {projections && !projLoading && (
             <>
@@ -1123,7 +1109,7 @@ export default function Tax({ tab = 'rates' }) {
                           </tr>
                         ))}
                         {/* Totals row */}
-                        <tr style={{ fontWeight: 700, background: '#f8fafc', borderTop: '2px solid var(--border)' }}>
+                        <tr style={{ fontWeight: 700, background: 'var(--color-surface-2)', borderTop: '2px solid var(--color-border)' }}>
                           <td>Total {projYear}</td>
                           <td className="td-right tabular">{fmt(projections.periods.reduce((s, p) => s + p.sales_base, 0))}</td>
                           <td className="td-right tabular">{fmt(projections.periods.reduce((s, p) => s + p.purchases_base, 0))}</td>
@@ -1161,13 +1147,16 @@ export default function Tax({ tab = 'rates' }) {
         <div>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
             <div style={{ display: 'flex', gap: 12 }}>
-              {['pending', 'filed', 'paid'].map(s => {
-                const c = STATUS_COLORS[s];
-                const count = filings.filter(f => f.status === s).length;
+              {[
+                { key: 'pending', label: 'Pending' },
+                { key: 'filed',   label: 'Filed' },
+                { key: 'paid',    label: 'Paid' },
+              ].map(({ key, label }) => {
+                const count = filings.filter(f => f.status === key).length;
                 return (
-                  <div key={s} style={{ padding: '6px 14px', borderRadius: 999, fontSize: 12, fontWeight: 600, background: c.bg, color: c.color }}>
-                    {c.label}: {count}
-                  </div>
+                  <span key={key} className={`pill ${key === 'paid' ? 'pill-success' : key === 'filed' ? 'pill-accent' : 'pill-warning'}`}>
+                    {label}: {count}
+                  </span>
                 );
               })}
             </div>
@@ -1181,8 +1170,9 @@ export default function Tax({ tab = 'rates' }) {
           <div className="card">
             {filings.length === 0 ? (
               <div className="empty-state">
-                <div className="empty-state-icon">🗂</div>
-                <p>No filing records yet. Add a filing record to track your tax submissions.</p>
+                <div className="empty-state-icon"><BookOpen size={40} strokeWidth={1.4} /></div>
+                <div className="empty-state-title">No filing records yet</div>
+                <div className="empty-state-sub">Add a filing record to track your tax submissions.</div>
               </div>
             ) : (
               <div className="table-wrap">
@@ -1201,22 +1191,19 @@ export default function Tax({ tab = 'rates' }) {
                     </tr>
                   </thead>
                   <tbody>
-                    {filings.map(f => {
-                      const sc = STATUS_COLORS[f.status] || STATUS_COLORS.pending;
-                      return (
+                    {filings.map(f => (
                         <tr key={f.id}>
-                          <td style={{ fontWeight: 500 }}>{f.tax_name || <span style={{ color: 'var(--text-muted)' }}>— General —</span>}</td>
+                          <td style={{ fontWeight: 500 }}>{f.tax_name || <span style={{ color: 'var(--color-ink-mid)' }}>— General —</span>}</td>
                           <td style={{ fontSize: 12 }}>{FREQ_LABELS[f.period_type] || f.period_type}</td>
                           <td style={{ fontSize: 12 }}>
                             {fmtDate(f.period_start)} → {fmtDate(f.period_end)}
-                            {f.notes && <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>{f.notes}</div>}
+                            {f.notes && <div style={{ fontSize: 11, color: 'var(--color-ink-mid)', marginTop: 2 }}>{f.notes}</div>}
                           </td>
                           <td className="td-right tabular" style={{ fontWeight: 700 }}>{fmt(f.total_tax_amount)}</td>
-                          <td style={{ fontSize: 12, color: 'var(--text-muted)' }}>{f.reference || '—'}</td>
+                          <td style={{ fontSize: 12, color: 'var(--color-ink-mid)' }}>{f.reference || '—'}</td>
                           <td>
-                            <span style={{ padding: '2px 10px', borderRadius: 999, fontSize: 11, fontWeight: 600, background: sc.bg, color: sc.color }}>
-                              {sc.label}
-                            </span>
+                            <StatusPill status={f.status === 'paid' ? 'paid' : f.status === 'filed' ? 'posted' : 'pending'}
+                              label={f.status === 'paid' ? 'Paid' : f.status === 'filed' ? 'Filed' : 'Pending'} />
                           </td>
                           <td style={{ fontSize: 12, color: 'var(--text-muted)' }}>{f.filed_at ? fmtDate(f.filed_at) : '—'}</td>
                           <td style={{ fontSize: 12, color: 'var(--text-muted)' }}>{f.paid_at  ? fmtDate(f.paid_at)  : '—'}</td>
@@ -1231,14 +1218,13 @@ export default function Tax({ tab = 'rates' }) {
                               {can('finance') && (
                                 <>
                                   <button className="btn btn-ghost btn-sm" onClick={() => { setEditFiling(f); setShowFilingModal(true); }}>Edit</button>
-                                  <button className="btn btn-ghost btn-sm" style={{ color: 'var(--danger)' }} onClick={() => handleDeleteFiling(f)}>🗑</button>
+                                  <button className="btn btn-ghost btn-sm" style={{ color: 'var(--danger)' }} onClick={() => handleDeleteFiling(f)}><Trash2 size={14} /></button>
                                 </>
                               )}
                             </div>
                           </td>
                         </tr>
-                      );
-                    })}
+                    ))}
                   </tbody>
                 </table>
               </div>

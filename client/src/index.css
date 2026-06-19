@@ -28,8 +28,10 @@
   --bg:             var(--color-bg);
   --card:           var(--color-surface);
   --text:           var(--color-ink);
+  --text-primary:   var(--color-ink);
   --text-muted:     var(--color-ink-mid);
   --text-light:     var(--color-ink-light);
+  --bg-secondary:   var(--color-surface-2);
   --border:         var(--color-border);
   --success:        #1B5E3B;
   --success-bg:     #EAF2EE;

@@ -1,11 +1,17 @@
 import { useState, useEffect } from 'react';
 import { useSettings } from '../context/SettingsContext.jsx';
 import { useUser }     from '../context/UserContext.jsx';
+import StatusPill      from '../components/StatusPill.jsx';
+import { X }          from 'lucide-react';
 
 const EMP_TYPES  = { regular: 'Regular', probationary: 'Probationary', contractual: 'Contractual', part_time: 'Part-time' };
 const PAY_FREQ   = { semi_monthly: 'Semi-monthly', monthly: 'Monthly' };
-const TYPE_COLORS = {
-  regular: '#15803d', probationary: '#d97706', contractual: '#2563eb', part_time: '#64748b',
+
+const TYPE_PILL = {
+  regular:      'pill pill-success',
+  probationary: 'pill pill-warning',
+  contractual:  'pill pill-primary',
+  part_time:    'pill pill-neutral',
 };
 
 const EMPTY = {
@@ -43,7 +49,6 @@ function EmployeeModal({ employee, onClose, onSaved }) {
   const [saving,      setSaving]      = useState(false);
   const [error,       setError]       = useState('');
   const [leaveTypes,   setLeaveTypes]   = useState([]);
-  // Map<leave_type_id, days_override | null> — presence = entitled, value = override (null = use default)
   const [entitlements, setEntitlements] = useState(null);
   const isEdit = !!employee;
 
@@ -65,7 +70,6 @@ function EmployeeModal({ employee, onClose, onSaved }) {
               setEntitlements(map);
             });
         } else {
-          // New employee — default to all active leave types with no override
           setEntitlements(new Map(active.map(lt => [lt.id, null])));
         }
       })
@@ -127,12 +131,12 @@ function EmployeeModal({ employee, onClose, onSaved }) {
       <div className="modal" style={{ maxWidth: 640 }} onClick={e => e.stopPropagation()}>
         <div className="modal-header">
           <div className="modal-title">{isEdit ? 'Edit Employee' : 'Add Employee'}</div>
-          <button className="btn btn-ghost btn-icon" onClick={onClose}>✕</button>
+          <button className="modal-close" onClick={onClose}><X size={18} /></button>
         </div>
         <div className="modal-body" style={{ maxHeight: '70vh', overflowY: 'auto' }}>
-          {error && <div className="alert alert-error mb-12">⚠ {error}</div>}
+          {error && <div className="alert alert-error mb-12">{error}</div>}
 
-          <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>Basic Information</div>
+          <div className="section-title">Basic Information</div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 12px' }}>
             <Field label="Employee Number *" k="employee_number" placeholder="EMP-001" half form={form} onChange={set} />
             <Field label="Hire Date" k="hire_date" type="date" half form={form} onChange={set} />
@@ -146,18 +150,18 @@ function EmployeeModal({ employee, onClose, onSaved }) {
             <SelectField label="Pay Frequency" k="pay_frequency" options={PAY_FREQ} half form={form} onChange={set} />
           </div>
 
-          <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '16px 0 8px' }}>Compensation</div>
+          <div className="section-title mt-16">Compensation</div>
           <div className="form-group">
             <label className="form-label">Basic Monthly Salary *</label>
             <input className="form-input" type="number" min="0" step="0.01"
               placeholder="0.00" value={form.basic_salary}
               onChange={e => set('basic_salary', e.target.value)} />
-            <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>
+            <div className="form-hint">
               Enter the full monthly rate. For semi-monthly pay, each payslip will use half of this amount.
             </div>
           </div>
 
-          <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '16px 0 8px' }}>Government Numbers</div>
+          <div className="section-title mt-16">Government Numbers</div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 12px' }}>
             <Field label="SSS Number" k="sss_number" placeholder="00-0000000-0" half form={form} onChange={set} />
             <Field label="TIN" k="tin" placeholder="000-000-000-000" half form={form} onChange={set} />
@@ -165,13 +169,13 @@ function EmployeeModal({ employee, onClose, onSaved }) {
             <Field label="Pag-IBIG (HDMF) Number" k="pagibig_number" placeholder="0000-0000-0000" half form={form} onChange={set} />
           </div>
 
-          <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '16px 0 8px' }}>Bank Details</div>
+          <div className="section-title mt-16">Bank Details</div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 12px' }}>
             <Field label="Bank Name" k="bank_name" placeholder="BDO / BPI / GCash" half form={form} onChange={set} />
             <Field label="Account Number" k="bank_account" placeholder="0000-0000-00" half form={form} onChange={set} />
           </div>
 
-          <div className="form-group" style={{ marginTop: 12 }}>
+          <div className="form-group mt-12">
             <label className="form-label">Notes</label>
             <textarea className="form-input" rows={2} value={form.notes}
               onChange={e => set('notes', e.target.value)} />
@@ -179,8 +183,8 @@ function EmployeeModal({ employee, onClose, onSaved }) {
 
           {leaveTypes.length > 0 && (
             <>
-              <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', margin: '16px 0 4px' }}>Leave Entitlements</div>
-              <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 10 }}>
+              <div className="section-title mt-16">Leave Entitlements</div>
+              <div className="form-hint mb-8">
                 Check the leave types this employee is entitled to. Leave the days blank to use the default for that leave type, or enter a custom amount for pro-rated entitlements.
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -189,15 +193,15 @@ function EmployeeModal({ employee, onClose, onSaved }) {
                   const override = entitlements?.get(lt.id);
                   return (
                     <div key={lt.id} style={{
-                      borderRadius: 6, border: '1px solid var(--border)',
-                      background: checked ? '#f0fdf4' : 'transparent',
+                      borderRadius: 'var(--radius-sm)', border: '1px solid var(--color-border)',
+                      background: checked ? 'var(--color-primary-light)' : 'transparent',
                       padding: '8px 12px',
                     }}>
                       <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
                         <input type="checkbox" checked={checked} onChange={() => toggleEntitlement(lt.id)} />
                         <div>
                           <span style={{ fontWeight: 700, fontSize: 13 }}>{lt.code}</span>
-                          <span style={{ color: 'var(--text-muted)', marginLeft: 6, fontSize: 13 }}>{lt.name}</span>
+                          <span style={{ color: 'var(--color-ink-mid)', marginLeft: 6, fontSize: 13 }}>{lt.name}</span>
                         </div>
                       </label>
                       {checked && (
@@ -210,17 +214,17 @@ function EmployeeModal({ employee, onClose, onSaved }) {
                             value={override ?? ''}
                             onChange={e => setDaysOverride(lt.id, e.target.value)}
                           />
-                          <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                          <span style={{ fontSize: 12, color: 'var(--color-ink-mid)' }}>
                             days
                             {override == null || override === ''
-                              ? <span style={{ marginLeft: 4, color: '#15803d' }}>— using default ({lt.days_per_year})</span>
-                              : <span style={{ marginLeft: 4, color: '#d97706' }}>— custom (default is {lt.days_per_year})</span>
+                              ? <span style={{ marginLeft: 4, color: 'var(--success)' }}>— using default ({lt.days_per_year})</span>
+                              : <span style={{ marginLeft: 4, color: 'var(--warning)' }}>— custom (default is {lt.days_per_year})</span>
                             }
                           </span>
                         </div>
                       )}
                       {!checked && (
-                        <div style={{ fontSize: 11, color: 'var(--text-light)', paddingLeft: 24, marginTop: 2 }}>
+                        <div style={{ fontSize: 11, color: 'var(--color-ink-light)', paddingLeft: 24, marginTop: 2 }}>
                           Not entitled · {lt.days_per_year} days/yr default
                         </div>
                       )}
@@ -249,9 +253,9 @@ export default function Employees() {
 
   const [employees, setEmployees] = useState([]);
   const [loading,   setLoading]   = useState(true);
-  const [modal,     setModal]     = useState(null); // null | 'add' | employee object
+  const [modal,     setModal]     = useState(null);
   const [search,    setSearch]    = useState('');
-  const [filter,    setFilter]    = useState('active'); // 'active' | 'inactive' | 'all'
+  const [filter,    setFilter]    = useState('active');
   const [error,     setError]     = useState('');
 
   const load = async () => {
@@ -266,7 +270,7 @@ export default function Employees() {
 
   useEffect(() => { load(); }, []);
 
-  const handleSaved = (emp) => { setModal(null); load(); };
+  const handleSaved = () => { setModal(null); load(); };
 
   const handleToggleActive = async (emp) => {
     try {
@@ -292,18 +296,18 @@ export default function Employees() {
 
   return (
     <div>
-      {error && <div className="alert alert-error mb-16">⚠ {error}</div>}
+      {error && <div className="alert alert-error mb-16">{error}</div>}
 
       {/* Summary */}
-      <div style={{ display: 'flex', gap: 16, marginBottom: 20, flexWrap: 'wrap' }}>
+      <div className="grid-3 mb-20">
         {[
-          { label: 'Active Employees', value: activeCount, color: '#15803d' },
-          { label: 'Total Headcount',  value: employees.length, color: '#2563eb' },
-          { label: 'Est. Monthly Payroll', value: fmt(employees.filter(e => e.is_active).reduce((s, e) => s + (parseFloat(e.basic_salary) || 0), 0)), color: '#7c3aed' },
+          { label: 'Active Employees',     value: activeCount,       color: 'var(--success)' },
+          { label: 'Total Headcount',      value: employees.length,  color: 'var(--color-primary)' },
+          { label: 'Est. Monthly Payroll', value: fmt(employees.filter(e => e.is_active).reduce((s, e) => s + (parseFloat(e.basic_salary) || 0), 0)), color: 'var(--color-accent)' },
         ].map(({ label, value, color }) => (
-          <div key={label} className="card" style={{ flex: 1, minWidth: 160, padding: '14px 18px' }}>
-            <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 4 }}>{label}</div>
-            <div style={{ fontSize: 22, fontWeight: 700, color }}>{value}</div>
+          <div key={label} className="stat-card" style={{ borderLeft: `4px solid ${color}` }}>
+            <div className="stat-label">{label}</div>
+            <div className="stat-value" style={{ color }}>{value}</div>
           </div>
         ))}
       </div>
@@ -325,13 +329,13 @@ export default function Employees() {
 
       {/* Table */}
       {loading ? <div className="page-loading">Loading employees…</div> : filtered.length === 0 ? (
-        <div className="card" style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)' }}>
+        <div className="card" style={{ padding: 40, textAlign: 'center', color: 'var(--color-ink-mid)' }}>
           {employees.length === 0 ? 'No employees yet. Add your first employee to get started.' : 'No employees match your search.'}
         </div>
       ) : (
         <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
           <div style={{ overflowX: 'auto' }}>
-            <table className="table">
+            <table>
               <thead>
                 <tr>
                   <th>Employee</th>
@@ -348,32 +352,20 @@ export default function Employees() {
                   <tr key={emp.id}>
                     <td>
                       <div style={{ fontWeight: 600, fontSize: 13 }}>{emp.first_name} {emp.last_name}</div>
-                      <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{emp.employee_number}</div>
+                      <div style={{ fontSize: 11, color: 'var(--color-ink-mid)' }}>{emp.employee_number}</div>
                     </td>
                     <td>
                       <div style={{ fontSize: 13 }}>{emp.position || '—'}</div>
-                      {emp.department && <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{emp.department}</div>}
+                      {emp.department && <div style={{ fontSize: 11, color: 'var(--color-ink-mid)' }}>{emp.department}</div>}
                     </td>
                     <td>
-                      <span style={{
-                        fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 999,
-                        background: `${TYPE_COLORS[emp.employment_type]}18`,
-                        color: TYPE_COLORS[emp.employment_type],
-                      }}>
+                      <span className={TYPE_PILL[emp.employment_type] || 'pill pill-neutral'}>
                         {EMP_TYPES[emp.employment_type] || emp.employment_type}
                       </span>
                     </td>
                     <td style={{ fontSize: 13 }}>{PAY_FREQ[emp.pay_frequency] || emp.pay_frequency}</td>
                     <td style={{ textAlign: 'right', fontWeight: 600, fontSize: 13 }}>{fmt(emp.basic_salary)}</td>
-                    <td>
-                      <span style={{
-                        fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 999,
-                        background: emp.is_active ? '#d1fae5' : '#f1f5f9',
-                        color: emp.is_active ? '#15803d' : '#64748b',
-                      }}>
-                        {emp.is_active ? 'Active' : 'Inactive'}
-                      </span>
-                    </td>
+                    <td><StatusPill status={emp.is_active ? 'active' : 'inactive'} /></td>
                     <td>
                       <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end' }}>
                         {can('finance') && (

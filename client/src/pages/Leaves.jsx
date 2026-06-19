@@ -1,9 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useUser } from '../context/UserContext.jsx';
-
-const STATUS_COLORS = {
-  pending:'#d97706', approved:'#15803d', rejected:'#dc2626', cancelled:'#64748b',
-};
+import { useUser }    from '../context/UserContext.jsx';
+import StatusPill     from '../components/StatusPill.jsx';
+import { X, Check }  from 'lucide-react';
 
 const fmtDate = (d) => {
   if (!d) return '—';
@@ -40,10 +38,10 @@ function LeaveTypeModal({ lt, onClose, onSaved }) {
       <div className="modal" style={{ maxWidth: 420 }} onClick={e => e.stopPropagation()}>
         <div className="modal-header">
           <div className="modal-title">{lt ? 'Edit Leave Type' : 'Add Leave Type'}</div>
-          <button className="btn btn-ghost btn-icon" onClick={onClose}>✕</button>
+          <button className="modal-close" onClick={onClose}><X size={18} /></button>
         </div>
         <div className="modal-body">
-          {error && <div className="alert alert-error mb-12">⚠ {error}</div>}
+          {error && <div className="alert alert-error mb-12">{error}</div>}
           <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'0 12px' }}>
             <div className="form-group">
               <label className="form-label">Leave Name *</label>
@@ -95,7 +93,7 @@ function ApplyLeaveModal({ employees, leaveTypes, onClose, onFiled }) {
   const [form,         setForm]         = useState({ employee_id:'', leave_type_id:'', start_date: today, end_date: today, days:'1', reason:'' });
   const [saving,       setSaving]       = useState(false);
   const [error,        setError]        = useState('');
-  const [entitledIds,  setEntitledIds]  = useState(null); // null = no employee selected yet
+  const [entitledIds,  setEntitledIds]  = useState(null);
 
   useEffect(() => {
     if (!form.employee_id) { setEntitledIds(null); return; }
@@ -103,7 +101,6 @@ function ApplyLeaveModal({ employees, leaveTypes, onClose, onFiled }) {
       .then(r => r.json())
       .then(rows => setEntitledIds(new Set(Array.isArray(rows) ? rows.map(r => r.leave_type_id) : [])))
       .catch(() => setEntitledIds(null));
-    // Reset leave type when employee changes
     setForm(f => ({ ...f, leave_type_id: '' }));
   }, [form.employee_id]);
 
@@ -133,10 +130,10 @@ function ApplyLeaveModal({ employees, leaveTypes, onClose, onFiled }) {
       <div className="modal" style={{ maxWidth: 440 }} onClick={e => e.stopPropagation()}>
         <div className="modal-header">
           <div className="modal-title">File Leave Request</div>
-          <button className="btn btn-ghost btn-icon" onClick={onClose}>✕</button>
+          <button className="modal-close" onClick={onClose}><X size={18} /></button>
         </div>
         <div className="modal-body">
-          {error && <div className="alert alert-error mb-12">⚠ {error}</div>}
+          {error && <div className="alert alert-error mb-12">{error}</div>}
           <div className="form-group">
             <label className="form-label">Employee *</label>
             <select className="form-input" value={form.employee_id} onChange={e => setForm(f => ({ ...f, employee_id: e.target.value }))}>
@@ -212,13 +209,13 @@ function ReviewModal({ request, onClose, onReviewed }) {
       <div className="modal" style={{ maxWidth: 420 }} onClick={e => e.stopPropagation()}>
         <div className="modal-header">
           <div className="modal-title">Review Leave Request</div>
-          <button className="btn btn-ghost btn-icon" onClick={onClose}>✕</button>
+          <button className="modal-close" onClick={onClose}><X size={18} /></button>
         </div>
         <div className="modal-body">
-          {error && <div className="alert alert-error mb-12">⚠ {error}</div>}
-          <div style={{ background:'var(--bg-secondary)', borderRadius:8, padding:'12px 14px', marginBottom:14, fontSize:13 }}>
+          {error && <div className="alert alert-error mb-12">{error}</div>}
+          <div style={{ background:'var(--color-surface-2)', borderRadius:'var(--radius-sm)', padding:'12px 14px', marginBottom:14, fontSize:13 }}>
             <div><strong>{request.first_name} {request.last_name}</strong> — {request.leave_type_name}</div>
-            <div style={{ color:'var(--text-muted)', fontSize:12, marginTop:4 }}>
+            <div style={{ color:'var(--color-ink-mid)', fontSize:12, marginTop:4 }}>
               {fmtDate(request.start_date)} – {fmtDate(request.end_date)} · {request.days} day(s)
             </div>
             {request.reason && <div style={{ marginTop:6, fontStyle:'italic', fontSize:12 }}>"{request.reason}"</div>}
@@ -230,9 +227,9 @@ function ReviewModal({ request, onClose, onReviewed }) {
         </div>
         <div className="modal-footer">
           <button className="btn btn-ghost" onClick={onClose}>Cancel</button>
-          <button className="btn btn-ghost btn-sm" style={{ color:'var(--danger)' }} onClick={() => submit('reject')} disabled={saving}>Reject</button>
+          <button className="btn btn-danger btn-sm" onClick={() => submit('reject')} disabled={saving}>Reject</button>
           <button className="btn btn-primary" onClick={() => submit('approve')} disabled={saving}>
-            {saving ? '…' : '✓ Approve'}
+            {saving ? '…' : 'Approve'}
           </button>
         </div>
       </div>
@@ -289,11 +286,11 @@ function AllocateModal({ employees, year, onClose, onAllocated }) {
       <div className="modal" style={{ maxWidth: 480 }} onClick={e => e.stopPropagation()}>
         <div className="modal-header">
           <div className="modal-title">Allocate Leave Balances — {year}</div>
-          <button className="btn btn-ghost btn-icon" onClick={onClose}>✕</button>
+          <button className="modal-close" onClick={onClose}><X size={18} /></button>
         </div>
         <div className="modal-body">
-          {error && <div className="alert alert-error mb-12">⚠ {error}</div>}
-          <p style={{ fontSize:13, color:'var(--text-muted)', marginBottom:12 }}>
+          {error && <div className="alert alert-error mb-12">{error}</div>}
+          <p style={{ fontSize:13, color:'var(--color-ink-mid)', marginBottom:12 }}>
             Select the employees to allocate leave balances for. Existing allocations will not be overwritten.
           </p>
 
@@ -307,23 +304,23 @@ function AllocateModal({ employees, year, onClose, onAllocated }) {
               <input type="checkbox" checked={allSelected} onChange={toggleAll} />
               <span>Select all ({employees.length})</span>
             </label>
-            <span style={{ fontSize:12, color:'var(--text-muted)' }}>{selectedIds.size} selected</span>
+            <span style={{ fontSize:12, color:'var(--color-ink-mid)' }}>{selectedIds.size} selected</span>
           </div>
 
-          <div style={{ maxHeight:280, overflowY:'auto', border:'1px solid var(--border)', borderRadius:'var(--radius-sm)' }}>
+          <div style={{ maxHeight:280, overflowY:'auto', border:'1px solid var(--color-border)', borderRadius:'var(--radius-sm)' }}>
             {filtered.length === 0 ? (
-              <div style={{ padding:'20px', textAlign:'center', color:'var(--text-muted)', fontSize:13 }}>No employees match.</div>
+              <div style={{ padding:'20px', textAlign:'center', color:'var(--color-ink-mid)', fontSize:13 }}>No employees match.</div>
             ) : filtered.map((emp, i) => (
               <label key={emp.id} style={{
                 display:'flex', alignItems:'center', gap:10, padding:'9px 12px', cursor:'pointer',
-                borderBottom: i < filtered.length - 1 ? '1px solid var(--border)' : 'none',
-                background: selectedIds.has(emp.id) ? '#eff6ff' : 'transparent',
+                borderBottom: i < filtered.length - 1 ? '1px solid var(--color-border)' : 'none',
+                background: selectedIds.has(emp.id) ? 'var(--color-primary-light)' : 'transparent',
                 transition:'background 0.1s', userSelect:'none',
               }}>
                 <input type="checkbox" checked={selectedIds.has(emp.id)} onChange={() => toggle(emp.id)} />
                 <div style={{ flex:1 }}>
                   <div style={{ fontWeight:600, fontSize:13 }}>{emp.first_name} {emp.last_name}</div>
-                  <div style={{ fontSize:11, color:'var(--text-muted)' }}>
+                  <div style={{ fontSize:11, color:'var(--color-ink-mid)' }}>
                     {emp.employee_number}{emp.department ? ` · ${emp.department}` : ''}
                   </div>
                 </div>
@@ -345,13 +342,13 @@ function AllocateModal({ employees, year, onClose, onAllocated }) {
 // ── Main Leaves Page ──────────────────────────────────────────────────────────
 export default function Leaves() {
   const { can } = useUser();
-  const [tab,        setTab]        = useState('requests'); // 'requests' | 'balances' | 'types'
+  const [tab,        setTab]        = useState('requests');
   const [requests,   setRequests]   = useState([]);
   const [balances,   setBalances]   = useState([]);
   const [leaveTypes, setLeaveTypes] = useState([]);
   const [employees,  setEmployees]  = useState([]);
   const [loading,    setLoading]    = useState(true);
-  const [modal,      setModal]      = useState(null); // null|'apply'|'type'|'type-edit'|'review'
+  const [modal,      setModal]      = useState(null);
   const [activeItem, setActiveItem] = useState(null);
   const [statusFilter,setStatus]    = useState('pending');
   const [yearFilter, setYear]       = useState(new Date().getFullYear());
@@ -392,11 +389,7 @@ export default function Leaves() {
     } catch { setError('Network error.'); }
   };
 
-  const handleAllocated = (data) => {
-    setModal(null);
-    setError('');
-    loadAll();
-  };
+  const handleAllocated = () => { setModal(null); setError(''); loadAll(); };
 
   const handleCancel = async (req) => {
     if (!window.confirm('Cancel this leave request?')) return;
@@ -412,20 +405,16 @@ export default function Leaves() {
 
   return (
     <div>
-      {error && <div className="alert alert-error mb-16">⚠ {error}</div>}
+      {error && <div className="alert alert-error mb-16">{error}</div>}
 
       {/* Tabs */}
-      <div style={{ display:'flex', gap:4, marginBottom:20, borderBottom:'2px solid var(--border)', paddingBottom:0 }}>
+      <div className="tab-bar">
         {[
           { key:'requests', label:`Leave Requests${pendingCount > 0 ? ` (${pendingCount} pending)` : ''}` },
           { key:'balances', label:'Leave Balances' },
           { key:'types',    label:'Leave Types' },
         ].map(t => (
-          <button key={t.key} onClick={() => setTab(t.key)}
-            style={{ padding:'8px 18px', border:'none', background:'none', cursor:'pointer', fontWeight: tab===t.key ? 700 : 400,
-              color: tab===t.key ? 'var(--primary)' : 'var(--text-muted)',
-              borderBottom: tab===t.key ? '2px solid var(--primary)' : '2px solid transparent',
-              marginBottom:-2, fontSize:14 }}>
+          <button key={t.key} className={`tab-btn${tab === t.key ? ' active' : ''}`} onClick={() => setTab(t.key)}>
             {t.label}
           </button>
         ))}
@@ -450,12 +439,12 @@ export default function Leaves() {
           </div>
 
           {loading ? <div className="page-loading">Loading…</div> : requests.length === 0 ? (
-            <div className="card" style={{ padding:40, textAlign:'center', color:'var(--text-muted)' }}>
+            <div className="card" style={{ padding:40, textAlign:'center', color:'var(--color-ink-mid)' }}>
               No leave requests found for the selected filters.
             </div>
           ) : (
             <div className="card" style={{ padding:0, overflow:'hidden' }}>
-              <table className="table" style={{ fontSize:13 }}>
+              <table style={{ fontSize:13 }}>
                 <thead>
                   <tr>
                     <th>Employee</th>
@@ -472,30 +461,26 @@ export default function Leaves() {
                     <tr key={r.id}>
                       <td>
                         <div style={{ fontWeight:600 }}>{r.first_name} {r.last_name}</div>
-                        <div style={{ fontSize:11, color:'var(--text-muted)' }}>{r.department || r.employee_number}</div>
+                        <div style={{ fontSize:11, color:'var(--color-ink-mid)' }}>{r.department || r.employee_number}</div>
                       </td>
                       <td>
-                        <span style={{ fontSize:11, fontWeight:600, padding:'2px 7px', borderRadius:999,
-                          background:'#dbeafe', color:'#1d4ed8' }}>{r.leave_type_code}</span>
-                        <div style={{ fontSize:11, color:'var(--text-muted)', marginTop:2 }}>{r.leave_type_name}</div>
+                        <span className="pill pill-primary">{r.leave_type_code}</span>
+                        <div style={{ fontSize:11, color:'var(--color-ink-mid)', marginTop:4 }}>{r.leave_type_name}</div>
                       </td>
                       <td style={{ fontSize:12 }}>
                         {fmtDate(r.start_date)}
                         {r.start_date !== r.end_date && <> – {fmtDate(r.end_date)}</>}
                       </td>
                       <td style={{ textAlign:'center', fontWeight:700 }}>{r.days}</td>
-                      <td style={{ fontSize:12, color:'var(--text-muted)', maxWidth:160 }}>
+                      <td style={{ fontSize:12, color:'var(--color-ink-mid)', maxWidth:160 }}>
                         <span style={{ display:'block', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
                           {r.reason || '—'}
                         </span>
                       </td>
                       <td>
-                        <span style={{ fontSize:11, fontWeight:600, padding:'2px 7px', borderRadius:999,
-                          background: `${STATUS_COLORS[r.status]}20`, color: STATUS_COLORS[r.status] }}>
-                          {r.status.charAt(0).toUpperCase() + r.status.slice(1)}
-                        </span>
+                        <StatusPill status={r.status} />
                         {r.status !== 'pending' && r.reviewer_note && (
-                          <div style={{ fontSize:10, color:'var(--text-muted)', marginTop:2 }}>"{r.reviewer_note}"</div>
+                          <div style={{ fontSize:10, color:'var(--color-ink-mid)', marginTop:2 }}>"{r.reviewer_note}"</div>
                         )}
                       </td>
                       <td>
@@ -525,7 +510,7 @@ export default function Leaves() {
             <select className="form-input" style={{ width:100 }} value={yearFilter} onChange={e => setYear(parseInt(e.target.value))}>
               {[currentYear+1, currentYear, currentYear-1].map(y => <option key={y} value={y}>{y}</option>)}
             </select>
-            <div style={{ flex:1, fontSize:13, color:'var(--text-muted)' }}>
+            <div style={{ flex:1, fontSize:13, color:'var(--color-ink-mid)' }}>
               {balances.length === 0 ? `No balances allocated for ${yearFilter} yet.` : `${balances.length} balance record(s) for ${yearFilter}`}
             </div>
             {can('finance') && (
@@ -536,13 +521,13 @@ export default function Leaves() {
           </div>
 
           {loading ? <div className="page-loading">Loading…</div> : balances.length === 0 ? (
-            <div className="card" style={{ padding:40, textAlign:'center', color:'var(--text-muted)' }}>
+            <div className="card" style={{ padding:40, textAlign:'center', color:'var(--color-ink-mid)' }}>
               No leave balances for {yearFilter}. Click "Allocate Balances" to set up leave entitlements.
             </div>
           ) : (
             <div className="card" style={{ padding:0, overflow:'hidden' }}>
               <div style={{ overflowX:'auto' }}>
-                <table className="table" style={{ fontSize:12 }}>
+                <table style={{ fontSize:12 }}>
                   <thead>
                     <tr>
                       <th>Employee</th>
@@ -558,18 +543,17 @@ export default function Leaves() {
                       <tr key={b.id}>
                         <td>
                           <div style={{ fontWeight:600 }}>{b.first_name} {b.last_name}</div>
-                          <div style={{ fontSize:11, color:'var(--text-muted)' }}>{b.department || b.employee_number}</div>
+                          <div style={{ fontSize:11, color:'var(--color-ink-mid)' }}>{b.department || b.employee_number}</div>
                         </td>
                         <td>
-                          <span style={{ fontSize:11, fontWeight:600, padding:'2px 7px', borderRadius:999,
-                            background:'#dbeafe', color:'#1d4ed8' }}>{b.leave_type_code}</span>
-                          <div style={{ fontSize:11, color:'var(--text-muted)', marginTop:2 }}>{b.leave_type_name}</div>
+                          <span className="pill pill-primary">{b.leave_type_code}</span>
+                          <div style={{ fontSize:11, color:'var(--color-ink-mid)', marginTop:4 }}>{b.leave_type_name}</div>
                         </td>
                         <td style={{ textAlign:'center' }}>{b.entitled_days}</td>
-                        <td style={{ textAlign:'center', color: b.carry_over > 0 ? '#2563eb' : 'var(--text-muted)' }}>{b.carry_over}</td>
-                        <td style={{ textAlign:'center', color: b.used_days > 0 ? '#d97706' : 'var(--text-muted)' }}>{b.used_days}</td>
+                        <td style={{ textAlign:'center', color: b.carry_over > 0 ? 'var(--color-primary)' : 'var(--color-ink-mid)' }}>{b.carry_over}</td>
+                        <td style={{ textAlign:'center', color: b.used_days > 0 ? 'var(--warning)' : 'var(--color-ink-mid)' }}>{b.used_days}</td>
                         <td style={{ textAlign:'center', fontWeight:700,
-                          color: b.remaining_days <= 0 ? '#dc2626' : b.remaining_days <= 1 ? '#d97706' : '#15803d' }}>
+                          color: b.remaining_days <= 0 ? 'var(--danger)' : b.remaining_days <= 1 ? 'var(--warning)' : 'var(--success)' }}>
                           {parseFloat(b.remaining_days).toFixed(1)}
                         </td>
                       </tr>
@@ -591,7 +575,7 @@ export default function Leaves() {
             )}
           </div>
           <div className="card" style={{ padding:0, overflow:'hidden' }}>
-            <table className="table">
+            <table>
               <thead>
                 <tr>
                   <th>Code</th>
@@ -600,37 +584,31 @@ export default function Leaves() {
                   <th style={{ textAlign:'center' }}>Max Carry-over</th>
                   <th style={{ textAlign:'center' }}>Monetizable</th>
                   <th>Description</th>
-                  <th>STATUS</th>
+                  <th>Status</th>
                   <th></th>
                 </tr>
               </thead>
               <tbody>
                 {leaveTypes.map(lt => (
                   <tr key={lt.id} style={{ opacity: lt.is_active ? 1 : 0.55 }}>
-                    <td style={{ fontWeight:700, color:'#2563eb' }}>{lt.code}</td>
+                    <td><span className="pill pill-primary">{lt.code}</span></td>
                     <td style={{ fontWeight:600 }}>{lt.name}</td>
                     <td style={{ textAlign:'center' }}>{lt.days_per_year}</td>
                     <td style={{ textAlign:'center' }}>{lt.carry_over_days}</td>
                     <td style={{ textAlign:'center' }}>
-                      {lt.is_monetizable ? <span style={{ color:'#15803d', fontWeight:700 }}>✓</span> : <span style={{ color:'var(--text-muted)' }}>—</span>}
+                      {lt.is_monetizable
+                        ? <Check size={14} strokeWidth={2.5} color="var(--success)" />
+                        : <span style={{ color:'var(--color-ink-light)' }}>—</span>}
                     </td>
-                    <td style={{ fontSize:12, color:'var(--text-muted)' }}>{lt.description || '—'}</td>
-                    <td>
-                      <span style={{
-                        display:'inline-block', fontSize:11, fontWeight:600, padding:'2px 8px',
-                        borderRadius:10, background: lt.is_active ? '#dcfce7' : '#f1f5f9',
-                        color: lt.is_active ? '#15803d' : '#64748b',
-                      }}>
-                        {lt.is_active ? 'Active' : 'Inactive'}
-                      </span>
-                    </td>
+                    <td style={{ fontSize:12, color:'var(--color-ink-mid)' }}>{lt.description || '—'}</td>
+                    <td><StatusPill status={lt.is_active ? 'active' : 'inactive'} /></td>
                     <td>
                       {can('finance') && (
                         <div style={{ display:'flex', gap:6 }}>
                           <button className="btn btn-ghost btn-sm" onClick={() => { setActiveItem(lt); setModal('type-edit'); }}>Edit</button>
                           <button
-                            className="btn btn-ghost btn-sm"
-                            style={{ color: lt.is_active ? '#b91c1c' : '#15803d' }}
+                            className={`btn btn-sm ${lt.is_active ? 'btn-danger' : 'btn-ghost'}`}
+                            style={!lt.is_active ? { color:'var(--success)' } : {}}
                             onClick={() => handleToggleLeaveType(lt)}
                           >
                             {lt.is_active ? 'Deactivate' : 'Activate'}

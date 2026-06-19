@@ -3,6 +3,8 @@ import { useSettings } from '../context/SettingsContext.jsx';
 import { useUser } from '../context/UserContext.jsx';
 import CurrencySelect from '../components/CurrencySelect.jsx';
 import AmountInput from '../components/AmountInput.jsx';
+import StatusPill from '../components/StatusPill.jsx';
+import { X, Trash2, Download } from 'lucide-react';
 
 const emptyForm = { sku: '', name: '', category: '', unit: 'pcs', quantity: '', unit_cost: '', reorder_point: '10', notes: '', submitter_note: '' };
 const makeEmptyReplenish = (baseCurrency) => ({ qty: '', unit_cost: '', payment_method: 'cash', notes: '', date: new Date().toISOString().split('T')[0], reference: '', currency: baseCurrency, exchange_rate: '1' });
@@ -73,8 +75,8 @@ function ImportModal({ onClose, onImported, isSuperAdmin }) {
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal" onClick={e => e.stopPropagation()}>
         <div className="modal-header">
-          <div className="modal-title">📥 Import Inventory Items</div>
-          <button className="btn btn-ghost btn-icon" onClick={onClose}>✕</button>
+          <div className="modal-title">Import Inventory Items</div>
+          <button className="modal-close" onClick={onClose}><X size={18} /></button>
         </div>
         <div className="modal-body">
           {phase === 'pick' && (
@@ -85,38 +87,38 @@ function ImportModal({ onClose, onImported, isSuperAdmin }) {
                   ? ' Items will be added directly to inventory.'
                   : ' Each item will be submitted for approval — they will appear once a manager or finance user approves them.'}
               </div>
-              {error && <div className="alert alert-error mb-16" style={{ whiteSpace: 'pre-line' }}>⚠ {error}</div>}
+              {error && <div className="alert alert-error mb-16" style={{ whiteSpace: 'pre-line' }}>{error}</div>}
               <div style={{ marginBottom: 16 }}>
                 <button className="btn btn-ghost btn-sm"
                   onClick={() => triggerDownload('/api/inventory/import/template', 'inventory-template.csv')}>
-                  📄 Download Template
+                  <Download size={14} style={{ marginRight: 4 }} />Download Template
                 </button>
               </div>
-              <label style={{ display: 'block', border: '2px dashed var(--border)', borderRadius: 8,
-                padding: 32, textAlign: 'center', cursor: 'pointer', color: 'var(--text-muted)' }}
+              <label style={{ display: 'block', border: '2px dashed var(--color-border)', borderRadius: 'var(--radius)',
+                padding: 32, textAlign: 'center', cursor: 'pointer', color: 'var(--color-ink-mid)' }}
                 onDragOver={e => e.preventDefault()}
                 onDrop={e => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f) handleFile({ target: { files: [f] } }); }}>
-                {loading ? '⏳ Validating…' : '📂 Click to choose CSV file or drag & drop here'}
+                {loading ? 'Validating…' : 'Click to choose CSV file or drag & drop here'}
                 <input type="file" accept=".csv,text/csv" style={{ display: 'none' }} onChange={handleFile} />
               </label>
             </>
           )}
           {phase === 'preview' && preview && (
             <div className="alert alert-success">
-              ✓ File is valid — <strong>{preview.count} item{preview.count !== 1 ? 's' : ''}</strong> ready to{isSuperAdmin ? ' import' : ' submit for approval'}.
+              File is valid — <strong>{preview.count} item{preview.count !== 1 ? 's' : ''}</strong> ready to{isSuperAdmin ? ' import' : ' submit for approval'}.
             </div>
           )}
           {phase === 'result' && result && (
             <>
               {result.pendingApproval ? (
                 <div className="alert alert-warning mb-16">
-                  ⏳ <strong>{result.imported}</strong> item{result.imported !== 1 ? 's' : ''} submitted for approval.
+                  <strong>{result.imported}</strong> item{result.imported !== 1 ? 's' : ''} submitted for approval.
                   {result.skipped > 0 && ` ${result.skipped} skipped (duplicate SKU).`}
                   {' '}They will appear in inventory once approved.
                 </div>
               ) : (
                 <div className="alert alert-success mb-16">
-                  ✓ Import complete — <strong>{result.imported}</strong> item{result.imported !== 1 ? 's' : ''} added to inventory.
+                  Import complete — <strong>{result.imported}</strong> item{result.imported !== 1 ? 's' : ''} added to inventory.
                   {result.skipped > 0 && ` ${result.skipped} skipped.`}
                 </div>
               )}
@@ -134,8 +136,8 @@ function ImportModal({ onClose, onImported, isSuperAdmin }) {
               {loading
                 ? (isSuperAdmin ? 'Importing…' : 'Submitting…')
                 : isSuperAdmin
-                  ? `✓ Import ${preview?.count} Item${preview?.count !== 1 ? 's' : ''}`
-                  : `✓ Submit ${preview?.count} Item${preview?.count !== 1 ? 's' : ''} for Approval`}
+                  ? `Import ${preview?.count} Item${preview?.count !== 1 ? 's' : ''}`
+                  : `Submit ${preview?.count} Item${preview?.count !== 1 ? 's' : ''} for Approval`}
             </button>
           </>}
           {phase === 'result'  && <button className="btn btn-primary" onClick={onClose}>Done</button>}
@@ -171,15 +173,15 @@ function DeletionModal({ item, onClose, onDone }) {
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal" style={{ maxWidth: 440 }} onClick={e => e.stopPropagation()}>
         <div className="modal-header">
-          <div className="modal-title">🗑 Request Item Deletion</div>
-          <button className="btn btn-ghost btn-icon" onClick={onClose}>✕</button>
+          <div className="modal-title">Request Item Deletion</div>
+          <button className="modal-close" onClick={onClose}><X size={18} /></button>
         </div>
         <div className="modal-body">
           <div className="alert alert-warning mb-16">
             Requesting deletion of <strong>{item.sku}</strong> — {item.name}.
             An approver must review this before the item is permanently removed.
           </div>
-          {error && <div className="alert alert-error mb-12">⚠ {error}</div>}
+          {error && <div className="alert alert-error mb-12">{error}</div>}
           <div className="form-group">
             <label className="form-label">Reason for Deletion <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>(optional)</span></label>
             <textarea className="form-textarea" rows={3} value={note}
@@ -190,7 +192,7 @@ function DeletionModal({ item, onClose, onDone }) {
         <div className="modal-footer">
           <button className="btn btn-ghost" onClick={onClose}>Cancel</button>
           <button className="btn btn-danger" onClick={handleRequest} disabled={saving}>
-            {saving ? 'Submitting…' : '🗑 Submit Deletion Request'}
+            {saving ? 'Submitting…' : 'Submit Deletion Request'}
           </button>
         </div>
       </div>
@@ -200,11 +202,11 @@ function DeletionModal({ item, onClose, onDone }) {
 
 // ── Status badge helper ───────────────────────────────────────────────────────
 function itemStatusBadge(item) {
-  if (item.pending_approval) return <span className="badge badge-info">Pending Approval</span>;
-  if (item.pending_deletion) return <span className="badge badge-warning">Pending Deletion</span>;
-  if (item.quantity === 0)   return <span className="badge badge-danger">Out of Stock</span>;
-  if (item.quantity <= item.reorder_point) return <span className="badge badge-warning">Low Stock</span>;
-  return <span className="badge badge-success">In Stock</span>;
+  if (item.pending_approval) return <StatusPill status="pending" label="Pending Approval" />;
+  if (item.pending_deletion) return <StatusPill status="pending" label="Pending Deletion" />;
+  if (item.quantity === 0)   return <StatusPill status="danger" label="Out of Stock" />;
+  if (item.quantity <= item.reorder_point) return <StatusPill status="low" label="Low Stock" />;
+  return <StatusPill status="active" label="In Stock" />;
 }
 
 // ── Main component ────────────────────────────────────────────────────────────
@@ -404,13 +406,13 @@ export default function Inventory() {
                             <button className="btn btn-ghost btn-sm" onClick={() => openReplenish(item)} title="Replenish stock">📥 Restock</button>
                           )}
                           {!isPendingApproval && can('manager') && (
-                            <button className="btn btn-ghost btn-sm" onClick={() => openEdit(item)} title="Edit item">✏️</button>
+                            <button className="btn btn-ghost btn-sm" onClick={() => openEdit(item)} title="Edit item">Edit</button>
                           )}
                           {!isPendingApproval && !item.pending_deletion && user?.role !== 'admin' && (
                             <button className="btn btn-ghost btn-sm"
                               style={{ color: 'var(--danger)', borderColor: 'transparent' }}
                               title="Request deletion"
-                              onClick={() => setDeletionModal(item)}>🗑</button>
+                              onClick={() => setDeletionModal(item)}><Trash2 size={14} /></button>
                           )}
                         </div>
                       </td>
@@ -429,7 +431,7 @@ export default function Inventory() {
           <div className="modal" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
               <div className="modal-title">{editItem ? 'Edit Item' : 'Add Inventory Item'}</div>
-              <button className="btn btn-ghost btn-icon" onClick={() => setShowModal(false)}>✕</button>
+              <button className="modal-close" onClick={() => setShowModal(false)}><X size={18} /></button>
             </div>
             <div className="modal-body">
               {msg && <div className={`alert alert-${msg.type === 'error' ? 'error' : 'success'} mb-16`}>{msg.text}</div>}
@@ -510,7 +512,7 @@ export default function Inventory() {
           <div className="modal" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
               <div className="modal-title">Restock: {replenishItem.name}</div>
-              <button className="btn btn-ghost btn-icon" onClick={() => setReplenishItem(null)}>✕</button>
+              <button className="modal-close" onClick={() => setReplenishItem(null)}><X size={18} /></button>
             </div>
             <div className="modal-body">
               <div className="alert alert-info mb-16">
