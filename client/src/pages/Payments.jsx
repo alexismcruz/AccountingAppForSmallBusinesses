@@ -864,7 +864,7 @@ export default function Payments({ tab }) {
                       </td>
                       <td style={{ color: rec.scheduled_date && rec.scheduled_date < today && rec.status !== 'paid' ? 'var(--danger)' : 'var(--text-muted)', fontSize: 12 }}>
                         {rec.scheduled_date
-                          ? new Date(rec.scheduled_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })</>
+                          ? new Date(rec.scheduled_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
                           : <span style={{ color: 'var(--text-light)' }}>—</span>}
                       </td>
                       <td>{statusBadge(rec)}</td>
