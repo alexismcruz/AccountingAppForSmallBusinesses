@@ -290,7 +290,7 @@ export default function Payroll() {
   }, { gross: 0, sssEe: 0, sssEr: 0, phEe: 0, phEr: 0, piEe: 0, piEr: 0, wtax: 0, otherDed: 0, net: 0 });
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '280px 1fr', gap: 20, alignItems: 'start' }}>
+    <div className="payroll-layout">
 
       {/* ── LEFT: Period list ──────────────────────────────────────────────── */}
       <div>
@@ -336,7 +336,7 @@ export default function Payroll() {
       {/* ── RIGHT: Period detail ───────────────────────────────────────────── */}
       <div>
         {!selected ? (
-          <div className="card" style={{ padding: 60, textAlign: 'center', color: 'var(--text-muted)' }}>
+          <div className="card payroll-no-selection" style={{ padding: 60, textAlign: 'center', color: 'var(--text-muted)' }}>
             Select a payroll run to view details, or create a new one.
           </div>
         ) : detailLoading ? (
