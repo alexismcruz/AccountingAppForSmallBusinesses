@@ -2,9 +2,15 @@ require('dotenv').config();          // load .env into process.env
 const express = require('express');
 const cors    = require('cors');
 const path    = require('path');
-const session   = require('express-session');
-const pgSession  = require('connect-pg-simple')(session);
-const { initDB, query, pool } = require('./db/database');
+const session = require('express-session');
+
+const IS_LANDING = process.env.LANDING_SITE === 'true';
+
+// DB and pgSession are only needed for the full accounting app
+let initDB, query, pool;
+if (!IS_LANDING) {
+  ({ initDB, query, pool } = require('./db/database'));
+}
 
 const app  = express();
 const PORT = process.env.PORT || 3001;
@@ -16,21 +22,31 @@ app.use(express.json({
   verify: (req, _res, buf) => { req.rawBody = buf; },
 }));
 
-app.use(session({
-  store: new pgSession({
-    pool,
-    tableName:            'user_sessions',
-    createTableIfMissing: true,
-  }),
-  secret:            process.env.SESSION_SECRET || 'dev-secret-change-in-production',
-  resave:            false,
-  saveUninitialized: false,
-  cookie: {
-    secure:  process.env.NODE_ENV === 'production',
-    httpOnly: true,
-    maxAge:  7 * 24 * 60 * 60 * 1000,
-  },
-}));
+if (IS_LANDING) {
+  // Landing site has no auth — use lightweight memory session
+  app.use(session({
+    secret:            process.env.SESSION_SECRET || 'landing-secret',
+    resave:            false,
+    saveUninitialized: false,
+  }));
+} else {
+  const pgSession = require('connect-pg-simple')(session);
+  app.use(session({
+    store: new pgSession({
+      pool,
+      tableName:            'user_sessions',
+      createTableIfMissing: true,
+    }),
+    secret:            process.env.SESSION_SECRET || 'dev-secret-change-in-production',
+    resave:            false,
+    saveUninitialized: false,
+    cookie: {
+      secure:  process.env.NODE_ENV === 'production',
+      httpOnly: true,
+      maxAge:  7 * 24 * 60 * 60 * 1000,
+    },
+  }));
+}
 
 // ── Role levels ───────────────────────────────────────────────────────────────
 const ROLE_LEVELS = { staff: 1, manager: 2, finance: 3, admin: 4, super_admin: 5 };
@@ -223,18 +239,22 @@ if (process.env.NODE_ENV === 'production') {
 // ── Start server ──────────────────────────────────────────────────────────────
 (async () => {
   try {
-    await initDB();
-    console.log('✅ PostgreSQL database initialised');
+    if (IS_LANDING) {
+      console.log('🌐 Landing site mode — skipping database');
+    } else {
+      await initDB();
+      console.log('✅ PostgreSQL database initialised');
 
-    // Sandbox: seed demo data on first boot
-    if (process.env.SANDBOX_MODE) {
-      const { rows: [biz] } = await query('SELECT business_name FROM business_settings WHERE id = 1');
-      if (!biz || biz.business_name === 'My Business') {
-        const { seedSandboxData } = require('./db/sandboxSeed');
-        await seedSandboxData(pool);
-        console.log('🧪 Sandbox: demo data seeded for XYZ Trading Co.');
-      } else {
-        console.log('🧪 Sandbox mode active — existing data preserved');
+      // Sandbox: seed demo data on first boot
+      if (process.env.SANDBOX_MODE) {
+        const { rows: [biz] } = await query('SELECT business_name FROM business_settings WHERE id = 1');
+        if (!biz || biz.business_name === 'My Business') {
+          const { seedSandboxData } = require('./db/sandboxSeed');
+          await seedSandboxData(pool);
+          console.log('🧪 Sandbox: demo data seeded for XYZ Trading Co.');
+        } else {
+          console.log('🧪 Sandbox mode active — existing data preserved');
+        }
       }
     }
 
@@ -243,8 +263,10 @@ if (process.env.NODE_ENV === 'production') {
       console.log('  CuentaIQ');
       console.log('====================================');
       console.log(`\n  API Server: http://localhost:${PORT}/api`);
-      const mode = process.env.UAM_URL ? `UAM (${process.env.UAM_URL})` : 'Single password (APP_PASSWORD)';
-      console.log(`  Auth mode : ${mode}`);
+      if (!IS_LANDING) {
+        const mode = process.env.UAM_URL ? `UAM (${process.env.UAM_URL})` : 'Single password (APP_PASSWORD)';
+        console.log(`  Auth mode : ${mode}`);
+      }
       if (process.env.NODE_ENV !== 'production') console.log(`  Open App  : http://localhost:5173`);
       console.log('\n');
     });
