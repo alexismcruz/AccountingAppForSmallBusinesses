@@ -36,6 +36,10 @@ const FEATURES = [
     tags: ['Balance Sheet', 'Income Statement', 'Trial Balance', 'General Ledger'],
     images: [
       { src: '/screenshots/dashboard-overview.png', alt: 'CuentaIQ Dashboard — financial overview with asset totals and approval queue' },
+      { src: '/screenshots/balance-sheet.png',      alt: 'Balance Sheet report' },
+      { src: '/screenshots/income-statement.png',   alt: 'Income Statement report' },
+      { src: '/screenshots/trial-balance.png',      alt: 'Trial Balance report' },
+      { src: '/screenshots/general-ledger.png',     alt: 'General Ledger report' },
     ],
   },
   {
