@@ -1,6 +1,32 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import LandingLayout from './LandingLayout.jsx';
-import { Play, ArrowRight } from 'lucide-react';
+import { Play, ArrowRight, ChevronLeft, ChevronRight } from 'lucide-react';
+
+function ScreenshotCarousel({ images }) {
+  const [idx, setIdx] = useState(0);
+  if (!images?.length) return null;
+  const prev = () => setIdx(i => (i - 1 + images.length) % images.length);
+  const next = () => setIdx(i => (i + 1) % images.length);
+  return (
+    <div className="l-carousel">
+      <div className="l-carousel-frame">
+        <img src={images[idx].src} alt={images[idx].alt} className="l-carousel-img" />
+        {images.length > 1 && <>
+          <button className="l-carousel-btn prev" onClick={prev}><ChevronLeft size={18} /></button>
+          <button className="l-carousel-btn next" onClick={next}><ChevronRight size={18} /></button>
+        </>}
+      </div>
+      {images.length > 1 && (
+        <div className="l-carousel-dots">
+          {images.map((_, i) => (
+            <button key={i} className={`l-carousel-dot ${i === idx ? 'active' : ''}`} onClick={() => setIdx(i)} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 const FEATURES = [
   {
@@ -8,7 +34,9 @@ const FEATURES = [
     title: 'Dashboard & Financial Reports',
     desc: 'Get a real-time snapshot of your business finances — revenue, expenses, net income, and cash position. Export balance sheets, income statements, trial balances, and general ledgers with one click.',
     tags: ['Balance Sheet', 'Income Statement', 'Trial Balance', 'General Ledger'],
-    screenshot: 'Dashboard — Revenue overview, expense breakdown, and monthly chart',
+    images: [
+      { src: '/screenshots/dashboard-overview.png', alt: 'CuentaIQ Dashboard — financial overview with asset totals and approval queue' },
+    ],
   },
   {
     number: '02',
@@ -93,7 +121,10 @@ export default function FeaturesPage() {
                   {f.tags.map(t => <span key={t} className="l-feature-tag">{t}</span>)}
                 </div>
               </div>
-              <div className="l-screenshot">{f.screenshot}</div>
+              {f.images
+                ? <ScreenshotCarousel images={f.images} />
+                : <div className="l-screenshot">{f.screenshot}</div>
+              }
             </div>
           ))}
         </div>
@@ -106,7 +137,7 @@ export default function FeaturesPage() {
           <p className="l-section-sub white" style={{ margin: '16px auto 32px' }}>
             Book a walkthrough and see how CuentaIQ fits your specific business.
           </p>
-          <Link to="/about-us" className="l-btn l-btn-gold">
+          <Link to="/about-us?demo=open" className="l-btn l-btn-gold">
             Request a Demo <ArrowRight size={16} />
           </Link>
         </div>

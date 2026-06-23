@@ -320,6 +320,44 @@
 .l-footer-links a:hover { color: white; }
 .l-footer-bottom { border-top: 1px solid rgba(255,255,255,0.1); padding-top: 24px; display: flex; justify-content: space-between; align-items: center; font-size: 13px; }
 
+/* ── Screenshot Carousel ─────────────────────────────────── */
+.l-carousel { position: relative; width: 100%; }
+.l-carousel-frame {
+  position: relative;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 8px 40px rgba(0,0,0,0.12);
+  border: 1px solid var(--l-border);
+  background: var(--l-cream);
+  aspect-ratio: 16/10;
+}
+.l-carousel-img {
+  width: 100%; height: 100%;
+  object-fit: cover; object-position: top left;
+  display: block;
+}
+.l-carousel-btn {
+  position: absolute; top: 50%; transform: translateY(-50%);
+  background: rgba(255,255,255,0.9); border: 1px solid var(--l-border);
+  border-radius: 50%; width: 36px; height: 36px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; transition: background 0.15s;
+  z-index: 2;
+}
+.l-carousel-btn:hover { background: white; }
+.l-carousel-btn.prev { left: 10px; }
+.l-carousel-btn.next { right: 10px; }
+.l-carousel-dots {
+  display: flex; justify-content: center; gap: 6px; margin-top: 12px;
+}
+.l-carousel-dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--l-border); border: none; cursor: pointer;
+  transition: background 0.15s;
+  padding: 0;
+}
+.l-carousel-dot.active { background: var(--l-green); }
+
 /* ── Responsive ──────────────────────────────────────────── */
 @media (max-width: 900px) {
   .l-hero-inner    { grid-template-columns: 1fr; }
