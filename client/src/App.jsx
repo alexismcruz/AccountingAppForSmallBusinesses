@@ -28,7 +28,10 @@ import AboutPage     from './landing/AboutPage.jsx';
 import FeaturesPage  from './landing/FeaturesPage.jsx';
 import SubscribePage from './landing/SubscribePage.jsx';
 
-const IS_LANDING = import.meta.env.VITE_LANDING_SITE === 'true';
+const IS_LANDING =
+  import.meta.env.VITE_LANDING_SITE === 'true' ||
+  (typeof window !== 'undefined' &&
+    ['cuentaiq.com', 'www.cuentaiq.com'].includes(window.location.hostname));
 
 // Redirects to / if the required module is disabled for this tenant
 function ModuleGuard({ moduleKey, element }) {
