@@ -212,6 +212,7 @@ app.use('/api/leaves',          require('./routes/leaves'));
 app.use('/api/chatbot',         require('./routes/chatbot'));
 app.use('/api/integrations',       require('./routes/integrations/index'));
 app.use('/api/recurring-invoices', require('./routes/recurringInvoices'));
+app.use('/api/contact',           require('./routes/contact'));
 
 // ── Serve built React app in production ──────────────────────────────────────
 if (process.env.NODE_ENV === 'production') {

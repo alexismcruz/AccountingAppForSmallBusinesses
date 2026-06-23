@@ -23,6 +23,12 @@ import BIRForms        from './pages/BIRForms.jsx';
 import ChartOfAccounts from './pages/ChartOfAccounts.jsx';
 import Integrations        from './pages/Integrations.jsx';
 import RecurringInvoices   from './pages/RecurringInvoices.jsx';
+import HomePage      from './landing/HomePage.jsx';
+import AboutPage     from './landing/AboutPage.jsx';
+import FeaturesPage  from './landing/FeaturesPage.jsx';
+import SubscribePage from './landing/SubscribePage.jsx';
+
+const IS_LANDING = import.meta.env.VITE_LANDING_SITE === 'true';
 
 // Redirects to / if the required module is disabled for this tenant
 function ModuleGuard({ moduleKey, element }) {
@@ -31,6 +37,26 @@ function ModuleGuard({ moduleKey, element }) {
 }
 
 export default function App() {
+  return IS_LANDING ? <LandingSite /> : <AccountingApp />;
+}
+
+// ── Public marketing site (cuentaiq.com) ──────────────────────────────────────
+function LandingSite() {
+  return (
+    <BrowserRouter>
+      <Routes>
+        <Route path="/"          element={<HomePage />} />
+        <Route path="/about-us"  element={<AboutPage />} />
+        <Route path="/features"  element={<FeaturesPage />} />
+        <Route path="/subscribe" element={<SubscribePage />} />
+        <Route path="*"          element={<Navigate to="/" replace />} />
+      </Routes>
+    </BrowserRouter>
+  );
+}
+
+// ── Client accounting app (client.cuentaiq.com) ───────────────────────────────
+function AccountingApp() {
   const [authChecked, setAuthChecked] = useState(false);
   const [loggedIn, setLoggedIn]       = useState(false);
   const [user, setUser]               = useState(null);
