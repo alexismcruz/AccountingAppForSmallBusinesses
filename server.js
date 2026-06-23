@@ -138,6 +138,9 @@ app.post('/api/auth/logout', (req, res) => {
   req.session.destroy(() => res.json({ success: true }));
 });
 
+// ── Public routes (no auth required) ─────────────────────────────────────────
+app.use('/api/contact', require('./routes/contact'));
+
 // ── Auth guard ────────────────────────────────────────────────────────────────
 app.use('/api', (req, res, next) => {
   if (!req.session.authenticated) return res.status(401).json({ error: 'Not authenticated' });
@@ -208,9 +211,6 @@ app.post('/api/auth/change-password', async (req, res) => {
 });
 
 // ── API routes ────────────────────────────────────────────────────────────────
-// Contact route is always available (landing site uses it for demo requests)
-app.use('/api/contact', require('./routes/contact'));
-
 // App routes are only loaded when a database is present
 if (!IS_LANDING) {
   app.use('/api/accounts',      require('./routes/accounts'));
