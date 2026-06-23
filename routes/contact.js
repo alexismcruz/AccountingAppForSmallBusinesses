@@ -1,4 +1,7 @@
+const dns    = require('dns');
 const router = require('express').Router();
+
+dns.setDefaultResultOrder('ipv4first');
 
 router.post('/', async (req, res) => {
   try {
