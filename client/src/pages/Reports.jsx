@@ -293,7 +293,31 @@ function TrialBalance({ date, setDate }) {
             </table>
           </div>
           <div className={`alert mt-12 no-print ${data.balanced ? 'alert-success' : 'alert-warning'}`}>
-            {data.balanced ? '✓ Trial balance is balanced.' : '⚠ Trial balance is not balanced. Check your entries.'}
+            {data.balanced ? '✓ Trial balance is balanced.' : (() => {
+              const diff = Math.abs(data.totalDebit - data.totalCredit);
+              const higher = data.totalDebit > data.totalCredit ? 'debits' : 'credits';
+              const lower  = higher === 'debits' ? 'credits' : 'debits';
+              return (
+                <div>
+                  <div style={{ fontWeight: 600, marginBottom: 6 }}>
+                    ⚠ Trial balance is not balanced — difference of {fmt(diff)} ({higher} exceed {lower}).
+                  </div>
+                  <div style={{ fontSize: 13, opacity: 0.85, lineHeight: 1.6 }}>
+                    <strong>Possible causes (please verify your entries):</strong>
+                    <ul style={{ margin: '6px 0 0 16px', padding: 0 }}>
+                      {higher === 'debits' && <li>A journal entry may be missing its credit side — check recent entries for incomplete transactions.</li>}
+                      {higher === 'credits' && <li>A journal entry may be missing its debit side — check recent entries for incomplete transactions.</li>}
+                      <li>A payroll run or opening balance entry may have only posted one side.</li>
+                      <li>The difference ({fmt(diff)}) may match a specific transaction amount — search for it in Journal Entries.</li>
+                      <li>Rounding differences on tax or deduction computations can also cause small imbalances.</li>
+                    </ul>
+                    <div style={{ marginTop: 8, fontStyle: 'italic' }}>
+                      This is a suggestion only — please review your entries to confirm the root cause.
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
           </div>
         </div>
       )}
