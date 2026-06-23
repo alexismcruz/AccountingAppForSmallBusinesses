@@ -1,12 +1,17 @@
-import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import LandingLayout from './LandingLayout.jsx';
 import { X, ArrowRight, Mail, MapPin } from 'lucide-react';
 
 const EMPTY_FORM = { name: '', company: '', email: '', phone: '', message: '' };
 
 export default function AboutPage() {
+  const [searchParams] = useSearchParams();
   const [modalOpen, setModalOpen]   = useState(false);
+
+  useEffect(() => {
+    if (searchParams.get('demo') === 'open') setModalOpen(true);
+  }, []);
   const [form, setForm]             = useState(EMPTY_FORM);
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult]         = useState(null);

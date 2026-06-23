@@ -44,7 +44,7 @@ export function LandingNav() {
               </li>
             ))}
             <li>
-              <Link to="/about-us" className="l-nav-cta">Request Demo</Link>
+              <Link to="/about-us?demo=open" className="l-nav-cta">Request Demo</Link>
             </li>
           </ul>
 
@@ -57,7 +57,7 @@ export function LandingNav() {
           {links.map(l => (
             <Link key={l.to} to={l.to} onClick={() => setOpen(false)}>{l.label}</Link>
           ))}
-          <Link to="/about-us" className="l-btn l-btn-primary"
+          <Link to="/about-us?demo=open" className="l-btn l-btn-primary"
             style={{ marginTop: 8, justifyContent: 'center' }}
             onClick={() => setOpen(false)}>
             Request Demo
