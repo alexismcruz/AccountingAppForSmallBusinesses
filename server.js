@@ -208,27 +208,32 @@ app.post('/api/auth/change-password', async (req, res) => {
 });
 
 // ── API routes ────────────────────────────────────────────────────────────────
-app.use('/api/accounts',      require('./routes/accounts'));
-app.use('/api/entries',       require('./routes/entries'));
-app.use('/api/inventory',     require('./routes/inventory'));
-app.use('/api/payments',      require('./routes/payments'));
-app.use('/api/reports',       require('./routes/reports'));
-app.use('/api/settings',      require('./routes/settings'));
-app.use('/api/fiscal',        require('./routes/fiscal'));
-app.use('/api/exchange-rate', require('./routes/exchangeRate'));
-app.use('/api/approvals',     require('./routes/approvals'));
-app.use('/api/logs',          require('./routes/logs'));
-app.use('/api/invoices',      require('./routes/invoices'));
-app.use('/api/sandbox',       require('./routes/sandbox'));
-app.use('/api/tax',            require('./routes/tax'));
-app.use('/api/opening-balance', require('./routes/openingBalance'));
-app.use('/api/employees',       require('./routes/employees'));
-app.use('/api/payroll',         require('./routes/payroll'));
-app.use('/api/leaves',          require('./routes/leaves'));
-app.use('/api/chatbot',         require('./routes/chatbot'));
-app.use('/api/integrations',       require('./routes/integrations/index'));
-app.use('/api/recurring-invoices', require('./routes/recurringInvoices'));
-app.use('/api/contact',           require('./routes/contact'));
+// Contact route is always available (landing site uses it for demo requests)
+app.use('/api/contact', require('./routes/contact'));
+
+// App routes are only loaded when a database is present
+if (!IS_LANDING) {
+  app.use('/api/accounts',      require('./routes/accounts'));
+  app.use('/api/entries',       require('./routes/entries'));
+  app.use('/api/inventory',     require('./routes/inventory'));
+  app.use('/api/payments',      require('./routes/payments'));
+  app.use('/api/reports',       require('./routes/reports'));
+  app.use('/api/settings',      require('./routes/settings'));
+  app.use('/api/fiscal',        require('./routes/fiscal'));
+  app.use('/api/exchange-rate', require('./routes/exchangeRate'));
+  app.use('/api/approvals',     require('./routes/approvals'));
+  app.use('/api/logs',          require('./routes/logs'));
+  app.use('/api/invoices',      require('./routes/invoices'));
+  app.use('/api/sandbox',       require('./routes/sandbox'));
+  app.use('/api/tax',            require('./routes/tax'));
+  app.use('/api/opening-balance', require('./routes/openingBalance'));
+  app.use('/api/employees',       require('./routes/employees'));
+  app.use('/api/payroll',         require('./routes/payroll'));
+  app.use('/api/leaves',          require('./routes/leaves'));
+  app.use('/api/chatbot',         require('./routes/chatbot'));
+  app.use('/api/integrations',       require('./routes/integrations/index'));
+  app.use('/api/recurring-invoices', require('./routes/recurringInvoices'));
+}
 
 // ── Serve built React app in production ──────────────────────────────────────
 if (process.env.NODE_ENV === 'production') {
