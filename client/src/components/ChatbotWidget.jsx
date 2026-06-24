@@ -265,6 +265,7 @@ export default function ChatbotWidget() {
   const [loading,  setLoading]  = useState(false);
   const [error,    setError]    = useState('');
   const [isMobile, setIsMobile] = useState(() => window.innerWidth < 640);
+  const [usage,    setUsage]    = useState({ count: 0, limit: 50, warning: false, limitReached: false });
 
   const bottomRef = useRef(null);
   const inputRef  = useRef(null);
@@ -293,6 +294,15 @@ export default function ChatbotWidget() {
       return () => { document.body.style.overflow = ''; };
     }
   }, [open, isMobile]);
+
+  const fetchUsage = useCallback(async () => {
+    try {
+      const res = await fetch('/api/chatbot/usage', { credentials: 'include' });
+      if (res.ok) setUsage(await res.json());
+    } catch (_) {}
+  }, []);
+
+  useEffect(() => { if (open) fetchUsage(); }, [open, fetchUsage]);
 
   const buildHistory = useCallback((msgs, plusUser = null) => {
     const history = msgs
@@ -323,6 +333,7 @@ export default function ChatbotWidget() {
         body: JSON.stringify({ messages: history }),
       });
       const data = await res.json();
+      if (data.usage) setUsage(data.usage);
       if (!res.ok) throw new Error(data.error || 'Request failed');
 
       setMessages(prev => [...prev, {
@@ -444,6 +455,22 @@ export default function ChatbotWidget() {
               <div style={{ color: 'rgba(255,255,255,0.7)', fontSize: 11, marginTop: 1 }}>
                 Powered by Claude · Ask me to record any transaction
               </div>
+              <div style={{ marginTop: 5 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: 'rgba(255,255,255,0.6)', marginBottom: 3 }}>
+                  <span>{usage.count}/{usage.limit} messages this month</span>
+                  {usage.warning && <span style={{ color: usage.limitReached ? '#fca5a5' : '#fde68a' }}>
+                    {usage.limitReached ? 'Limit reached' : `${Math.round(usage.count / usage.limit * 100)}% used`}
+                  </span>}
+                </div>
+                <div style={{ height: 3, borderRadius: 2, background: 'rgba(255,255,255,0.2)', overflow: 'hidden' }}>
+                  <div style={{
+                    height: '100%', borderRadius: 2,
+                    width: `${Math.min(usage.count / usage.limit * 100, 100)}%`,
+                    background: usage.limitReached ? '#f87171' : usage.warning ? '#fbbf24' : 'rgba(255,255,255,0.7)',
+                    transition: 'width 0.4s ease',
+                  }} />
+                </div>
+              </div>
             </div>
             <button
               onClick={() => setOpen(false)}
@@ -459,6 +486,20 @@ export default function ChatbotWidget() {
               ✕
             </button>
           </div>
+
+          {/* Usage warning banners */}
+          {usage.limitReached && (
+            <div style={{ background: '#fef2f2', borderBottom: '1px solid #fecaca', padding: '8px 14px', fontSize: 12, color: '#dc2626', flexShrink: 0 }}>
+              <strong>Monthly limit of {usage.limit} messages reached.</strong> Top up $10 for 15 more messages —{' '}
+              <a href="mailto:hello@cuentaiq.com" style={{ color: '#dc2626', fontWeight: 600 }}>hello@cuentaiq.com</a>
+            </div>
+          )}
+          {usage.warning && !usage.limitReached && (
+            <div style={{ background: '#fffbeb', borderBottom: '1px solid #fde68a', padding: '8px 14px', fontSize: 12, color: '#92400e', flexShrink: 0 }}>
+              ⚠ {usage.count}/{usage.limit} messages used this month. Top up $10 for 15 more —{' '}
+              <a href="mailto:hello@cuentaiq.com" style={{ color: '#92400e', fontWeight: 600 }}>hello@cuentaiq.com</a>
+            </div>
+          )}
 
           {/* Messages area */}
           <div style={{
@@ -511,8 +552,8 @@ export default function ChatbotWidget() {
                 value={input}
                 onChange={e => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder="Describe a transaction… (e.g. 'Paid ₱15,000 rent from BDO')"
-                disabled={loading}
+                placeholder={usage.limitReached ? 'Monthly limit reached — top up to continue' : "Describe a transaction… (e.g. 'Paid ₱15,000 rent from BDO')"}
+                disabled={loading || usage.limitReached}
                 rows={2}
                 style={{
                   flex: 1, resize: 'none',
@@ -527,13 +568,13 @@ export default function ChatbotWidget() {
               />
               <button
                 onClick={sendMessage}
-                disabled={!input.trim() || loading}
+                disabled={!input.trim() || loading || usage.limitReached}
                 style={{
                   width: 40, height: 40, borderRadius: '50%', flexShrink: 0,
-                  background: input.trim() && !loading ? 'var(--color-primary)' : 'var(--color-border)',
+                  background: input.trim() && !loading && !usage.limitReached ? 'var(--color-primary)' : 'var(--color-border)',
                   border: 'none',
-                  cursor: input.trim() && !loading ? 'pointer' : 'default',
-                  color:  input.trim() && !loading ? '#fff' : 'var(--color-ink-light)',
+                  cursor: input.trim() && !loading && !usage.limitReached ? 'pointer' : 'default',
+                  color:  input.trim() && !loading && !usage.limitReached ? '#fff' : 'var(--color-ink-light)',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   transition: 'background 0.15s',
                   boxShadow: input.trim() && !loading ? '0 2px 8px rgba(45,106,79,0.35)' : 'none',

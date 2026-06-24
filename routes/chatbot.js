@@ -1,6 +1,55 @@
 const router    = require('express').Router();
 const { query, withTransaction } = require('../db/database');
 
+// ── Monthly usage tracking ────────────────────────────────────────────────────
+
+const currentMonth = () => new Date().toISOString().slice(0, 7); // YYYY-MM
+const monthlyLimit = () => parseInt(process.env.CHATBOT_MONTHLY_LIMIT || '50');
+
+// Create table on startup (safe to call every deploy)
+query(`
+  CREATE TABLE IF NOT EXISTS chatbot_usage (
+    month         VARCHAR(7) PRIMARY KEY,
+    message_count INTEGER    NOT NULL DEFAULT 0
+  )
+`).catch(err => console.error('[Chatbot] chatbot_usage table error:', err.message));
+
+async function getUsage() {
+  const month = currentMonth();
+  await query(
+    `INSERT INTO chatbot_usage (month, message_count) VALUES ($1, 0) ON CONFLICT DO NOTHING`,
+    [month]
+  );
+  const { rows } = await query(
+    `SELECT message_count FROM chatbot_usage WHERE month = $1`,
+    [month]
+  );
+  return { month, count: rows[0]?.message_count || 0 };
+}
+
+async function incrementUsage(month) {
+  await query(
+    `UPDATE chatbot_usage SET message_count = message_count + 1 WHERE month = $1`,
+    [month]
+  );
+}
+
+// ── GET /api/chatbot/usage ────────────────────────────────────────────────────
+
+router.get('/usage', async (req, res) => {
+  try {
+    const user = req.session?.user;
+    if (!user) return res.status(401).json({ error: 'Not authenticated' });
+    const limit = monthlyLimit();
+    const { count } = await getUsage();
+    res.json({ count, limit, warning: count / limit >= 0.8, limitReached: count >= limit });
+  } catch (err) {
+    console.error('[Chatbot] usage error:', err.message);
+    const limit = monthlyLimit();
+    res.json({ count: 0, limit, warning: false, limitReached: false });
+  }
+});
+
 // Direct fetch to Anthropic API — avoids any SDK version compatibility issues
 async function callClaude(systemPrompt, messages, tools) {
   const res = await fetch('https://api.anthropic.com/v1/messages', {
@@ -78,6 +127,16 @@ router.post('/message', async (req, res) => {
     const user = req.session?.user;
     if (!user)            return res.status(401).json({ error: 'Not authenticated' });
     if (!messages?.length) return res.status(400).json({ error: 'messages array required' });
+
+    // Check monthly usage limit
+    const limit = monthlyLimit();
+    const { month, count } = await getUsage();
+    if (count >= limit) {
+      return res.status(429).json({
+        error: `You've reached your ${limit}-message monthly limit. Top up $10 for 15 more messages — contact hello@cuentaiq.com.`,
+        usage: { count, limit, warning: true, limitReached: true },
+      });
+    }
 
     // Fetch chart of accounts for context injection (graceful fallback if table/column missing)
     let accounts = [];
@@ -204,10 +263,19 @@ ${'─'.repeat(65)}`;
         draftEntry = block.input;
     }
 
+    await incrementUsage(month);
+    const newCount = count + 1;
+
     res.json({
       text:       textParts.join('\n').trim(),
       draftEntry,
       stopReason: response.stop_reason,
+      usage: {
+        count:        newCount,
+        limit,
+        warning:      newCount / limit >= 0.8,
+        limitReached: false,
+      },
     });
 
   } catch (err) {
