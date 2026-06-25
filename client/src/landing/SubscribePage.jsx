@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import LandingLayout from './LandingLayout.jsx';
+import DemoModal from './DemoModal.jsx';
 import { CheckCircle, ArrowRight, Zap, Info } from 'lucide-react';
 
 const STARTER_FEATURES = [
@@ -68,6 +69,7 @@ function PlanCheck() {
 }
 
 export default function SubscribePage() {
+  const [modalOpen, setModalOpen] = useState(false);
   return (
     <LandingLayout>
       {/* HEADER */}
@@ -204,9 +206,9 @@ export default function SubscribePage() {
                     <li key={f}><PlanCheck />{f}</li>
                   ))}
                 </ul>
-                <Link to="/about-us?demo=open" className="l-btn l-btn-outline" style={{ width: '100%', justifyContent: 'center' }}>
+                <button type="button" className="l-btn l-btn-outline" style={{ width: '100%', justifyContent: 'center' }} onClick={() => setModalOpen(true)}>
                   Request Demo <ArrowRight size={15} />
-                </Link>
+                </button>
               </div>
 
               {/* PRO VERSION */}
@@ -251,9 +253,9 @@ export default function SubscribePage() {
                     </div>
                   </div>
 
-                  <Link to="/about-us?demo=open" className="l-btn l-btn-primary" style={{ width: '100%', justifyContent: 'center' }}>
+                  <button type="button" className="l-btn l-btn-primary" style={{ width: '100%', justifyContent: 'center' }} onClick={() => setModalOpen(true)}>
                     Request Demo <ArrowRight size={15} />
-                  </Link>
+                  </button>
                 </div>
               </div>
 
@@ -299,6 +301,7 @@ export default function SubscribePage() {
           ))}
         </div>
       </section>
+      {modalOpen && <DemoModal onClose={() => setModalOpen(false)} />}
     </LandingLayout>
   );
 }
