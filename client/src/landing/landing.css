@@ -190,6 +190,7 @@
 .l-plan-card {
   background: white; border: 2px solid var(--l-border);
   border-radius: 16px; padding: 36px; position: relative;
+  display: flex; flex-direction: column;
 }
 .l-plan-card.featured {
   border-color: var(--l-green);
@@ -207,7 +208,7 @@
 .l-plan-price sup { font-size: 24px; vertical-align: super; line-height: 0; }
 .l-plan-period { font-size: 14px; color: var(--l-ink-light); margin-bottom: 20px; }
 .l-plan-divider { border: none; border-top: 1px solid var(--l-border); margin: 20px 0; }
-.l-plan-features { list-style: none; display: flex; flex-direction: column; gap: 10px; margin-bottom: 28px; }
+.l-plan-features { list-style: none; display: flex; flex-direction: column; gap: 10px; margin-bottom: 28px; flex: 1; }
 .l-plan-features li { display: flex; align-items: center; gap: 10px; font-size: 14px; color: var(--l-ink-mid); }
 .l-plan-check {
   width: 18px; height: 18px; border-radius: 50%;
@@ -298,16 +299,18 @@
 
 /* ── Pricing 3-col layout ──────────────────────────────── */
 .l-pricing-layout {
-  display: flex; gap: 0; align-items: start;
+  display: flex; gap: 0; align-items: stretch;
 }
 .l-pricing-pioneer {
   flex: 1; min-width: 0;
   padding-right: 28px; border-right: 1px solid var(--l-border);
+  display: flex; flex-direction: column;
 }
+.l-pricing-pioneer .l-plan-card { flex: 1; }
 .l-pricing-standard {
   flex: 2; min-width: 0;
   padding-left: 28px;
-  display: grid; grid-template-columns: 1fr 1fr; gap: 28px; align-items: start;
+  display: grid; grid-template-columns: 1fr 1fr; gap: 28px; align-items: stretch;
 }
 
 /* ── Screenshot placeholder ──────────────────────────────── */

@@ -167,15 +167,15 @@ export default function SubscribePage() {
                   everything in Starter + HR &amp; Payroll, payroll computation, SSS/PhilHealth/Pag-IBIG, leave management, BIR payroll forms
                 </div>
 
-                <hr className="l-plan-divider" />
-
-                <a href="https://form.typeform.com/to/FgwZydmg" target="_blank" rel="noopener noreferrer" className="l-btn l-btn-pioneer" style={{ width: '100%', justifyContent: 'center' }}>
-                  Apply for Pioneer Access <ArrowRight size={15} />
-                </a>
-                <div className="l-pioneer-cta-footer">Intake closes 15 days after launch · Max 5 pioneers</div>
-
-                <div className="l-pioneer-notice">
-                  <strong>Conversion notice:</strong> You'll receive a notice 15 days before your pioneer period ends — choose to continue, upgrade, downgrade, or cancel. No automatic charges beyond what you've already paid.
+                <div style={{ marginTop: 'auto' }}>
+                  <hr className="l-plan-divider" />
+                  <a href="https://form.typeform.com/to/FgwZydmg" target="_blank" rel="noopener noreferrer" className="l-btn l-btn-pioneer" style={{ width: '100%', justifyContent: 'center' }}>
+                    Apply for Pioneer Access <ArrowRight size={15} />
+                  </a>
+                  <div className="l-pioneer-cta-footer">Intake closes 15 days after launch · Max 5 pioneers</div>
+                  <div className="l-pioneer-notice">
+                    <strong>Conversion notice:</strong> You'll receive a notice 15 days before your pioneer period ends — choose to continue, upgrade, downgrade, or cancel. No automatic charges beyond what you've already paid.
+                  </div>
                 </div>
               </div>
             </div>
@@ -234,25 +234,27 @@ export default function SubscribePage() {
                     <li key={f}><PlanCheck />{f}</li>
                   ))}
                 </ul>
-                <hr className="l-plan-divider" />
+                <div style={{ marginTop: 'auto' }}>
+                  <hr className="l-plan-divider" />
 
-                {/* PayPal placeholder */}
-                <div style={{
-                  background: 'var(--l-cream)', border: '1px dashed var(--l-border)',
-                  borderRadius: 10, padding: '16px', textAlign: 'center', marginBottom: 16,
-                }}>
-                  <div style={{ fontSize: 11, color: 'var(--l-ink-light)', marginBottom: 6 }}>Subscribe via</div>
-                  <div style={{ fontSize: 20, fontWeight: 700, color: '#003087', fontFamily: 'Arial, sans-serif', letterSpacing: '-0.5px' }}>
-                    Pay<span style={{ color: '#009cde' }}>Pal</span>
+                  {/* PayPal placeholder */}
+                  <div style={{
+                    background: 'var(--l-cream)', border: '1px dashed var(--l-border)',
+                    borderRadius: 10, padding: '16px', textAlign: 'center', marginBottom: 16,
+                  }}>
+                    <div style={{ fontSize: 11, color: 'var(--l-ink-light)', marginBottom: 6 }}>Subscribe via</div>
+                    <div style={{ fontSize: 20, fontWeight: 700, color: '#003087', fontFamily: 'Arial, sans-serif', letterSpacing: '-0.5px' }}>
+                      Pay<span style={{ color: '#009cde' }}>Pal</span>
+                    </div>
+                    <div style={{ fontSize: 11, color: 'var(--l-ink-light)', marginTop: 4 }}>
+                      Online payment coming soon — contact us to subscribe now
+                    </div>
                   </div>
-                  <div style={{ fontSize: 11, color: 'var(--l-ink-light)', marginTop: 4 }}>
-                    Online payment coming soon — contact us to subscribe now
-                  </div>
+
+                  <Link to="/about-us?demo=open" className="l-btn l-btn-primary" style={{ width: '100%', justifyContent: 'center' }}>
+                    Request Demo <ArrowRight size={15} />
+                  </Link>
                 </div>
-
-                <Link to="/about-us?demo=open" className="l-btn l-btn-primary" style={{ width: '100%', justifyContent: 'center' }}>
-                  Request Demo <ArrowRight size={15} />
-                </Link>
               </div>
 
             </div>
