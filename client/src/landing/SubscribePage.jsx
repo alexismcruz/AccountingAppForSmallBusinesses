@@ -29,8 +29,8 @@ const FULL_EXTRAS = [
 
 const FAQS = [
   { q: 'Is the price per user or per company?',      a: 'Per company. You can have as many users as you need within your company at no extra charge.' },
-  { q: 'Are there setup or onboarding fees?',        a: 'No. We set you up for free as part of your demo and onboarding.' },
-  { q: 'Can I switch plans later?',                  a: 'Yes, you can upgrade from Starter to Full Version at any time.' },
+  { q: 'Is there a setup fee?',                       a: 'Yes — there is a one-time $150 setup fee for all plans. This covers onboarding, initial configuration, and getting your books ready to use.' },
+  { q: 'Can I switch plans later?',                  a: 'Yes, you can upgrade from Starter to Pro Version at any time.' },
   { q: 'What happens when I hit my AI message limit?', a: 'You\'ll receive an in-app warning at 80% usage. When the limit is reached, you can top up $10 for 15 additional messages — just email hello@cuentaiq.com.' },
   { q: 'Is my data safe and private?',               a: 'Yes. Every client gets their own dedicated database — your data is never shared with or visible to other companies.' },
   { q: 'What currency are the prices in?',           a: 'Prices are in USD. Payment is processed via PayPal.' },
@@ -154,6 +154,9 @@ export default function SubscribePage() {
                 <div className="l-plan-name">Starter</div>
                 <div className="l-plan-price"><sup>$</sup>39</div>
                 <div className="l-plan-period">per company / month</div>
+                <div style={{ fontSize: 13, color: 'var(--l-ink-mid)', marginBottom: 16 }}>
+                  + <strong style={{ color: 'var(--l-ink)' }}>$150</strong> one-time setup fee
+                </div>
                 <p style={{ fontSize: 14, color: 'var(--l-ink-mid)', lineHeight: 1.6, marginBottom: 20 }}>
                   Full accounting suite for businesses that don't need HR and payroll.
                 </p>
@@ -168,12 +171,15 @@ export default function SubscribePage() {
                 </Link>
               </div>
 
-              {/* FULL VERSION */}
+              {/* PRO VERSION */}
               <div className="l-plan-card featured">
                 <div className="l-plan-badge">Most Popular</div>
-                <div className="l-plan-name">Full Version</div>
+                <div className="l-plan-name">Pro Version</div>
                 <div className="l-plan-price"><sup>$</sup>59</div>
                 <div className="l-plan-period">per company / month</div>
+                <div style={{ fontSize: 13, color: 'var(--l-ink-mid)', marginBottom: 16 }}>
+                  + <strong style={{ color: 'var(--l-ink)' }}>$150</strong> one-time setup fee
+                </div>
                 <p style={{ fontSize: 14, color: 'var(--l-ink-mid)', lineHeight: 1.6, marginBottom: 20 }}>
                   Everything in Starter, plus a complete Payroll and HR module for your team.
                 </p>
