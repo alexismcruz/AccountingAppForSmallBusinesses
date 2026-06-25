@@ -1,6 +1,7 @@
+import { useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import LandingLayout from './LandingLayout.jsx';
-import { CheckCircle, ArrowRight, Zap } from 'lucide-react';
+import { CheckCircle, ArrowRight, Zap, Info } from 'lucide-react';
 
 const STARTER_FEATURES = [
   'Journal Entries (double-entry bookkeeping)',
@@ -27,15 +28,38 @@ const FULL_EXTRAS = [
   'AI Assistant increased to 100 messages/month',
 ];
 
+const SETUP_FEE_TIP = `Your $150 setup fee covers: provisioning your dedicated database (your data is never shared with any other client), setting up your personal subdomain at [yourname].cuentaiq.com, and full account onboarding. One-time only — never charged again as long as you stay subscribed. No second fee if you upgrade from Starter to Pro. If you ever cancel, your complete data is exportable in CSV within 5 business days at no charge. This fee is non-refundable once charged as we proceed to set up your environment after payment.`;
+
+const ANNUAL_FEE_TIP = `From Year 2 onward, this $150 annual fee covers ongoing maintenance of your dedicated database hosted on Railway's Singapore servers, and your subdomain renewal. Charged once per year on your account anniversary. We will notify you at least 30 days in advance of any changes to this fee. Your data remains yours — exportable in CSV at any time by emailing support@cuentaiq.com. This fee is non-refundable once charged as we proceed to continue maintenance of your environment once payment is received.`;
+
 const FAQS = [
   { q: 'Is the price per user or per company?',      a: 'Per company. You can have as many users as you need within your company at no extra charge.' },
-  { q: 'Is there a setup fee?',                       a: 'Yes — there is a one-time $150 setup fee for all plans. This covers onboarding, initial configuration, and getting your books ready to use.' },
+  { q: 'Are there setup or maintenance fees?',         a: 'Yes — a one-time $150 setup fee applies to all plans. This covers provisioning your dedicated database, your personal subdomain, and full onboarding. From Year 2 onward, there is a $150 annual maintenance fee for database hosting and subdomain renewal, charged on your account anniversary with 30 days advance notice.' },
   { q: 'Can I switch plans later?',                  a: 'Yes, you can upgrade from Starter to Pro Version at any time.' },
   { q: 'What happens when I hit my AI message limit?', a: 'You\'ll receive an in-app warning at 80% usage. When the limit is reached, you can top up $10 for 15 additional messages — just email hello@cuentaiq.com.' },
   { q: 'Is my data safe and private?',               a: 'Yes. Every client gets their own dedicated database — your data is never shared with or visible to other companies.' },
   { q: 'What currency are the prices in?',           a: 'Prices are in USD. Payment is processed via PayPal.' },
   { q: 'What is the Pioneer Program?',               a: 'The Pioneer Program is a limited-time offer for our first 5 clients. Pay a one-time $150 setup fee, get 60 days of real access (free for Starter, $29/month for Pro), then choose to continue at regular pricing — or cancel with no further charges.' },
 ];
+
+function Tooltip({ tip }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [open]);
+  return (
+    <span ref={ref} className="l-tt-wrap">
+      <button className="l-tt-btn" type="button" aria-label="More information" onClick={() => setOpen(v => !v)}>
+        <Info size={12} />
+      </button>
+      {open && <div className="l-tt-box">{tip}</div>}
+    </span>
+  );
+}
 
 function PlanCheck() {
   return (
@@ -77,7 +101,7 @@ export default function SubscribePage() {
                   <div className="l-pioneer-th">Starter</div>
                   <div className="l-pioneer-th">Pro</div>
                   {/* Setup fee */}
-                  <div className="l-pioneer-td label">Setup fee</div>
+                  <div className="l-pioneer-td label">Setup fee <Tooltip tip={SETUP_FEE_TIP} /></div>
                   <div className="l-pioneer-td">
                     <div className="l-pioneer-val">$150</div>
                     <div className="l-pioneer-sub">one-time</div>
@@ -85,6 +109,16 @@ export default function SubscribePage() {
                   <div className="l-pioneer-td">
                     <div className="l-pioneer-val">$150</div>
                     <div className="l-pioneer-sub">one-time</div>
+                  </div>
+                  {/* Annual maintenance */}
+                  <div className="l-pioneer-td label">Annual fee <Tooltip tip={ANNUAL_FEE_TIP} /></div>
+                  <div className="l-pioneer-td">
+                    <div className="l-pioneer-val">$150<span className="l-pioneer-sub">/yr</span></div>
+                    <div className="l-pioneer-sub">from Year 2</div>
+                  </div>
+                  <div className="l-pioneer-td">
+                    <div className="l-pioneer-val">$150<span className="l-pioneer-sub">/yr</span></div>
+                    <div className="l-pioneer-sub">from Year 2</div>
                   </div>
                   {/* Months 1–2 */}
                   <div className="l-pioneer-td label">Months 1–2</div>
@@ -154,8 +188,12 @@ export default function SubscribePage() {
                 <div className="l-plan-name">Starter</div>
                 <div className="l-plan-price"><sup>$</sup>39</div>
                 <div className="l-plan-period">per company / month</div>
+                <div style={{ fontSize: 13, color: 'var(--l-ink-mid)', marginBottom: 6 }}>
+                  + <strong style={{ color: 'var(--l-ink)' }}>$150</strong> one-time setup fee <Tooltip tip={SETUP_FEE_TIP} />
+                </div>
                 <div style={{ fontSize: 13, color: 'var(--l-ink-mid)', marginBottom: 16 }}>
-                  + <strong style={{ color: 'var(--l-ink)' }}>$150</strong> one-time setup fee
+                  + <strong style={{ color: 'var(--l-ink)' }}>$150</strong>/yr annual maintenance <Tooltip tip={ANNUAL_FEE_TIP} />{' '}
+                  <span style={{ fontSize: 11, color: 'var(--l-ink-light)' }}>(from Year 2)</span>
                 </div>
                 <p style={{ fontSize: 14, color: 'var(--l-ink-mid)', lineHeight: 1.6, marginBottom: 20 }}>
                   Full accounting suite for businesses that don't need HR and payroll.
@@ -177,8 +215,12 @@ export default function SubscribePage() {
                 <div className="l-plan-name">Pro Version</div>
                 <div className="l-plan-price"><sup>$</sup>59</div>
                 <div className="l-plan-period">per company / month</div>
+                <div style={{ fontSize: 13, color: 'var(--l-ink-mid)', marginBottom: 6 }}>
+                  + <strong style={{ color: 'var(--l-ink)' }}>$150</strong> one-time setup fee <Tooltip tip={SETUP_FEE_TIP} />
+                </div>
                 <div style={{ fontSize: 13, color: 'var(--l-ink-mid)', marginBottom: 16 }}>
-                  + <strong style={{ color: 'var(--l-ink)' }}>$150</strong> one-time setup fee
+                  + <strong style={{ color: 'var(--l-ink)' }}>$150</strong>/yr annual maintenance <Tooltip tip={ANNUAL_FEE_TIP} />{' '}
+                  <span style={{ fontSize: 11, color: 'var(--l-ink-light)' }}>(from Year 2)</span>
                 </div>
                 <p style={{ fontSize: 14, color: 'var(--l-ink-mid)', lineHeight: 1.6, marginBottom: 20 }}>
                   Everything in Starter, plus a complete Payroll and HR module for your team.
