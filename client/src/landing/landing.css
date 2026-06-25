@@ -9,6 +9,7 @@
   --l-cream:       #F8F5EF;
   --l-gold:        #D4A017;
   --l-gold-dark:   #B8891A;
+  --l-gold-light:  #FBF4E0;
   --l-ink:         #1B2E24;
   --l-ink-mid:     #4A5E52;
   --l-ink-light:   #8A9E92;
@@ -214,6 +215,78 @@
   display: flex; align-items: center; justify-content: center; flex-shrink: 0;
 }
 
+/* ── Pioneer Program card ───────────────────────────────── */
+.l-plan-card.pioneer {
+  background: var(--l-gold-light);
+  border: 2px solid var(--l-gold);
+  box-shadow: 0 8px 32px rgba(212,160,23,0.12);
+}
+.l-plan-badge-limited {
+  position: absolute; top: 16px; right: 16px;
+  background: var(--l-gold); color: white;
+  font-size: 11px; font-weight: 700;
+  padding: 3px 14px; border-radius: 20px;
+  text-transform: uppercase; letter-spacing: 0.06em; white-space: nowrap;
+}
+.l-pioneer-scarcity {
+  font-size: 12px; color: var(--l-ink-mid); margin-bottom: 16px;
+}
+.l-pioneer-table {
+  display: grid; grid-template-columns: auto 1fr 1fr;
+  border: 1px solid rgba(212,160,23,0.3); border-radius: 10px;
+  overflow: hidden; margin: 16px 0 20px;
+}
+.l-pioneer-th {
+  background: rgba(212,160,23,0.14);
+  padding: 7px 10px;
+  font-size: 11px; font-weight: 700; color: var(--l-ink);
+  text-transform: uppercase; letter-spacing: 0.06em;
+  border-bottom: 1px solid rgba(212,160,23,0.25);
+}
+.l-pioneer-th:not(:last-child) { border-right: 1px solid rgba(212,160,23,0.25); }
+.l-pioneer-td {
+  padding: 7px 10px; font-size: 12px; color: var(--l-ink);
+  border-bottom: 1px solid rgba(212,160,23,0.15);
+}
+.l-pioneer-td.last  { border-bottom: none; }
+.l-pioneer-td:not(:last-child) { border-right: 1px solid rgba(212,160,23,0.15); }
+.l-pioneer-td.label { color: var(--l-ink-mid); font-size: 11px; white-space: nowrap; }
+.l-pioneer-val      { font-weight: 600; line-height: 1.2; }
+.l-pioneer-sub      { font-size: 10px; color: var(--l-ink-mid); }
+.l-pioneer-tagline {
+  font-size: 13px; color: var(--l-ink-mid); line-height: 1.65; margin: 0 0 16px;
+}
+.l-pioneer-features {
+  font-size: 12px; color: var(--l-ink-mid); line-height: 1.8;
+}
+.l-pioneer-features strong { color: var(--l-ink); display: block; margin-top: 8px; }
+.l-pioneer-features strong:first-child { margin-top: 0; }
+.l-btn-pioneer { background: var(--l-gold); color: var(--l-ink); border-color: var(--l-gold); font-weight: 700; }
+.l-btn-pioneer:hover { background: var(--l-gold-dark); border-color: var(--l-gold-dark); }
+.l-pioneer-cta-footer {
+  font-size: 12px; color: var(--l-ink-light); text-align: center; margin-top: 8px;
+}
+.l-pioneer-notice {
+  margin-top: 16px;
+  background: rgba(212,160,23,0.08); border: 1px solid rgba(212,160,23,0.25);
+  border-radius: 8px; padding: 12px 14px;
+  font-size: 12px; color: var(--l-ink-mid); line-height: 1.6;
+}
+
+/* ── Pricing 3-col layout ──────────────────────────────── */
+.l-pricing-layout {
+  display: flex; gap: 0; align-items: start;
+}
+.l-pricing-pioneer {
+  flex: 1; min-width: 0;
+  padding-right: 28px; border-right: 1px solid var(--l-border);
+}
+.l-pricing-standard {
+  flex: 2; min-width: 0;
+  padding-left: 28px;
+  display: grid; grid-template-columns: 1fr 1fr; gap: 28px; align-items: start;
+}
+
 /* ── Screenshot placeholder ──────────────────────────────── */
 .l-screenshot {
   background: var(--l-green-light); border: 1px solid var(--l-border);
@@ -367,6 +440,9 @@
   .l-feature-number { font-size: 60px; }
   .l-footer-grid   { grid-template-columns: 1fr 1fr; }
   .l-stats-bar     { grid-template-columns: 1fr 1fr; }
+  .l-pricing-layout   { flex-direction: column; gap: 32px; }
+  .l-pricing-pioneer  { padding-right: 0; border-right: none; border-bottom: 1px solid var(--l-border); padding-bottom: 32px; width: 100%; }
+  .l-pricing-standard { padding-left: 0; }
 }
 
 @media (max-width: 600px) {
@@ -377,6 +453,8 @@
   .l-hero           { padding: 48px 0 0; }
   .l-hero-title     { font-size: 34px; }
   .l-grid-2, .l-grid-3 { grid-template-columns: 1fr; }
+  .l-pricing-standard { grid-template-columns: 1fr; }
+  .l-pioneer-table    { grid-template-columns: auto 1fr 1fr; }
   .l-hero-btns      { flex-direction: column; }
   .l-plan-card      { padding: 24px; }
   .l-footer-grid    { grid-template-columns: 1fr; gap: 28px; }
