@@ -68,7 +68,7 @@ function AccountingApp() {
     fetch('/api/auth/me', { credentials: 'include' })
       .then(r => r.ok ? r.json() : null)
       .then(data => {
-        if (data?.authenticated) { setLoggedIn(true); setUser(data.user || null); }
+        if (data?.authenticated) { window.history.replaceState({}, '', '/'); setLoggedIn(true); setUser(data.user || null); }
         setAuthChecked(true);
       })
       .catch(() => setAuthChecked(true));
@@ -77,7 +77,7 @@ function AccountingApp() {
   if (!authChecked) return null;
 
   if (!loggedIn) {
-    return <Login onLogin={(u) => { setLoggedIn(true); setUser(u); }} />;
+    return <Login onLogin={(u) => { window.history.replaceState({}, '', '/'); setLoggedIn(true); setUser(u); }} />;
   }
 
   return (
