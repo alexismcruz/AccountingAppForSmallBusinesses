@@ -36,7 +36,7 @@ const FAQS = [
   { q: 'Is the price per user or per company?',      a: 'Per company. You can have as many users as you need within your company at no extra charge.' },
   { q: 'Are there setup or maintenance fees?',         a: 'Yes — a one-time $150 setup fee applies to all plans. This covers provisioning your dedicated database, your personal subdomain, and full onboarding. From Year 2 onward, there is a $150 annual maintenance fee for database hosting and subdomain renewal, charged on your account anniversary with 30 days advance notice.' },
   { q: 'Can I switch plans later?',                  a: 'Yes, you can upgrade from Starter to Pro Version at any time.' },
-  { q: 'What happens when I hit my AI message limit?', a: 'You\'ll receive an in-app warning at 80% usage. When the limit is reached, you can top up $10 for 15 additional messages — just email hello@cuentaiq.com.' },
+  { q: 'What happens when I hit my AI message limit?', a: 'You\'ll receive an in-app warning at 80% usage. When the limit is reached, you can top up $10 for 15 additional messages — just email support@cuentaiq.com.' },
   { q: 'Is my data safe and private?',               a: 'Yes. Every client gets their own dedicated database — your data is never shared with or visible to other companies.' },
   { q: 'What currency are the prices in?',           a: 'Prices are in USD. Payment is processed via PayPal.' },
   { q: 'What is the Pioneer Program?',               a: 'The Pioneer Program is a limited-time offer for our first 5 clients. Pay a one-time $150 setup fee, get 60 days of real access (free for Starter, $29/month for Pro), then choose to continue at regular pricing — or cancel with no further charges.' },
@@ -270,14 +270,14 @@ export default function SubscribePage() {
               <strong style={{ color: 'var(--l-ink)' }}>AI message top-up:</strong> Need more AI assistant messages?
               Top up $10 for 15 additional messages at any time — no plan change required.
               You'll receive an in-app warning at 80% usage so you're never caught off guard.
-              Contact <a href="mailto:hello@cuentaiq.com" style={{ color: 'var(--l-green)', fontWeight: 600, textDecoration: 'none' }}>hello@cuentaiq.com</a> to top up.
+              Contact <a href="mailto:support@cuentaiq.com" style={{ color: 'var(--l-green)', fontWeight: 600, textDecoration: 'none' }}>support@cuentaiq.com</a> to top up.
             </div>
           </div>
 
           <p style={{ textAlign: 'center', marginTop: 20, fontSize: 13, color: 'var(--l-ink-light)' }}>
             Have a specific need or want to negotiate terms?{' '}
-            <a href="mailto:hello@cuentaiq.com" style={{ color: 'var(--l-green)', fontWeight: 600, textDecoration: 'none' }}>
-              hello@cuentaiq.com
+            <a href="mailto:support@cuentaiq.com" style={{ color: 'var(--l-green)', fontWeight: 600, textDecoration: 'none' }}>
+              support@cuentaiq.com
             </a>
           </p>
         </div>
