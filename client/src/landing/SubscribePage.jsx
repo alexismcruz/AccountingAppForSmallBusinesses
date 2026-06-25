@@ -169,9 +169,9 @@ export default function SubscribePage() {
 
                 <hr className="l-plan-divider" />
 
-                <Link to="/about-us?demo=open" className="l-btn l-btn-pioneer" style={{ width: '100%', justifyContent: 'center' }}>
+                <a href="https://form.typeform.com/to/FgwZydmg" target="_blank" rel="noopener noreferrer" className="l-btn l-btn-pioneer" style={{ width: '100%', justifyContent: 'center' }}>
                   Apply for Pioneer Access <ArrowRight size={15} />
-                </Link>
+                </a>
                 <div className="l-pioneer-cta-footer">Intake closes 15 days after launch · Max 5 pioneers</div>
 
                 <div className="l-pioneer-notice">
