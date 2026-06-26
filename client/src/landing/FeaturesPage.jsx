@@ -47,7 +47,15 @@ const FEATURES = [
     title: 'Journal Entries & Approvals',
     desc: 'Record any business transaction with a structured journal entry. Built-in approval workflow ensures every entry is reviewed before it hits your books. Import entries in bulk via CSV.',
     tags: ['Double-Entry Bookkeeping', 'Approval Workflow', 'Bulk CSV Import', 'Audit Trail'],
-    screenshot: 'Journal Entries — Entry list with approval status badges and line detail',
+    images: [
+      { src: '/screenshots/02/journal-entries-dashboard.png',     alt: 'Journal Entries — entry list with status badges' },
+      { src: '/screenshots/02/journal-entries-double-entry.png',  alt: 'Journal Entry form — double-entry line items' },
+      { src: '/screenshots/02/journal-entries-double-entry-2.png', alt: 'Journal Entry form — account selection' },
+      { src: '/screenshots/02/journal-entries-double-entry-3.png', alt: 'Journal Entry form — balanced entry ready to submit' },
+      { src: '/screenshots/02/bulk-import.png',                   alt: 'Bulk CSV import modal for journal entries' },
+      { src: '/screenshots/02/approvals.png',                     alt: 'Approvals queue — pending journal entry reviews' },
+      { src: '/screenshots/02/audit-logs.png',                    alt: 'Audit Logs — full transaction history trail' },
+    ],
   },
   {
     number: '03',
