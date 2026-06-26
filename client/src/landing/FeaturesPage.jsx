@@ -125,8 +125,8 @@ export default function FeaturesPage() {
         </div>
       </section>
 
-      {/* VIDEO */}
-      <section className="l-section-sm l-section-ink">
+      {/* VIDEO — hidden until ready */}
+      {/* <section className="l-section-sm l-section-ink">
         <div className="l-container">
           <div className="l-video-placeholder">
             <div className="l-play-btn">
@@ -140,7 +140,7 @@ export default function FeaturesPage() {
             </div>
           </div>
         </div>
-      </section>
+      </section> */}
 
       {/* FEATURE ROWS */}
       <section className="l-section">
