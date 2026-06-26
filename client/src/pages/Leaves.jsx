@@ -352,6 +352,7 @@ export default function Leaves() {
   const [activeItem, setActiveItem] = useState(null);
   const [statusFilter,setStatus]    = useState('pending');
   const [yearFilter, setYear]       = useState(new Date().getFullYear());
+  const [empFilter,  setEmpFilter]  = useState('');
   const [error,      setError]      = useState('');
 
   const currentYear = new Date().getFullYear();
@@ -504,67 +505,83 @@ export default function Leaves() {
       )}
 
       {/* ── Balances Tab ──────────────────────────────────────────────────────── */}
-      {tab === 'balances' && (
-        <div>
-          <div style={{ display:'flex', gap:10, marginBottom:16, alignItems:'center' }}>
-            <select className="form-input" style={{ width:100 }} value={yearFilter} onChange={e => setYear(parseInt(e.target.value))}>
-              {[currentYear+1, currentYear, currentYear-1].map(y => <option key={y} value={y}>{y}</option>)}
-            </select>
-            <div style={{ flex:1, fontSize:13, color:'var(--color-ink-mid)' }}>
-              {balances.length === 0 ? `No balances allocated for ${yearFilter} yet.` : `${balances.length} balance record(s) for ${yearFilter}`}
+      {tab === 'balances' && (() => {
+        const empOptions = [...new Map(balances.map(b => [b.employee_id, b])).values()]
+          .sort((a, b) => (a.employee_number || '').localeCompare(b.employee_number || '', undefined, { numeric: true }));
+        const filtered = empFilter ? balances.filter(b => String(b.employee_id) === empFilter) : balances;
+        const showEmpCol = !empFilter;
+        return (
+          <div>
+            <div style={{ display:'flex', gap:10, marginBottom:16, alignItems:'center', flexWrap:'wrap' }}>
+              <select className="form-input" style={{ width:100 }} value={yearFilter} onChange={e => setYear(parseInt(e.target.value))}>
+                {[currentYear+1, currentYear, currentYear-1].map(y => <option key={y} value={y}>{y}</option>)}
+              </select>
+              <select className="form-input" style={{ width:220 }} value={empFilter} onChange={e => setEmpFilter(e.target.value)}>
+                <option value="">All Employees</option>
+                {empOptions.map(e => (
+                  <option key={e.employee_id} value={e.employee_id}>
+                    {e.employee_number} — {e.first_name} {e.last_name}
+                  </option>
+                ))}
+              </select>
+              <div style={{ flex:1, fontSize:13, color:'var(--color-ink-mid)' }}>
+                {balances.length === 0 ? `No balances allocated for ${yearFilter} yet.` : `${filtered.length} record(s)`}
+              </div>
+              {can('finance') && (
+                <button className="btn btn-primary" onClick={() => setModal('allocate')}>
+                  Allocate Balances for {yearFilter}
+                </button>
+              )}
             </div>
-            {can('finance') && (
-              <button className="btn btn-primary" onClick={() => setModal('allocate')}>
-                Allocate Balances for {yearFilter}
-              </button>
+
+            {loading ? <div className="page-loading">Loading…</div> : balances.length === 0 ? (
+              <div className="card" style={{ padding:40, textAlign:'center', color:'var(--color-ink-mid)' }}>
+                No leave balances for {yearFilter}. Click "Allocate Balances" to set up leave entitlements.
+              </div>
+            ) : (
+              <div className="card" style={{ padding:0, overflow:'hidden' }}>
+                <div style={{ overflowX:'auto' }}>
+                  <table style={{ fontSize:12 }}>
+                    <thead>
+                      <tr>
+                        {showEmpCol && <th>Employee</th>}
+                        <th>Leave Type</th>
+                        <th style={{ textAlign:'center' }}>Entitled</th>
+                        <th style={{ textAlign:'center' }}>Carry-over</th>
+                        <th style={{ textAlign:'center' }}>Used</th>
+                        <th style={{ textAlign:'center' }}>Remaining</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filtered.map(b => (
+                        <tr key={b.id}>
+                          {showEmpCol && (
+                            <td>
+                              <div style={{ fontWeight:600 }}>{b.first_name} {b.last_name}</div>
+                              <div style={{ fontSize:11, color:'var(--color-ink-mid)' }}>{b.employee_number}{b.department ? ` · ${b.department}` : ''}</div>
+                            </td>
+                          )}
+                          <td>
+                            <span className="pill pill-primary">{b.leave_type_code}</span>
+                            <div style={{ fontSize:11, color:'var(--color-ink-mid)', marginTop:4 }}>{b.leave_type_name}</div>
+                          </td>
+                          <td style={{ textAlign:'center' }}>{b.entitled_days}</td>
+                          <td style={{ textAlign:'center', color: b.carry_over > 0 ? 'var(--color-primary)' : 'var(--color-ink-mid)' }}>{b.carry_over}</td>
+                          <td style={{ textAlign:'center', color: b.used_days > 0 ? 'var(--warning)' : 'var(--color-ink-mid)' }}>{b.used_days}</td>
+                          <td style={{ textAlign:'center', fontWeight:700,
+                            color: b.remaining_days <= 0 ? 'var(--danger)' : b.remaining_days <= 1 ? 'var(--warning)' : 'var(--success)' }}>
+                            {parseFloat(b.remaining_days).toFixed(1)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
             )}
           </div>
-
-          {loading ? <div className="page-loading">Loading…</div> : balances.length === 0 ? (
-            <div className="card" style={{ padding:40, textAlign:'center', color:'var(--color-ink-mid)' }}>
-              No leave balances for {yearFilter}. Click "Allocate Balances" to set up leave entitlements.
-            </div>
-          ) : (
-            <div className="card" style={{ padding:0, overflow:'hidden' }}>
-              <div style={{ overflowX:'auto' }}>
-                <table style={{ fontSize:12 }}>
-                  <thead>
-                    <tr>
-                      <th>Employee</th>
-                      <th>Leave Type</th>
-                      <th style={{ textAlign:'center' }}>Entitled</th>
-                      <th style={{ textAlign:'center' }}>Carry-over</th>
-                      <th style={{ textAlign:'center' }}>Used</th>
-                      <th style={{ textAlign:'center' }}>Remaining</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {balances.map(b => (
-                      <tr key={b.id}>
-                        <td>
-                          <div style={{ fontWeight:600 }}>{b.first_name} {b.last_name}</div>
-                          <div style={{ fontSize:11, color:'var(--color-ink-mid)' }}>{b.department || b.employee_number}</div>
-                        </td>
-                        <td>
-                          <span className="pill pill-primary">{b.leave_type_code}</span>
-                          <div style={{ fontSize:11, color:'var(--color-ink-mid)', marginTop:4 }}>{b.leave_type_name}</div>
-                        </td>
-                        <td style={{ textAlign:'center' }}>{b.entitled_days}</td>
-                        <td style={{ textAlign:'center', color: b.carry_over > 0 ? 'var(--color-primary)' : 'var(--color-ink-mid)' }}>{b.carry_over}</td>
-                        <td style={{ textAlign:'center', color: b.used_days > 0 ? 'var(--warning)' : 'var(--color-ink-mid)' }}>{b.used_days}</td>
-                        <td style={{ textAlign:'center', fontWeight:700,
-                          color: b.remaining_days <= 0 ? 'var(--danger)' : b.remaining_days <= 1 ? 'var(--warning)' : 'var(--success)' }}>
-                          {parseFloat(b.remaining_days).toFixed(1)}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
+        );
+      })()}
 
       {/* ── Types Tab ─────────────────────────────────────────────────────────── */}
       {tab === 'types' && (
