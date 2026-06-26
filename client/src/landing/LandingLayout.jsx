@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
+import DemoModal from './DemoModal.jsx';
 import './landing.css';
 
 function CuentaIQLogo({ size = 34 }) {
@@ -16,7 +17,7 @@ function CuentaIQLogo({ size = 34 }) {
   );
 }
 
-export function LandingNav() {
+export function LandingNav({ onRequestDemo }) {
   const { pathname } = useLocation();
   const [open, setOpen] = useState(false);
 
@@ -44,7 +45,7 @@ export function LandingNav() {
               </li>
             ))}
             <li>
-              <Link to="/about-us?demo=open" className="l-nav-cta">Request Demo</Link>
+              <button className="l-nav-cta" onClick={onRequestDemo}>Request Demo</button>
             </li>
           </ul>
 
@@ -57,11 +58,11 @@ export function LandingNav() {
           {links.map(l => (
             <Link key={l.to} to={l.to} onClick={() => setOpen(false)}>{l.label}</Link>
           ))}
-          <Link to="/about-us?demo=open" className="l-btn l-btn-primary"
+          <button className="l-btn l-btn-primary"
             style={{ marginTop: 8, justifyContent: 'center' }}
-            onClick={() => setOpen(false)}>
+            onClick={() => { setOpen(false); onRequestDemo(); }}>
             Request Demo
-          </Link>
+          </button>
         </div>
       </div>
     </nav>
@@ -108,11 +109,14 @@ export function LandingFooter() {
 }
 
 export default function LandingLayout({ children }) {
+  const [modalOpen, setModalOpen] = useState(false);
+
   return (
     <div className="l-wrap">
-      <LandingNav />
+      <LandingNav onRequestDemo={() => setModalOpen(true)} />
       <main>{children}</main>
       <LandingFooter />
+      {modalOpen && <DemoModal onClose={() => setModalOpen(false)} />}
     </div>
   );
 }
