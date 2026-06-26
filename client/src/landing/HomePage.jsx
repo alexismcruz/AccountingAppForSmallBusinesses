@@ -170,34 +170,67 @@ export default function HomePage() {
             <h2 className="l-section-title">One price, no surprises</h2>
             <p className="l-section-sub">Per company. No per-user fees. Cancel anytime.</p>
           </div>
-          <div className="l-grid-2" style={{ maxWidth: 720, margin: '0 auto' }}>
-            <div className="l-plan-card">
-              <div className="l-plan-name">Core</div>
-              <div className="l-plan-price"><sup>$</sup>30</div>
-              <div className="l-plan-period">per month</div>
-              <ul className="l-plan-features">
-                {['Journal Entries & Approvals','Payments & Invoicing','Tax Management','Inventory Tracking','Financial Reports','AI Assistant'].map(f => (
-                  <li key={f}><span className="l-plan-check"><CheckCircle size={11} /></span>{f}</li>
-                ))}
-              </ul>
-              <Link to="/subscribe" className="l-btn l-btn-outline" style={{ width: '100%', justifyContent: 'center' }}>
-                Learn More
-              </Link>
+          <div className="l-pricing-layout">
+
+            {/* ── Pioneer ── */}
+            <div className="l-pricing-pioneer">
+              <div className="l-plan-card pioneer" style={{ display: 'flex', flexDirection: 'column' }}>
+                <div className="l-plan-name" style={{ color: 'var(--l-gold-dark)' }}>Pioneer Program</div>
+                <div style={{ fontSize: 13, color: 'var(--l-ink-mid)', marginBottom: 16, lineHeight: 1.6 }}>
+                  Early access with a $150 one-time setup fee. Get 60 days of real access — then decide to stay, upgrade, or cancel. No pressure.
+                </div>
+                <ul className="l-plan-features" style={{ flex: 1 }}>
+                  {[
+                    'Full platform access during trial',
+                    'Months 1–2 free (Starter) or $29/mo (Pro)',
+                    'From month 3: $39–$59/mo',
+                    '$150/yr maintenance from Year 2',
+                    'Up to 5 users',
+                  ].map(f => (
+                    <li key={f}><span className="l-plan-check" style={{ color: 'var(--l-gold)' }}><CheckCircle size={11} /></span>{f}</li>
+                  ))}
+                </ul>
+                <div style={{ marginTop: 'auto', paddingTop: 16 }}>
+                  <a href="https://form.typeform.com/to/FgwZydmg" target="_blank" rel="noopener noreferrer"
+                    className="l-btn l-btn-pioneer" style={{ width: '100%', justifyContent: 'center' }}>
+                    Apply for Pioneer Access <ArrowRight size={15} />
+                  </a>
+                  <div className="l-pioneer-cta-footer">Max 5 pioneers · Intake closes 15 days after launch</div>
+                </div>
+              </div>
             </div>
-            <div className="l-plan-card featured">
-              <div className="l-plan-badge">Most Popular</div>
-              <div className="l-plan-name">Professional</div>
-              <div className="l-plan-price"><sup>$</sup>50</div>
-              <div className="l-plan-period">per month</div>
-              <ul className="l-plan-features">
-                {['Everything in Core','Payroll Management','HR & Employee Records','Leave Management','BIR Forms (2316, 1601-C)','Government Remittances'].map(f => (
-                  <li key={f}><span className="l-plan-check"><CheckCircle size={11} /></span>{f}</li>
-                ))}
-              </ul>
-              <Link to="/subscribe" className="l-btn l-btn-primary" style={{ width: '100%', justifyContent: 'center' }}>
-                Learn More
-              </Link>
+
+            {/* ── Starter + Pro ── */}
+            <div className="l-pricing-standard">
+              <div className="l-plan-card" style={{ display: 'flex', flexDirection: 'column' }}>
+                <div className="l-plan-name">Starter</div>
+                <div className="l-plan-price"><sup>$</sup>30</div>
+                <div className="l-plan-period">per month</div>
+                <ul className="l-plan-features" style={{ flex: 1 }}>
+                  {['Journal Entries & Approvals','Payments & Invoicing','Tax Management','Inventory Tracking','Financial Reports','AI Assistant'].map(f => (
+                    <li key={f}><span className="l-plan-check"><CheckCircle size={11} /></span>{f}</li>
+                  ))}
+                </ul>
+                <Link to="/subscribe" className="l-btn l-btn-outline" style={{ width: '100%', justifyContent: 'center', marginTop: 'auto' }}>
+                  Learn More
+                </Link>
+              </div>
+              <div className="l-plan-card featured" style={{ display: 'flex', flexDirection: 'column' }}>
+                <div className="l-plan-badge">Most Popular</div>
+                <div className="l-plan-name">Pro</div>
+                <div className="l-plan-price"><sup>$</sup>50</div>
+                <div className="l-plan-period">per month</div>
+                <ul className="l-plan-features" style={{ flex: 1 }}>
+                  {['Everything in Starter','Payroll Management','HR & Employee Records','Leave Management','BIR Forms (2316, 1601-C)','Government Remittances'].map(f => (
+                    <li key={f}><span className="l-plan-check"><CheckCircle size={11} /></span>{f}</li>
+                  ))}
+                </ul>
+                <Link to="/subscribe" className="l-btn l-btn-primary" style={{ width: '100%', justifyContent: 'center', marginTop: 'auto' }}>
+                  Learn More
+                </Link>
+              </div>
             </div>
+
           </div>
         </div>
       </section>
