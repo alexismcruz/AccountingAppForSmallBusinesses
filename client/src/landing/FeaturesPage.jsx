@@ -90,14 +90,22 @@ const FEATURES = [
     title: 'Tax Management',
     desc: 'Track VAT, set up custom tax rates, and monitor filing deadlines all in one place. CuentaIQ maps your transactions to the correct tax categories and projects your liabilities forward.',
     tags: ['VAT Tracking', 'Tax Projections', 'Filing Tracker', 'BIR Compliance'],
-    screenshot: 'Tax — Rate configuration, application history, and filing status',
+    images: [
+      { src: '/screenshots/05/tax-management-1.png', alt: 'Tax Management — overview dashboard' },
+      { src: '/screenshots/05/tax-rate-table.png',   alt: 'Tax Rates — configured rate table' },
+      { src: '/screenshots/05/add-tax-rate.png',     alt: 'Add Tax Rate — custom rate configuration' },
+      { src: '/screenshots/05/tax-projections.png',  alt: 'Tax Projections — forward liability estimates' },
+      { src: '/screenshots/05/tax-filing.png',       alt: 'Tax Filings — deadline and status tracker' },
+    ],
   },
   {
     number: '06',
     title: 'AI Accounting Assistant',
     desc: 'Just describe a transaction in plain language — "we paid ₱15,000 rent for June" — and the AI drafts the correct journal entry. Review, adjust, and post in seconds. Available 24/7.',
     tags: ['Natural Language Input', 'Auto Journal Draft', 'Chart of Accounts Aware', '24/7 Available'],
-    screenshot: 'AI Assistant — Chat interface with drafted journal entry ready to post',
+    images: [
+      { src: '/screenshots/06/cuentaIQ-AI.png', alt: 'AI Assistant — chat interface with drafted journal entry' },
+    ],
   },
 ];
 
