@@ -490,4 +490,52 @@
   .l-stats-bar      { grid-template-columns: 1fr 1fr; }
   .l-feature-number { font-size: 48px; }
   .l-feature-row-title { font-size: 24px; }
+  .l-legal-plan-grid  { grid-template-columns: 1fr; }
+  .l-legal-meta       { gap: 12px; }
+  .l-legal-title      { font-size: 26px; }
 }
+
+/* ── Legal pages ──────────────────────────────────────────────────────────── */
+.l-legal-hero { background: linear-gradient(135deg, #1A3A6B 0%, #2D6BE4 100%); color: white; padding: 48px 0 40px; }
+.l-legal-eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; opacity: .7; margin-bottom: 12px; }
+.l-legal-title { font-family: 'DM Serif Display', Georgia, serif; font-size: 32px; line-height: 1.2; margin-bottom: 12px; color: white; }
+.l-legal-meta { font-size: 12px; opacity: .65; display: flex; gap: 24px; flex-wrap: wrap; }
+.l-legal-wrap { max-width: 860px; margin: 0 auto; padding: 40px 24px 64px; }
+.l-legal-section { margin-bottom: 40px; }
+.l-legal-section-num { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--l-green); margin-bottom: 6px; }
+.l-legal-h2 { font-family: 'DM Serif Display', Georgia, serif; font-size: 21px; color: var(--l-ink); margin-bottom: 14px; padding-bottom: 8px; border-bottom: 1px solid var(--l-border); }
+.l-legal-h3 { font-size: 13px; font-weight: 600; color: var(--l-ink); margin: 20px 0 6px; }
+.l-legal-section p { color: var(--l-ink-mid); margin-bottom: 12px; font-size: 14px; line-height: 1.75; }
+.l-legal-section ul, .l-legal-section ol { color: var(--l-ink-mid); padding-left: 24px; margin-bottom: 12px; font-size: 14px; line-height: 1.75; }
+.l-legal-section li { margin-bottom: 6px; }
+.l-legal-highlight { background: #E8F7F2; border-radius: 8px; padding: 16px 20px; margin: 16px 0 20px; }
+.l-legal-highlight p { color: #0F6E52 !important; margin-bottom: 0 !important; font-size: 13px; }
+.l-legal-notice { border-left: 4px solid #2D6BE4; background: #EBF1FD; padding: 14px 18px; border-radius: 0 6px 6px 0; margin: 16px 0; font-size: 13px; color: var(--l-ink-mid); line-height: 1.7; }
+.l-legal-notice strong { color: var(--l-ink); }
+.l-legal-table { width: 100%; border-collapse: collapse; margin: 16px 0 24px; font-size: 13px; }
+.l-legal-table th { background: #E8F7F2; color: #0F6E52; font-weight: 600; font-size: 11px; letter-spacing: .05em; text-transform: uppercase; padding: 10px 14px; text-align: left; border-bottom: 1px solid #B2E4D4; }
+.l-legal-table td { padding: 10px 14px; color: var(--l-ink-mid); border-bottom: 1px solid var(--l-border); vertical-align: top; font-size: 13px; line-height: 1.6; }
+.l-legal-table tr:last-child td { border-bottom: none; }
+.l-legal-table .l-col-label { font-weight: 500; color: var(--l-ink); width: 28%; }
+.l-legal-plan-table th:not(:first-child) { text-align: center; background: transparent; }
+.l-legal-plan-table th.th-starter { background: #E8F7F2; color: #0F6E52; }
+.l-legal-plan-table th.th-pro { background: #F3F0FF; color: #6B46C1; }
+.l-legal-plan-table td:not(:first-child) { text-align: center; }
+.l-legal-plan-table .l-check { color: var(--l-green); font-weight: 700; }
+.l-legal-plan-table .l-cross { color: #ccc; }
+.l-legal-section-row td { background: var(--l-cream) !important; font-size: 11px !important; font-weight: 700 !important; text-transform: uppercase; letter-spacing: .06em; color: var(--l-ink-mid) !important; }
+.l-legal-plan-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 16px 0 24px; }
+.l-legal-plan-card { border: 1px solid var(--l-border); border-radius: 12px; padding: 24px; background: white; }
+.l-legal-plan-card.starter { border-color: #B2E4D4; }
+.l-legal-plan-card.pro { border-color: #C4B5FD; }
+.l-legal-plan-name { font-size: 16px; font-weight: 600; }
+.l-legal-plan-name.starter { color: #0F6E52; }
+.l-legal-plan-name.pro { color: #6B46C1; }
+.l-legal-plan-tag { font-size: 10px; font-weight: 600; padding: 3px 8px; border-radius: 20px; letter-spacing: .05em; text-transform: uppercase; }
+.l-legal-plan-tag.starter { background: #E8F7F2; color: #0F6E52; }
+.l-legal-plan-tag.pro { background: #F3F0FF; color: #6B46C1; }
+.l-legal-plan-for { font-size: 12px; color: var(--l-ink-mid); margin-bottom: 16px; line-height: 1.65; }
+.l-legal-plan-price { font-size: 26px; font-weight: 600; color: var(--l-ink); }
+.l-legal-plan-price-unit { font-size: 13px; font-weight: 400; color: var(--l-ink-mid); }
+.l-legal-plan-annual { font-size: 12px; color: #0F6E52; margin-top: 4px; }
+.l-legal-divider { border: none; border-top: 1px solid var(--l-border); margin: 16px 0; }
