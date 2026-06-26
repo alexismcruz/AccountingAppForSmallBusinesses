@@ -62,7 +62,11 @@ const FEATURES = [
     title: 'Payments & Recurring Invoices',
     desc: 'Track incoming collections and outgoing payments. Set up recurring invoices for regular clients and let CuentaIQ generate and record them automatically on schedule.',
     tags: ['Accounts Receivable', 'Accounts Payable', 'Recurring Billing', 'Payment Scheduling'],
-    screenshot: 'Payments — AR/AP dashboard with recurring invoice management',
+    images: [
+      { src: '/screenshots/03/payment-schedule-dashboard.png', alt: 'Payment Schedule — upcoming collections and payments calendar' },
+      { src: '/screenshots/03/outgoing-payments.png',          alt: 'Outgoing Payments — AP tracker with status badges' },
+      { src: '/screenshots/03/recurring-invoices.png',         alt: 'Recurring Invoices — scheduled billing management' },
+    ],
   },
   {
     number: '04',
