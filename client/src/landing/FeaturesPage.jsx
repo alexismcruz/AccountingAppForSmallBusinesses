@@ -73,7 +73,17 @@ const FEATURES = [
     title: 'Payroll & HR Management',
     desc: 'Run payroll in minutes with automatic computation of SSS, PhilHealth, Pag-IBIG, and withholding tax. Manage employees, leaves, and generate BIR forms 2316 and 1601-C.',
     tags: ['SSS / PhilHealth / Pag-IBIG', 'Withholding Tax', 'BIR 2316 & 1601-C', 'Leave Tracking'],
-    screenshot: 'Payroll — Run summary with per-employee deduction breakdown',
+    images: [
+      { src: '/screenshots/04/employees-dashboard.png',      alt: 'Employees — active employee list with details' },
+      { src: '/screenshots/04/add-employee.png',             alt: 'Add Employee — onboarding form' },
+      { src: '/screenshots/04/payroll-run.png',              alt: 'Payroll Run — summary with deduction breakdown' },
+      { src: '/screenshots/04/new-payroll-run.png',          alt: 'New Payroll Run — period setup' },
+      { src: '/screenshots/04/leave-types.png',              alt: 'Leave Types — configurable leave policy' },
+      { src: '/screenshots/04/leave-balance-allocation.png', alt: 'Leave Balance Allocation — per-employee entitlements' },
+      { src: '/screenshots/04/leave-balances.png',           alt: 'Leave Balances — remaining days by employee' },
+      { src: '/screenshots/04/1601-C.png',                   alt: 'BIR Form 1601-C — monthly withholding tax return' },
+      { src: '/screenshots/04/2316-form.png',                alt: 'BIR Form 2316 — certificate of compensation' },
+    ],
   },
   {
     number: '05',
