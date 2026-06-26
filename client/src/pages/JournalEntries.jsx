@@ -111,8 +111,7 @@ function ImportModal({ onClose, onImported }) {
           {phase === 'pick' && (
             <>
               <div className="alert alert-info mb-16">
-                Upload a CSV file with your journal entries. Each row is one debit or credit line.
-                Rows with the same <strong>reference</strong> are grouped into one entry.
+                Upload a CSV file with your journal entries. Each row is one debit or credit line. Rows with the same <strong>reference</strong> are grouped into one entry.
               </div>
               {error && <div className="alert alert-error mb-16" style={{ whiteSpace: 'pre-line' }}>{error}</div>}
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
