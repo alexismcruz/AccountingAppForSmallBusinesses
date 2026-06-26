@@ -410,7 +410,7 @@
 
 /* ── Footer ──────────────────────────────────────────────── */
 .l-footer { background: var(--l-ink); padding: 56px 0 32px; color: rgba(255,255,255,0.7); }
-.l-footer-grid { display: grid; grid-template-columns: 1.5fr 1fr 1fr; gap: 40px; margin-bottom: 48px; }
+.l-footer-grid { display: grid; grid-template-columns: 1.5fr 1fr 1fr 1fr; gap: 40px; margin-bottom: 48px; }
 .l-footer-logo { display: flex; align-items: center; gap: 10px; font-family: 'DM Serif Display', Georgia, serif; font-size: 20px; color: white; margin-bottom: 12px; }
 .l-footer-desc { font-size: 14px; line-height: 1.7; max-width: 260px; }
 .l-footer-heading { font-size: 12px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: white; margin-bottom: 14px; }
@@ -464,7 +464,7 @@
   .l-feature-row   { grid-template-columns: 1fr; gap: 32px; }
   .l-feature-row.reverse { direction: ltr; }
   .l-feature-number { font-size: 60px; }
-  .l-footer-grid   { grid-template-columns: 1fr 1fr; }
+  .l-footer-grid   { grid-template-columns: 1fr 1fr 1fr; }
   .l-stats-bar     { grid-template-columns: 1fr 1fr; }
   .l-pricing-layout   { flex-direction: column; gap: 32px; }
   .l-pricing-pioneer  { padding-right: 0; border-right: none; border-bottom: 1px solid var(--l-border); padding-bottom: 32px; width: 100%; }

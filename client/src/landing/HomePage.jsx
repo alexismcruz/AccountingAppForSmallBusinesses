@@ -1,5 +1,7 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import LandingLayout from './LandingLayout.jsx';
+import DemoModal from './DemoModal.jsx';
 import { BookOpen, Users, Sparkles, BarChart2, FileCheck, Package, ArrowRight, CheckCircle } from 'lucide-react';
 
 const FEATURES = [
@@ -95,6 +97,7 @@ function AppMockup() {
 }
 
 export default function HomePage() {
+  const [modalOpen, setModalOpen] = useState(false);
   return (
     <LandingLayout>
       {/* HERO */}
@@ -115,9 +118,9 @@ export default function HomePage() {
                 From journal entries and payroll to tax compliance and inventory — CuentaIQ is the all-in-one accounting platform your business deserves.
               </p>
               <div className="l-hero-btns">
-                <Link to="/about-us" className="l-btn l-btn-primary">
+                <button className="l-btn l-btn-primary" onClick={() => setModalOpen(true)}>
                   Request a Demo <ArrowRight size={16} />
-                </Link>
+                </button>
                 <Link to="/features" className="l-btn l-btn-outline">
                   See Features
                 </Link>
@@ -245,11 +248,12 @@ export default function HomePage() {
           <p className="l-section-sub white" style={{ margin: '16px auto 32px' }}>
             Book a free demo and see how CuentaIQ can work for your business.
           </p>
-          <Link to="/about-us" className="l-btn l-btn-gold">
+          <button className="l-btn l-btn-gold" onClick={() => setModalOpen(true)}>
             Request a Free Demo <ArrowRight size={16} />
-          </Link>
+          </button>
         </div>
       </section>
+      {modalOpen && <DemoModal onClose={() => setModalOpen(false)} />}
     </LandingLayout>
   );
 }

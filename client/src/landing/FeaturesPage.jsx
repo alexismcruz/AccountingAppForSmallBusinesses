@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import LandingLayout from './LandingLayout.jsx';
+import DemoModal from './DemoModal.jsx';
 import { Play, ArrowRight, ChevronLeft, ChevronRight } from 'lucide-react';
 
 function ScreenshotCarousel({ images }) {
@@ -110,6 +111,7 @@ const FEATURES = [
 ];
 
 export default function FeaturesPage() {
+  const [modalOpen, setModalOpen] = useState(false);
   return (
     <LandingLayout>
       {/* HERO */}
@@ -171,11 +173,12 @@ export default function FeaturesPage() {
           <p className="l-section-sub white" style={{ margin: '16px auto 32px' }}>
             Book a walkthrough and see how CuentaIQ fits your specific business.
           </p>
-          <Link to="/about-us?demo=open" className="l-btn l-btn-gold">
+          <button className="l-btn l-btn-gold" onClick={() => setModalOpen(true)}>
             Request a Demo <ArrowRight size={16} />
-          </Link>
+          </button>
         </div>
       </section>
+      {modalOpen && <DemoModal onClose={() => setModalOpen(false)} />}
     </LandingLayout>
   );
 }

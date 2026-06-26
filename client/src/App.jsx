@@ -27,6 +27,7 @@ import HomePage      from './landing/HomePage.jsx';
 import AboutPage     from './landing/AboutPage.jsx';
 import FeaturesPage  from './landing/FeaturesPage.jsx';
 import SubscribePage from './landing/SubscribePage.jsx';
+import LegalPage     from './landing/LegalPage.jsx';
 
 const IS_LANDING =
   import.meta.env.VITE_LANDING_SITE === 'true' ||
@@ -48,11 +49,15 @@ function LandingSite() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/"          element={<HomePage />} />
-        <Route path="/about-us"  element={<AboutPage />} />
-        <Route path="/features"  element={<FeaturesPage />} />
-        <Route path="/subscribe" element={<SubscribePage />} />
-        <Route path="*"          element={<Navigate to="/" replace />} />
+        <Route path="/"                element={<HomePage />} />
+        <Route path="/about-us"        element={<AboutPage />} />
+        <Route path="/features"        element={<FeaturesPage />} />
+        <Route path="/subscribe"       element={<SubscribePage />} />
+        <Route path="/terms"           element={<LegalPage type="terms" />} />
+        <Route path="/privacy"         element={<LegalPage type="privacy" />} />
+        <Route path="/refund-policy"   element={<LegalPage type="refund" />} />
+        <Route path="/data-processing" element={<LegalPage type="dpa" />} />
+        <Route path="*"                element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
   );

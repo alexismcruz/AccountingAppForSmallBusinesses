@@ -98,6 +98,15 @@ export function LandingFooter() {
               <li><a href="mailto:support@cuentaiq.com">support@cuentaiq.com</a></li>
             </ul>
           </div>
+          <div>
+            <div className="l-footer-heading">Legal</div>
+            <ul className="l-footer-links">
+              <li><Link to="/terms">Terms &amp; Conditions</Link></li>
+              <li><Link to="/privacy">Privacy Policy</Link></li>
+              <li><Link to="/refund-policy">Refund Policy</Link></li>
+              <li><Link to="/data-processing">Data Processing</Link></li>
+            </ul>
+          </div>
         </div>
         <div className="l-footer-bottom">
           <span>© {new Date().getFullYear()} CuentaIQ. All rights reserved.</span>
