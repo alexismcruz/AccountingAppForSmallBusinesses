@@ -58,7 +58,7 @@ function PrivacyPage() {
                 <tr><td className="l-col-label">Product</td><td>CuentaIQ</td></tr>
                 <tr><td className="l-col-label">Data Privacy Officer</td><td>Alexis Mae Cruz — alexis@cuentaiq.com</td></tr>
                 <tr><td className="l-col-label">Contact email</td><td>hello@cuentaiq.com</td></tr>
-                <tr><td className="l-col-label">Address</td><td>Legazpi Village, Makati City, Philippines</td></tr>
+                <tr><td className="l-col-label">Address</td><td>Makati City, Philippines</td></tr>
               </tbody>
             </table>
           </Section>
