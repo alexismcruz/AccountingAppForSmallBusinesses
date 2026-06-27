@@ -5,6 +5,7 @@ import DemoModal from './DemoModal.jsx';
 import { CheckCircle, ArrowRight, Zap, Info } from 'lucide-react';
 
 const STARTER_FEATURES = [
+  'Up to 10 users per company',
   'Journal Entries (double-entry bookkeeping)',
   'Chart of Accounts',
   'Approval Workflow',
@@ -20,6 +21,7 @@ const STARTER_FEATURES = [
 ];
 
 const FULL_EXTRAS = [
+  'Up to 25 users per company (vs. 10 in Starter)',
   'Employee Records & Profiles',
   'Payroll with SSS, PhilHealth & Pag-IBIG',
   'Withholding Tax Computation',
@@ -34,7 +36,7 @@ const SETUP_FEE_TIP = `Your $150 setup fee covers: provisioning your dedicated d
 const ANNUAL_FEE_TIP = `From Year 2 onward, this $150 annual fee covers ongoing maintenance of your dedicated database hosted on Railway's Singapore servers, and your subdomain renewal. Charged once per year on your account anniversary. We will notify you at least 30 days in advance of any changes to this fee. Your data remains yours — exportable in CSV at any time by emailing support@cuentaiq.com. This fee is non-refundable once charged as we proceed to continue maintenance of your environment once payment is received.`;
 
 const FAQS = [
-  { q: 'Is the price per user or per company?',      a: 'Per company. You can have as many users as you need within your company at no extra charge.' },
+  { q: 'Is the price per user or per company?',      a: 'Per company — not per user. Starter supports up to 10 users per company; Pro supports up to 25 users. No extra charge per user within those limits.' },
   { q: 'Are there setup or maintenance fees?',         a: 'Yes — a one-time $150 setup fee applies to all plans. This covers provisioning your dedicated database, your personal subdomain, and full onboarding. From Year 2 onward, there is a $150 annual maintenance fee for database hosting and subdomain renewal, charged on your account anniversary with 30 days advance notice.' },
   { q: 'Can I switch plans later?',                  a: 'Yes, you can upgrade from Starter to Pro Version at any time.' },
   { q: 'What happens when I hit my AI message limit?', a: 'You\'ll receive an in-app warning at 80% usage. When the limit is reached, you can top up $10 for 15 additional messages — just email support@cuentaiq.com.' },

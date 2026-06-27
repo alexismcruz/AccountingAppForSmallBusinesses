@@ -212,7 +212,7 @@ function TermsPage() {
                 </div>
                 <div className="l-legal-plan-annual">or $390 USD / year (2 months free)</div>
                 <hr className="l-legal-divider" />
-                <div style={{ fontSize: 13, color: 'var(--l-ink-mid)' }}>Up to <strong>15 users</strong> per instance &nbsp;·&nbsp; 50 AI messages/month</div>
+                <div style={{ fontSize: 13, color: 'var(--l-ink-mid)' }}>Up to <strong>10 users</strong> per instance &nbsp;·&nbsp; 50 AI messages/month</div>
               </div>
               <div className="l-legal-plan-card pro">
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
@@ -226,7 +226,7 @@ function TermsPage() {
                 </div>
                 <div className="l-legal-plan-annual">or $590 USD / year (2 months free)</div>
                 <hr className="l-legal-divider" />
-                <div style={{ fontSize: 13, color: 'var(--l-ink-mid)' }}>Up to <strong>30 users</strong> per instance &nbsp;·&nbsp; 100 AI messages/month</div>
+                <div style={{ fontSize: 13, color: 'var(--l-ink-mid)' }}>Up to <strong>25 users</strong> per instance &nbsp;·&nbsp; 100 AI messages/month</div>
               </div>
             </div>
 
@@ -271,7 +271,7 @@ function TermsPage() {
                 <tr><td>Approvals workflow (multi-user journal entry approval)</td><td className="l-cross">—</td><td className="l-check">✓</td></tr>
                 <tr><td>Audit logs (tamper-evident action records)</td><td className="l-cross">—</td><td className="l-check">✓</td></tr>
                 <tr className="l-legal-section-row"><td colSpan={3}>User Access</td></tr>
-                <tr><td>User accounts per instance</td><td>Up to 15 users</td><td>Up to 30 users</td></tr>
+                <tr><td>User accounts per instance</td><td>Up to 10 users</td><td>Up to 25 users</td></tr>
                 <tr><td>Role-based access control (Staff, Manager, Finance, Admin)</td><td className="l-cross">—</td><td className="l-check">✓</td></tr>
               </tbody>
             </table>
@@ -292,8 +292,8 @@ function TermsPage() {
             <table className="l-legal-table">
               <thead><tr><th>Plan</th><th>Per branch / month</th><th>Per branch / year</th><th>User limit per instance</th></tr></thead>
               <tbody>
-                <tr><td className="l-col-label">Starter</td><td>$39 USD</td><td>$390 USD</td><td>Up to 15 users</td></tr>
-                <tr><td className="l-col-label">Pro</td><td>$59 USD</td><td>$590 USD</td><td>Up to 30 users</td></tr>
+                <tr><td className="l-col-label">Starter</td><td>$39 USD</td><td>$390 USD</td><td>Up to 10 users</td></tr>
+                <tr><td className="l-col-label">Pro</td><td>$59 USD</td><td>$590 USD</td><td>Up to 25 users</td></tr>
               </tbody>
             </table>
             <p>Each branch instance has its own dedicated, isolated database and subdomain. The one-time setup fee ($150 USD) and Year 2+ annual fee ($150 USD) apply separately to each branch instance. The main business entity remains responsible for all fees across all instances registered under their account.</p>
