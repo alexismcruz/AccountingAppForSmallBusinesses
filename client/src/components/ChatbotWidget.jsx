@@ -455,6 +455,7 @@ export default function ChatbotWidget() {
               <div style={{ color: 'rgba(255,255,255,0.7)', fontSize: 11, marginTop: 1 }}>
                 Powered by Claude · Ask me to record any transaction
               </div>
+              {usage.limit != null && (
               <div style={{ marginTop: 5 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: 'rgba(255,255,255,0.6)', marginBottom: 3 }}>
                   <span>{usage.count}/{usage.limit} messages this month</span>
@@ -471,6 +472,7 @@ export default function ChatbotWidget() {
                   }} />
                 </div>
               </div>
+              )}
             </div>
             <button
               onClick={() => setOpen(false)}

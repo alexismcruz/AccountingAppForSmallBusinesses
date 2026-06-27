@@ -3,8 +3,9 @@ const { query, withTransaction } = require('../db/database');
 
 // ── Monthly usage tracking ────────────────────────────────────────────────────
 
-const currentMonth = () => new Date().toISOString().slice(0, 7); // YYYY-MM
-const monthlyLimit = () => parseInt(process.env.CHATBOT_MONTHLY_LIMIT || '50');
+const currentMonth   = () => new Date().toISOString().slice(0, 7); // YYYY-MM
+const monthlyLimit   = () => parseInt(process.env.CHATBOT_MONTHLY_LIMIT || '50');
+const limitDisabled  = () => process.env.CHATBOT_LIMIT_DISABLED === 'true';
 
 // Create table on startup (safe to call every deploy)
 query(`
@@ -40,12 +41,13 @@ router.get('/usage', async (req, res) => {
   try {
     const user = req.session?.user;
     if (!user) return res.status(401).json({ error: 'Not authenticated' });
+    if (limitDisabled()) return res.json({ count: 0, limit: null, warning: false, limitReached: false });
     const limit = monthlyLimit();
     const { count } = await getUsage();
     res.json({ count, limit, warning: count / limit >= 0.8, limitReached: count >= limit });
   } catch (err) {
     console.error('[Chatbot] usage error:', err.message);
-    const limit = monthlyLimit();
+    const limit = limitDisabled() ? null : monthlyLimit();
     res.json({ count: 0, limit, warning: false, limitReached: false });
   }
 });
@@ -128,10 +130,11 @@ router.post('/message', async (req, res) => {
     if (!user)            return res.status(401).json({ error: 'Not authenticated' });
     if (!messages?.length) return res.status(400).json({ error: 'messages array required' });
 
-    // Check monthly usage limit
-    const limit = monthlyLimit();
+    // Check monthly usage limit (skipped for owner deployments with CHATBOT_LIMIT_DISABLED=true)
+    const disabled = limitDisabled();
+    const limit = disabled ? null : monthlyLimit();
     const { month, count } = await getUsage();
-    if (count >= limit) {
+    if (!disabled && count >= limit) {
       return res.status(429).json({
         error: `You've reached your ${limit}-message monthly limit. Top up $10 for 15 more messages — contact hello@cuentaiq.com.`,
         usage: { count, limit, warning: true, limitReached: true },
@@ -273,7 +276,7 @@ ${'─'.repeat(65)}`;
       usage: {
         count:        newCount,
         limit,
-        warning:      newCount / limit >= 0.8,
+        warning:      disabled ? false : newCount / limit >= 0.8,
         limitReached: false,
       },
     });
