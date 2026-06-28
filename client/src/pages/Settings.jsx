@@ -3,6 +3,7 @@ import { useSettings } from '../context/SettingsContext.jsx';
 import { useUser } from '../context/UserContext.jsx';
 import { CURRENCIES } from '../data/currencies.js';
 import CharCount from '../components/CharCount.jsx';
+import MultiBranchSettings from '../components/MultiBranchSettings.jsx';
 
 const TOGGLEABLE_MODULES = [
   {
@@ -284,6 +285,8 @@ export default function Settings() {
           })}
         </div>
       )}
+
+      <MultiBranchSettings />
 
       {/* Sandbox reset — only shown in SANDBOX_MODE and only to super_admin */}
       {settings.sandboxMode && user?.role === 'super_admin' && (

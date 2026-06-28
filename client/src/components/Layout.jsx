@@ -8,7 +8,7 @@ import {
   CalendarDays, ArrowDownToLine, ArrowUpFromLine, RefreshCw,
   Users, ClipboardList, FileText, Receipt,
   PieChart, Scale, TrendingUp, BookMarked,
-  BarChart3, BookKey,
+  BarChart3, BookKey, Building2,
   Calendar, History, BookCopy, Link2, Settings,
   ChevronRight, LogOut, KeyRound, Shield,
   Menu, X, AlertTriangle,
@@ -237,6 +237,7 @@ export default function Layout({ children, onLogout }) {
     '/hr/leaves':                'Leave Management',
     '/hr/bir':                   'BIR Forms',
     '/accounts':                 'Chart of Accounts',
+    '/hq':                       'HQ Dashboard',
     '/integrations':             'Integrations',
     '/approvals':                'Approvals',
     '/logs':                     'Audit Logs',
@@ -330,6 +331,9 @@ export default function Layout({ children, onLogout }) {
         )}
         {can('admin') && (
           <div className="nav-section">
+            {settings.multi_branch_role === 'hq' && (
+              <NavItem to="/hq" icon={Building2} label="HQ Dashboard" onNavigate={closeSidebar} />
+            )}
             <NavItem to="/integrations"    icon={Link2}    label="Integrations"    onNavigate={closeSidebar} />
             <NavItem to="/settings"        icon={Settings} label="Settings"        onNavigate={closeSidebar} />
             <NavItem to="/opening-balance" icon={BookKey}  label="Opening Balances" onNavigate={closeSidebar} />

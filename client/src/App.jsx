@@ -23,6 +23,7 @@ import BIRForms        from './pages/BIRForms.jsx';
 import ChartOfAccounts from './pages/ChartOfAccounts.jsx';
 import Integrations        from './pages/Integrations.jsx';
 import RecurringInvoices   from './pages/RecurringInvoices.jsx';
+import HQDashboard         from './pages/HQDashboard.jsx';
 import HomePage      from './landing/HomePage.jsx';
 import AboutPage     from './landing/AboutPage.jsx';
 import FeaturesPage  from './landing/FeaturesPage.jsx';
@@ -116,6 +117,7 @@ function AccountingApp() {
             <Route path="/hr/leaves"                element={<ModuleGuard moduleKey="hr" element={<Leaves />} />} />
             <Route path="/hr/bir"                   element={<ModuleGuard moduleKey="hr" element={<BIRForms />} />} />
             <Route path="/accounts"                 element={<ChartOfAccounts />} />
+            <Route path="/hq"                       element={<HQDashboard />} />
             <Route path="/integrations"             element={<Integrations />} />
             <Route path="*"                         element={<Navigate to="/" replace />} />
           </Routes>
