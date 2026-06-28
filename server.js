@@ -233,6 +233,7 @@ if (!IS_LANDING) {
   app.use('/api/chatbot',         require('./routes/chatbot'));
   app.use('/api/integrations',       require('./routes/integrations/index'));
   app.use('/api/recurring-invoices', require('./routes/recurringInvoices'));
+  app.use('/api/branch-sync',        require('./routes/branchSync'));
 }
 
 // ── Serve built React app in production ──────────────────────────────────────
@@ -249,6 +250,9 @@ if (process.env.NODE_ENV === 'production') {
     } else {
       await initDB();
       console.log('✅ PostgreSQL database initialised');
+
+      // Start branch cron if this instance is configured as a branch
+      require('./routes/branchSync').startBranchCron();
 
       // Sandbox: seed demo data on first boot
       if (process.env.SANDBOX_MODE) {

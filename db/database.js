@@ -533,6 +533,38 @@ async function initDB() {
   await pool.query(`CREATE INDEX IF NOT EXISTS idx_accounts_code ON accounts (code)`);
   await pool.query(`CREATE INDEX IF NOT EXISTS idx_audit_logs_ts ON audit_logs (created_at DESC)`);
 
+  // ── Multi-branch tables ───────────────────────────────────────────────────
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS branch_registry (
+      id         SERIAL PRIMARY KEY,
+      name       TEXT NOT NULL,
+      subdomain  TEXT NOT NULL UNIQUE,
+      api_key    TEXT NOT NULL UNIQUE,
+      plan       TEXT DEFAULT 'starter',
+      status     TEXT DEFAULT 'active',
+      created_at TIMESTAMPTZ DEFAULT NOW()
+    )
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS branch_snapshots (
+      id            SERIAL PRIMARY KEY,
+      branch_id     INTEGER NOT NULL REFERENCES branch_registry(id) ON DELETE CASCADE,
+      period        TEXT NOT NULL,
+      revenue       DOUBLE PRECISION DEFAULT 0,
+      expenses      DOUBLE PRECISION DEFAULT 0,
+      net_income    DOUBLE PRECISION DEFAULT 0,
+      ar_balance    DOUBLE PRECISION DEFAULT 0,
+      ap_balance    DOUBLE PRECISION DEFAULT 0,
+      payroll_total DOUBLE PRECISION DEFAULT 0,
+      synced_at     TIMESTAMPTZ DEFAULT NOW(),
+      UNIQUE(branch_id, period)
+    )
+  `);
+
+  await pool.query(`ALTER TABLE business_settings ADD COLUMN IF NOT EXISTS multi_branch_role TEXT DEFAULT 'standalone'`);
+  await pool.query(`ALTER TABLE business_settings ADD COLUMN IF NOT EXISTS multi_branch_sync_time TEXT DEFAULT '18:00'`);
+
   // ── Seed accounts if table is empty ────────────────────────────────────────
   const { rowCount: accountCount } = await pool.query('SELECT 1 FROM accounts LIMIT 1');
   if (accountCount === 0) await seedAccounts();
