@@ -251,8 +251,10 @@ if (process.env.NODE_ENV === 'production') {
       await initDB();
       console.log('✅ PostgreSQL database initialised');
 
-      // Start branch cron if this instance is configured as a branch
+      // Start branch cron if this instance is configured as a branch,
+      // and the HQ stale-branch alert cron if HQ_ALERT_EMAIL is set
       require('./routes/branchSync').startBranchCron();
+      require('./routes/branchSync').startHQAlertCron();
 
       // Sandbox: seed demo data on first boot
       if (process.env.SANDBOX_MODE) {

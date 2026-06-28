@@ -564,6 +564,10 @@ async function initDB() {
 
   await pool.query(`ALTER TABLE business_settings ADD COLUMN IF NOT EXISTS multi_branch_role TEXT DEFAULT 'standalone'`);
   await pool.query(`ALTER TABLE business_settings ADD COLUMN IF NOT EXISTS multi_branch_sync_time TEXT DEFAULT '18:00'`);
+  // Branch push health — surfaced in the Multi-Branch settings UI on branch instances
+  await pool.query(`ALTER TABLE business_settings ADD COLUMN IF NOT EXISTS multi_branch_last_push_at     TIMESTAMPTZ`);
+  await pool.query(`ALTER TABLE business_settings ADD COLUMN IF NOT EXISTS multi_branch_last_push_status TEXT`);
+  await pool.query(`ALTER TABLE business_settings ADD COLUMN IF NOT EXISTS multi_branch_last_push_error  TEXT`);
 
   // ── Seed accounts if table is empty ────────────────────────────────────────
   const { rowCount: accountCount } = await pool.query('SELECT 1 FROM accounts LIMIT 1');

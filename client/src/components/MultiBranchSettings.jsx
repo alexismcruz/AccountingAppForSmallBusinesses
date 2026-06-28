@@ -66,6 +66,13 @@ export default function MultiBranchSettings() {
   const [syncTime,        setSyncTime]        = useState('18:00');
   const [savingSchedule,  setSavingSchedule]  = useState(false);
 
+  // HQ stale-branch alert test
+  const [testingAlert, setTestingAlert] = useState(false);
+  const [testResult,   setTestResult]   = useState(null);
+
+  // Help panel
+  const [helpOpen, setHelpOpen] = useState(false);
+
   const load = async () => {
     setLoading(true);
     try {
@@ -153,8 +160,21 @@ export default function MultiBranchSettings() {
     try {
       const res = await fetch('/api/branch-sync/push-now', { method: 'POST', credentials: 'include' });
       setPushResult(await res.json());
+      await load(); // refresh persisted push health
     } catch { setPushResult({ ok: false, reason: 'Network error.' }); }
     setPushing(false);
+  };
+
+  const sendTestAlert = async () => {
+    setTestingAlert(true); setTestResult(null);
+    try {
+      const res  = await fetch('/api/branch-sync/test-alert', { method: 'POST', credentials: 'include' });
+      const data = await res.json();
+      setTestResult({ ok: res.ok && data.ok, text: res.ok && data.ok
+        ? `Test alert sent to ${data.alert_email} (${data.stale_count} stale).`
+        : (data.reason || data.error || 'Failed to send test alert.') });
+    } catch { setTestResult({ ok: false, text: 'Network error.' }); }
+    setTestingAlert(false);
   };
 
   const openAdd = () => {
@@ -171,9 +191,41 @@ export default function MultiBranchSettings() {
   return (
     <div className="card mt-16" style={{ maxWidth: 640 }}>
       <div className="section-title">Multi-Branch Sync</div>
-      <p style={{ fontSize: 13, color: 'var(--color-ink-mid)', marginBottom: 16 }}>
+      <p style={{ fontSize: 13, color: 'var(--color-ink-mid)', marginBottom: 12 }}>
         Connect multiple CuentaIQ deployments so branches push daily financial summaries to a central HQ view.
       </p>
+
+      {/* ── How it works (collapsible) ───────────────────────────── */}
+      <button
+        onClick={() => setHelpOpen(o => !o)}
+        style={{
+          background: 'none', border: 'none', cursor: 'pointer', padding: 0,
+          color: 'var(--color-primary)', fontSize: 12, fontWeight: 600, marginBottom: 14,
+          display: 'flex', alignItems: 'center', gap: 5,
+        }}>
+        {helpOpen ? '▾' : '▸'} How multi-branch sync works
+      </button>
+      {helpOpen && (
+        <div style={{
+          background: 'var(--color-surface-2)', border: '1px solid var(--color-border)',
+          borderRadius: 8, padding: '14px 16px', marginBottom: 16, fontSize: 12.5, lineHeight: 1.65,
+        }}>
+          <div style={{ marginBottom: 10 }}>
+            Each location runs its own CuentaIQ deployment with its own database. One deployment is the{' '}
+            <strong>HQ</strong>; the others are <strong>Branches</strong>.
+          </div>
+          <ol style={{ margin: 0, paddingLeft: 18, display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <li>Set this instance's role above (HQ receives data, Branch sends it).</li>
+            <li>On the HQ, add each branch — you'll get a one-time API key per branch.</li>
+            <li>On each branch's Railway deployment, set <code>HQ_SYNC_ENABLED=true</code>, <code>HQ_SYNC_URL</code> (the HQ address), and <code>HQ_SYNC_API_KEY</code> (the key from step 2).</li>
+            <li>Branches push a financial summary to HQ once a day (default 6:00 PM), or on demand with “Push to HQ Now”.</li>
+            <li>View the consolidated picture on the <strong>HQ Dashboard</strong>.</li>
+          </ol>
+          <div style={{ marginTop: 10, color: 'var(--color-ink-mid)' }}>
+            Only monthly summary totals are shared — never individual transactions, customers, or employees.
+          </div>
+        </div>
+      )}
 
       {msg && (
         <div className={`alert alert-${msg.type === 'error' ? 'error' : 'success'} mb-16`}>{msg.text}</div>
@@ -302,6 +354,34 @@ export default function MultiBranchSettings() {
               </table>
             </div>
           )}
+
+          {/* Stale-branch email alerts */}
+          <div className="divider" />
+          <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 8 }}>Stale-Branch Alerts</div>
+          <p style={{ fontSize: 12.5, color: 'var(--color-ink-mid)', lineHeight: 1.6, marginBottom: 12 }}>
+            HQ emails a daily digest when any branch hasn't synced in over 48 hours.
+          </p>
+          {status?.alert_enabled ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+              <span style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span style={{ color: 'var(--color-success)', fontWeight: 700 }}>✓</span>
+                Alerts to <code style={{ background: 'var(--color-surface-2)', padding: '1px 5px', borderRadius: 3 }}>{status.alert_email}</code>
+              </span>
+              <button className="btn btn-ghost" style={{ fontSize: 12 }}
+                onClick={sendTestAlert} disabled={testingAlert}>
+                {testingAlert ? '⏳ Sending…' : '✉ Send Test Alert'}
+              </button>
+              {testResult && (
+                <span style={{ fontSize: 12, color: testResult.ok ? 'var(--color-success)' : 'var(--color-danger)' }}>
+                  {testResult.ok ? '✓ ' : ''}{testResult.text}
+                </span>
+              )}
+            </div>
+          ) : (
+            <div className="alert alert-info" style={{ fontSize: 12 }}>
+              Set <code>HQ_ALERT_EMAIL</code> in Railway Variables to receive stale-branch alerts.
+            </div>
+          )}
         </div>
       )}
 
@@ -331,6 +411,32 @@ export default function MultiBranchSettings() {
           {!status?.hq_enabled && (
             <div className="alert alert-error mb-16" style={{ fontSize: 12 }}>
               Set <code>HQ_SYNC_ENABLED=true</code>, <code>HQ_SYNC_URL</code>, and <code>HQ_SYNC_API_KEY</code> in Railway Variables to enable sync.
+            </div>
+          )}
+
+          {/* Last push health */}
+          {status?.last_push_at && (
+            <div style={{
+              display: 'flex', alignItems: 'flex-start', gap: 8,
+              background: status.last_push_status === 'success' ? '#f0fdf4' : '#fef2f2',
+              border: `1px solid ${status.last_push_status === 'success' ? '#bbf7d0' : '#fecaca'}`,
+              borderRadius: 8, padding: '10px 12px', marginBottom: 16, fontSize: 12,
+            }}>
+              <span style={{ fontWeight: 700, color: status.last_push_status === 'success' ? 'var(--color-success)' : 'var(--color-danger)' }}>
+                {status.last_push_status === 'success' ? '✓' : '✕'}
+              </span>
+              <div>
+                <div style={{ fontWeight: 600 }}>
+                  Last push {status.last_push_status === 'success' ? 'succeeded' : 'failed'}
+                  {' · '}
+                  {new Date(status.last_push_at).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                </div>
+                {status.last_push_status !== 'success' && status.last_push_error && (
+                  <div style={{ color: 'var(--color-danger)', marginTop: 3, wordBreak: 'break-word' }}>
+                    {status.last_push_error}
+                  </div>
+                )}
+              </div>
             </div>
           )}
 
