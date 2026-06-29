@@ -11,7 +11,7 @@ import {
   BarChart3, BookKey, Building2,
   Calendar, History, BookCopy, Link2, Settings,
   ChevronRight, LogOut, KeyRound, Shield,
-  Menu, X, AlertTriangle,
+  Menu, X, AlertTriangle, Mail,
 } from 'lucide-react';
 
 // ── CuentaIQ inline SVG logo ──────────────────────────────────────────────────
@@ -241,6 +241,7 @@ export default function Layout({ children, onLogout }) {
     '/integrations':             'Integrations',
     '/approvals':                'Approvals',
     '/logs':                     'Audit Logs',
+    '/email-log':                'Email Log',
     '/tax/rates':                'Tax Rates',
     '/tax/applications':         'Tax Applications',
     '/tax/projections':          'Tax Projections',
@@ -325,8 +326,9 @@ export default function Layout({ children, onLogout }) {
         </div>
         {can('finance') && (
           <div className="nav-section">
-            <NavItem to="/accounts" icon={BookCopy}  label="Chart of Accounts" onNavigate={closeSidebar} />
-            <NavItem to="/logs"     icon={History}   label="Audit Logs"        onNavigate={closeSidebar} />
+            <NavItem to="/accounts"  icon={BookCopy}  label="Chart of Accounts" onNavigate={closeSidebar} />
+            <NavItem to="/logs"      icon={History}   label="Audit Logs"        onNavigate={closeSidebar} />
+            <NavItem to="/email-log" icon={Mail}      label="Email Log"         onNavigate={closeSidebar} />
           </div>
         )}
         {can('admin') && (

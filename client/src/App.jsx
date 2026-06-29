@@ -24,6 +24,7 @@ import ChartOfAccounts from './pages/ChartOfAccounts.jsx';
 import Integrations        from './pages/Integrations.jsx';
 import RecurringInvoices   from './pages/RecurringInvoices.jsx';
 import HQDashboard         from './pages/HQDashboard.jsx';
+import EmailLog            from './pages/EmailLog.jsx';
 import HomePage      from './landing/HomePage.jsx';
 import AboutPage     from './landing/AboutPage.jsx';
 import FeaturesPage  from './landing/FeaturesPage.jsx';
@@ -107,6 +108,7 @@ function AccountingApp() {
             <Route path="/settings"                 element={<Settings />} />
             <Route path="/approvals"                element={<Approvals />} />
             <Route path="/logs"                     element={<Logs />} />
+            <Route path="/email-log"                element={<EmailLog />} />
             <Route path="/tax/rates"                element={<ModuleGuard moduleKey="tax" element={<Tax tab="rates" />} />} />
             <Route path="/tax/applications"         element={<ModuleGuard moduleKey="tax" element={<Tax tab="applications" />} />} />
             <Route path="/tax/projections"          element={<ModuleGuard moduleKey="tax" element={<Tax tab="projections" />} />} />
