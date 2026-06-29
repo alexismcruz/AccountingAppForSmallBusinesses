@@ -51,6 +51,34 @@ function renderEmail({ heading, bodyHtml, footnote }) {
   </div>`;
 }
 
+// ── Suppression list ──────────────────────────────────────────────────────────
+// Addresses that bounced or complained must never be emailed again.
+
+async function isSuppressed(email) {
+  try {
+    const { rowCount } = await query(
+      'SELECT 1 FROM email_suppressions WHERE LOWER(email) = LOWER($1)', [email]
+    );
+    return rowCount > 0;
+  } catch {
+    return false; // never block a send because the lookup failed
+  }
+}
+
+async function addSuppression(email, reason, detail) {
+  if (!isValidEmail(email)) return;
+  try {
+    await query(`
+      INSERT INTO email_suppressions (email, reason, detail)
+      VALUES (LOWER($1), $2, $3)
+      ON CONFLICT (email) DO UPDATE SET reason = EXCLUDED.reason, detail = EXCLUDED.detail
+    `, [email.trim(), reason || 'manual', detail ? String(detail).slice(0, 500) : null]);
+    console.log(`[Email] Suppressed ${email} (${reason})`);
+  } catch (e) {
+    console.error('[Email] addSuppression failed:', e.message);
+  }
+}
+
 // Write one audit row. Never throws — logging must not break a send.
 async function logEmail(entry) {
   try {
@@ -88,10 +116,26 @@ async function logEmail(entry) {
  */
 async function sendEmail(opts = {}) {
   const { to, subject, html } = opts;
-  const recipients = Array.isArray(to) ? to.filter(isValidEmail) : (isValidEmail(to) ? [to] : []);
+  let recipients = Array.isArray(to) ? to.filter(isValidEmail) : (isValidEmail(to) ? [to] : []);
 
   if (!recipients.length) return { ok: false, error: 'A valid recipient is required' };
   if (!subject || !html)  return { ok: false, error: 'subject and html are required' };
+
+  // Drop suppressed recipients (bounced/complained) unless caller forces past it
+  if (!opts.ignoreSuppression) {
+    const kept = [];
+    for (const r of recipients) if (!(await isSuppressed(r))) kept.push(r);
+    if (!kept.length) {
+      const blocked = recipients.join(', ');
+      await logEmail({
+        to: blocked, subject, template: opts.template, status: 'suppressed',
+        error: 'Recipient is on the suppression list',
+        relatedType: opts.relatedType, relatedId: opts.relatedId, sentBy: opts.sentBy,
+      });
+      return { ok: false, suppressed: true, error: 'Recipient previously bounced or marked the email as spam, so it was not sent.' };
+    }
+    recipients = kept;
+  }
 
   const identity    = await getBusinessIdentity();
   const displayName = cleanHeader(opts.fromName || `${identity.name} via ${APP_LABEL}`);
@@ -141,4 +185,4 @@ async function sendEmail(opts = {}) {
   }
 }
 
-module.exports = { sendEmail, renderEmail, isValidEmail };
+module.exports = { sendEmail, renderEmail, isValidEmail, isSuppressed, addSuppression };

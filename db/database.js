@@ -592,6 +592,17 @@ async function initDB() {
   `);
   await pool.query(`CREATE INDEX IF NOT EXISTS idx_email_log_sent_at ON email_log (sent_at DESC)`);
 
+  // Suppression list — addresses we must not email (bounced / complained / manual)
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS email_suppressions (
+      id         SERIAL PRIMARY KEY,
+      email      TEXT UNIQUE NOT NULL,
+      reason     TEXT,            -- bounced | complained | manual
+      detail     TEXT,
+      created_at TIMESTAMPTZ DEFAULT NOW()
+    )
+  `);
+
   // ── Seed accounts if table is empty ────────────────────────────────────────
   const { rowCount: accountCount } = await pool.query('SELECT 1 FROM accounts LIMIT 1');
   if (accountCount === 0) await seedAccounts();

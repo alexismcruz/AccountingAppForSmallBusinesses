@@ -1,11 +1,73 @@
 const express = require('express');
 const router  = express.Router();
+const crypto  = require('crypto');
 const { query } = require('../db/database');
+const { addSuppression } = require('../utils/email');
 
 // ── Connector registry (mirrors integrations/index.js) ────────────────────────
 const CONNECTORS = {
   bigcommerce: require('./integrations/bigcommerce'),
 };
+
+// ── Resend email events (Svix-signed) ─────────────────────────────────────────
+// Verifies the Svix signature against EMAIL_WEBHOOK_SECRET using the raw body
+// (captured in server.js). Updates email_log delivery status and grows the
+// suppression list on bounces/complaints.
+
+function verifySvixSignature(req, secret) {
+  const id  = req.headers['svix-id'];
+  const ts  = req.headers['svix-timestamp'];
+  const hdr = req.headers['svix-signature'];
+  if (!id || !ts || !hdr || !req.rawBody) return false;
+
+  const key      = Buffer.from(secret.replace(/^whsec_/, ''), 'base64');
+  const signed   = Buffer.concat([Buffer.from(`${id}.${ts}.`), req.rawBody]);
+  const expected = crypto.createHmac('sha256', key).update(signed).digest('base64');
+
+  return hdr.split(' ').some((part) => {
+    const sig = part.includes(',') ? part.split(',')[1] : part;
+    try {
+      const a = Buffer.from(expected);
+      const b = Buffer.from(sig);
+      return a.length === b.length && crypto.timingSafeEqual(a, b);
+    } catch { return false; }
+  });
+}
+
+router.post('/resend', async (req, res) => {
+  const secret = process.env.EMAIL_WEBHOOK_SECRET;
+  if (secret) {
+    if (!verifySvixSignature(req, secret)) {
+      console.warn('[Webhook/resend] signature verification failed');
+      return res.status(401).json({ error: 'Invalid signature' });
+    }
+  } else {
+    console.warn('[Webhook/resend] EMAIL_WEBHOOK_SECRET not set — processing unverified');
+  }
+
+  const { type, data } = req.body || {};
+  res.json({ ok: true }); // ack immediately
+
+  setImmediate(async () => {
+    try {
+      const emailId    = data?.email_id || null;
+      const recipients = Array.isArray(data?.to) ? data.to : (data?.to ? [data.to] : []);
+
+      if (type === 'email.delivered') {
+        if (emailId) await query(`UPDATE email_log SET status='delivered' WHERE provider_id=$1 AND status='sent'`, [emailId]);
+      } else if (type === 'email.bounced') {
+        if (emailId) await query(`UPDATE email_log SET status='bounced' WHERE provider_id=$1`, [emailId]);
+        const detail = data?.bounce?.message || data?.bounce?.type || 'Hard bounce';
+        for (const r of recipients) await addSuppression(r, 'bounced', detail);
+      } else if (type === 'email.complained') {
+        if (emailId) await query(`UPDATE email_log SET status='complained' WHERE provider_id=$1`, [emailId]);
+        for (const r of recipients) await addSuppression(r, 'complained', 'Recipient marked as spam');
+      }
+    } catch (err) {
+      console.error('[Webhook/resend] processing error:', err.message);
+    }
+  });
+});
 
 // ── POST /api/webhooks/:provider ──────────────────────────────────────────────
 // Public endpoint — no session auth. Security is via webhook token verification.
