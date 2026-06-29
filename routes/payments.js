@@ -299,7 +299,7 @@ router.get('/receivables', async (req, res) => {
 
 router.post('/receivables', async (req, res) => {
   const user = req.session.user;
-  const { customer_name, invoice_number, description, amount, due_date, scheduled_date,
+  const { customer_name, customer_email, invoice_number, description, amount, due_date, scheduled_date,
           currency, exchange_rate, submitter_note } = req.body;
   if (!customer_name || !amount)
     return res.status(400).json({ error: 'customer_name and amount are required' });
@@ -311,10 +311,10 @@ router.post('/receivables', async (req, res) => {
   try {
     const { rows: [rec] } = await query(
       `INSERT INTO receivables
-         (customer_name, invoice_number, description, amount, due_date, scheduled_date,
+         (customer_name, customer_email, invoice_number, description, amount, due_date, scheduled_date,
           currency, exchange_rate, pending_approval, created_by_email, created_by_name, created_by_role)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING *`,
-      [customer_name, invNum, description || '', parseFloat(amount),
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) RETURNING *`,
+      [customer_name, customer_email || null, invNum, description || '', parseFloat(amount),
        due_date || null, scheduled_date || null, currency || 'USD', parseFloat(exchange_rate) || 1.0,
        pendingApproval, user?.email || 'system', user?.name || 'System', user?.role || 'staff']
     );

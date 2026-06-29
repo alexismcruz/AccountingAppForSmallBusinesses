@@ -64,7 +64,7 @@ router.get('/', async (req, res) => {
 router.post('/', requireFinance, async (req, res) => {
   const user = req.session.user;
   const {
-    customer_name, description, amount, currency, exchange_rate,
+    customer_name, customer_email, description, amount, currency, exchange_rate,
     frequency, due_days, invoice_prefix,
     start_date, end_date, day_of_month, notes,
   } = req.body;
@@ -79,14 +79,14 @@ router.post('/', requireFinance, async (req, res) => {
   try {
     const { rows: [rec] } = await query(
       `INSERT INTO recurring_invoices
-         (customer_name, description, amount, currency, exchange_rate,
+         (customer_name, customer_email, description, amount, currency, exchange_rate,
           frequency, due_days, invoice_prefix,
           start_date, end_date, next_run_date, day_of_month, notes,
           created_by_email, created_by_name)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
        RETURNING *`,
       [
-        customer_name, description || '', parseFloat(amount),
+        customer_name, customer_email || null, description || '', parseFloat(amount),
         currency || 'PHP', parseFloat(exchange_rate) || 1.0,
         frequency, parseInt(due_days) || 30, invoice_prefix || 'REC',
         start_date, end_date || null, start_date,
@@ -103,7 +103,7 @@ router.post('/', requireFinance, async (req, res) => {
 router.put('/:id', requireFinance, async (req, res) => {
   const user = req.session.user;
   const {
-    customer_name, description, amount, currency, exchange_rate,
+    customer_name, customer_email, description, amount, currency, exchange_rate,
     frequency, due_days, invoice_prefix,
     start_date, end_date, day_of_month, notes, is_active,
   } = req.body;
@@ -119,8 +119,8 @@ router.put('/:id', requireFinance, async (req, res) => {
          currency       = $4, exchange_rate  = $5, frequency      = $6,
          due_days       = $7, invoice_prefix = $8, start_date     = $9,
          end_date       = $10, day_of_month  = $11, notes         = $12,
-         is_active      = $13, updated_at    = NOW()
-       WHERE id = $14 RETURNING *`,
+         is_active      = $13, customer_email = $14, updated_at    = NOW()
+       WHERE id = $15 RETURNING *`,
       [
         customer_name, description || '', parseFloat(amount),
         currency || 'PHP', parseFloat(exchange_rate) || 1.0,
@@ -128,6 +128,7 @@ router.put('/:id', requireFinance, async (req, res) => {
         start_date, end_date || null,
         day_of_month ? parseInt(day_of_month) : null,
         notes || null, is_active !== undefined ? is_active : true,
+        customer_email || null,
         req.params.id,
       ]
     );
@@ -196,12 +197,13 @@ router.post('/run', requireFinance, async (req, res) => {
             // Create receivable
             await client.query(
               `INSERT INTO receivables
-                 (customer_name, invoice_number, description, amount, currency, exchange_rate,
+                 (customer_name, customer_email, invoice_number, description, amount, currency, exchange_rate,
                   due_date, status, pending_approval, created_by_email, created_by_name, created_by_role)
-               VALUES ($1,$2,$3,$4,$5,$6,$7,'pending',0,$8,$9,$10)
+               VALUES ($1,$2,$3,$4,$5,$6,$7,$8,'pending',0,$9,$10,$11)
                ON CONFLICT (invoice_number) DO NOTHING`,
               [
                 tmpl.customer_name,
+                tmpl.customer_email || null,
                 invoiceNum,
                 tmpl.description || `Recurring invoice — ${tmpl.frequency}`,
                 tmpl.amount, tmpl.currency, tmpl.exchange_rate,

@@ -25,7 +25,7 @@ function fmtAmt(amount, currency) {
 }
 
 const EMPTY_FORM = {
-  customer_name: '', description: '', amount: '', currency: 'PHP', exchange_rate: '1',
+  customer_name: '', customer_email: '', description: '', amount: '', currency: 'PHP', exchange_rate: '1',
   frequency: 'monthly', due_days: '30', invoice_prefix: 'REC',
   start_date: new Date().toISOString().split('T')[0],
   end_date: '', notes: '',
@@ -36,6 +36,7 @@ function TemplateModal({ template, onSave, onClose }) {
   const [form,   setForm]   = useState(template
     ? {
         customer_name:   template.customer_name || '',
+        customer_email:  template.customer_email || '',
         description:     template.description   || '',
         amount:          String(template.amount  || ''),
         currency:        template.currency       || 'PHP',
@@ -106,6 +107,12 @@ function TemplateModal({ template, onSave, onClose }) {
               <input className="form-input" value={form.invoice_prefix}
                 onChange={e => set('invoice_prefix', e.target.value.toUpperCase())} placeholder="REC" />
             </div>
+          </div>
+
+          <div className="form-group">
+            <label className="form-label">Customer Email <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>(carried onto each generated invoice)</span></label>
+            <input className="form-input" type="email" value={form.customer_email}
+              onChange={e => set('customer_email', e.target.value)} placeholder="customer@example.com" />
           </div>
 
           <div className="form-group">

@@ -2,6 +2,21 @@ const express    = require('express');
 const router     = express.Router();
 const PDFDocument = require('pdfkit');
 const { query }  = require('../db/database');
+const { sendEmail, renderEmail, isValidEmail } = require('../utils/email');
+
+// Manager-and-above guard for outbound customer email
+const LEVEL = { staff: 1, manager: 2, finance: 3, admin: 4, super_admin: 5 };
+function requireManager(req, res, next) {
+  if ((LEVEL[req.session?.user?.role] || 0) < 2)
+    return res.status(403).json({ error: 'Manager role or above required' });
+  next();
+}
+
+const escapeHtml = (s) => String(s ?? '').replace(/[&<>"']/g, c =>
+  ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+const fmtMoney = (sym, v) =>
+  `${sym}${Number(v || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 // ── Colour palette (matches app UI) ──────────────────────────────────────────
 const C = {
@@ -230,6 +245,100 @@ router.get('/receivable/:id', async (req, res) => {
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
     res.send(pdf);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// Resolve + persist the recipient for an invoice email
+async function resolveRecipient(rec, bodyTo) {
+  const to = (bodyTo || rec.customer_email || '').trim();
+  if (!isValidEmail(to)) return null;
+  if (to !== rec.customer_email) {
+    await query('UPDATE receivables SET customer_email = $1 WHERE id = $2', [to, rec.id]).catch(() => {});
+  }
+  return to;
+}
+
+// ── POST /api/invoices/receivable/:id/email ──────────────────────────────────
+// Email the invoice PDF to the customer.
+router.post('/receivable/:id/email', requireManager, async (req, res) => {
+  try {
+    const data = await loadInvoiceData(req.params.id);
+    if (!data) return res.status(404).json({ error: 'Invoice not found' });
+    if (data.rec.pending_approval) return res.status(400).json({ error: 'Invoice is still pending approval' });
+
+    const to = await resolveRecipient(data.rec, req.body?.to);
+    if (!to) return res.status(400).json({ error: 'A valid recipient email is required' });
+
+    const sym     = data.bizData.currency_symbol || '$';
+    const bizName = data.bizData.business_name || 'us';
+    const html = renderEmail({
+      heading:  `Invoice ${escapeHtml(data.invNum)}`,
+      bodyHtml: `
+        <p>Hi ${escapeHtml(data.rec.customer_name)},</p>
+        <p>Please find attached invoice <strong>${escapeHtml(data.invNum)}</strong> from ${escapeHtml(bizName)}.</p>
+        <p style="margin:16px 0;padding:12px 16px;background:#fff;border-radius:8px;border:1px solid #E2DDD4">
+          <strong>Balance due: ${fmtMoney(sym, data.balance)}</strong>${data.rec.due_date ? ` &middot; Due ${escapeHtml(data.rec.due_date)}` : ''}
+        </p>
+        <p>Thank you for your business.</p>`,
+      footnote: `${escapeHtml(bizName)} &middot; sent via CuentaIQ`,
+    });
+
+    const result = await sendEmail({
+      to,
+      subject:     `Invoice ${data.invNum} from ${bizName}`,
+      html,
+      attachments: [{ filename: `Invoice-${data.invNum}.pdf`.replace(/[^a-zA-Z0-9.\-_]/g, '-'), content: await renderInvoicePdf(data) }],
+      template:    'invoice',
+      relatedType: 'receivable',
+      relatedId:   data.rec.id,
+      sentBy:      req.session?.user?.email,
+    });
+    if (!result.ok) return res.status(400).json(result);
+    res.json({ ok: true, to });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── POST /api/invoices/receivable/:id/reminder ───────────────────────────────
+// Email a payment reminder (with the invoice attached) for an unpaid invoice.
+router.post('/receivable/:id/reminder', requireManager, async (req, res) => {
+  try {
+    const data = await loadInvoiceData(req.params.id);
+    if (!data) return res.status(404).json({ error: 'Invoice not found' });
+    if (data.rec.pending_approval) return res.status(400).json({ error: 'Invoice is still pending approval' });
+    if (data.rec.status === 'paid' || data.balance <= 0)
+      return res.status(400).json({ error: 'This invoice is already paid' });
+
+    const to = await resolveRecipient(data.rec, req.body?.to);
+    if (!to) return res.status(400).json({ error: 'A valid recipient email is required' });
+
+    const sym     = data.bizData.currency_symbol || '$';
+    const bizName = data.bizData.business_name || 'us';
+    const overdue = data.rec.due_date && data.rec.due_date < new Date().toISOString().split('T')[0];
+    const html = renderEmail({
+      heading:  `Payment reminder — Invoice ${escapeHtml(data.invNum)}`,
+      bodyHtml: `
+        <p>Hi ${escapeHtml(data.rec.customer_name)},</p>
+        <p>A friendly reminder that invoice <strong>${escapeHtml(data.invNum)}</strong> ${overdue ? 'is now <strong>overdue</strong>' : 'is awaiting payment'}.</p>
+        <p style="margin:16px 0;padding:12px 16px;background:#fff;border-radius:8px;border:1px solid #E2DDD4">
+          <strong>Balance due: ${fmtMoney(sym, data.balance)}</strong>${data.rec.due_date ? ` &middot; Due ${escapeHtml(data.rec.due_date)}` : ''}
+        </p>
+        <p>A copy of the invoice is attached. If you&#39;ve already sent payment, please disregard this message.</p>
+        <p>Thank you,<br>${escapeHtml(bizName)}</p>`,
+      footnote: `${escapeHtml(bizName)} &middot; sent via CuentaIQ`,
+    });
+
+    const result = await sendEmail({
+      to,
+      subject:     `Payment reminder: Invoice ${data.invNum}`,
+      html,
+      attachments: [{ filename: `Invoice-${data.invNum}.pdf`.replace(/[^a-zA-Z0-9.\-_]/g, '-'), content: await renderInvoicePdf(data) }],
+      template:    'ar-reminder',
+      relatedType: 'receivable',
+      relatedId:   data.rec.id,
+      sentBy:      req.session?.user?.email,
+    });
+    if (!result.ok) return res.status(400).json(result);
+    res.json({ ok: true, to });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 

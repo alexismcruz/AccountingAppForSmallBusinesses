@@ -5,7 +5,7 @@ import CurrencySelect from '../components/CurrencySelect.jsx';
 import AmountInput from '../components/AmountInput.jsx';
 import CharCount from '../components/CharCount.jsx';
 import StatusPill from '../components/StatusPill.jsx';
-import { X, Download, Upload, FileText, Receipt, Trash2, CalendarDays, CheckCircle2, BookOpen } from 'lucide-react';
+import { X, Download, Upload, FileText, Receipt, Trash2, CalendarDays, CheckCircle2, BookOpen, Mail, Bell } from 'lucide-react';
 
 // ── Download helpers ──────────────────────────────────────────────────────────
 function triggerDownload(url, filename) {
@@ -168,7 +168,7 @@ function AddModal({ type, onClose, onSaved }) {
   const baseCurrency = settings.currency || 'PHP';
   const isAR = type === 'incoming';
   const [form, setForm] = useState({
-    customer_name: '', supplier_name: '', invoice_number: '', reference_number: '',
+    customer_name: '', supplier_name: '', customer_email: '', invoice_number: '', reference_number: '',
     description: '', amount: '', due_date: '', scheduled_date: '', currency: baseCurrency, exchange_rate: '1',
     submitter_note: '',
   });
@@ -182,7 +182,7 @@ function AddModal({ type, onClose, onSaved }) {
     try {
       const endpoint = isAR ? '/api/payments/receivables' : '/api/payments/payables';
       const body = isAR
-        ? { customer_name: form.customer_name, invoice_number: form.invoice_number || `INV-${Date.now()}`, description: form.description, amount: form.amount, due_date: form.due_date || null, scheduled_date: form.scheduled_date || null, currency: form.currency, exchange_rate: parseFloat(form.exchange_rate) || 1, submitter_note: form.submitter_note || null }
+        ? { customer_name: form.customer_name, customer_email: form.customer_email || null, invoice_number: form.invoice_number || `INV-${Date.now()}`, description: form.description, amount: form.amount, due_date: form.due_date || null, scheduled_date: form.scheduled_date || null, currency: form.currency, exchange_rate: parseFloat(form.exchange_rate) || 1, submitter_note: form.submitter_note || null }
         : { supplier_name: form.supplier_name, reference_number: form.reference_number, description: form.description, amount: form.amount, due_date: form.due_date || null, scheduled_date: form.scheduled_date || null, currency: form.currency, exchange_rate: parseFloat(form.exchange_rate) || 1, submitter_note: form.submitter_note || null };
       const res = await fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
       const data = await res.json();
@@ -221,6 +221,16 @@ function AddModal({ type, onClose, onSaved }) {
                 placeholder={isAR ? 'INV-001 (auto if blank)' : 'Optional PO or ref #'} />
               <CharCount value={isAR ? form.invoice_number : form.reference_number} max={50} />
             </div>
+            {isAR && (
+              <div className="form-group" style={{ gridColumn: '1/-1' }}>
+                <label className="form-label">Customer Email <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>(for emailing the invoice)</span></label>
+                <input className="form-input" type="email"
+                  value={form.customer_email}
+                  maxLength={120}
+                  onChange={e => setForm(f => ({ ...f, customer_email: e.target.value }))}
+                  placeholder="customer@example.com" />
+              </div>
+            )}
             <div className="form-group">
               <label className="form-label">Amount *</label>
               <AmountInput
@@ -271,6 +281,63 @@ function AddModal({ type, onClose, onSaved }) {
         <div className="modal-footer">
           <button className="btn btn-ghost" onClick={onClose}>Cancel</button>
           <button className="btn btn-primary" onClick={handleSave} disabled={saving}>{saving ? 'Submitting…' : 'Submit for Approval'}</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function EmailInvoiceModal({ rec, mode, onClose, onSent }) {
+  const isReminder = mode === 'reminder';
+  const [to, setTo]           = useState(rec.customer_email || '');
+  const [sending, setSending] = useState(false);
+  const [err, setErr]         = useState(null);
+
+  const send = async () => {
+    if (!to.trim()) { setErr('Recipient email is required.'); return; }
+    setSending(true); setErr(null);
+    try {
+      const url = `/api/invoices/receivable/${rec.id}/${isReminder ? 'reminder' : 'email'}`;
+      const res = await fetch(url, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        credentials: 'include', body: JSON.stringify({ to: to.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setErr(data.error || 'Failed to send.'); return; }
+      onSent(`${isReminder ? 'Payment reminder' : 'Invoice'} sent to ${data.to}.`);
+      onClose();
+    } catch { setErr('Network error.'); }
+    finally { setSending(false); }
+  };
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal" style={{ maxWidth: 440 }} onClick={e => e.stopPropagation()}>
+        <div className="modal-header">
+          <div className="modal-title">{isReminder ? 'Send Payment Reminder' : 'Email Invoice'}</div>
+          <button className="modal-close" onClick={onClose}><X size={18} /></button>
+        </div>
+        <div className="modal-body">
+          {err && <div className="alert alert-error mb-16">{err}</div>}
+          <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 14 }}>
+            {isReminder
+              ? <>A payment reminder for invoice <strong>{rec.invoice_number || rec.id}</strong> ({rec.customer_name}) will be emailed, with the invoice attached.</>
+              : <>Invoice <strong>{rec.invoice_number || rec.id}</strong> for <strong>{rec.customer_name}</strong> will be emailed as a PDF attachment.</>}
+          </p>
+          <div className="form-group">
+            <label className="form-label">Recipient Email</label>
+            <input className="form-input" type="email" value={to}
+              onChange={e => setTo(e.target.value)} placeholder="customer@example.com" autoFocus />
+            {!rec.customer_email && (
+              <div className="text-muted text-sm mt-8">Tip: save the customer email on the invoice so it&#39;s prefilled next time.</div>
+            )}
+          </div>
+        </div>
+        <div className="modal-footer">
+          <button className="btn btn-ghost" onClick={onClose}>Cancel</button>
+          <button className="btn btn-primary" onClick={send} disabled={sending}>
+            {sending ? 'Sending…' : (isReminder ? 'Send Reminder' : 'Send Invoice')}
+          </button>
         </div>
       </div>
     </div>
@@ -687,6 +754,7 @@ export default function Payments({ tab }) {
   const [taxRecord,     setTaxRecord]     = useState(null);
   const [jeApp,         setJeApp]         = useState(null);
   const [accounts,      setAccounts]      = useState([]);
+  const [emailModal,    setEmailModal]    = useState(null); // { rec, mode: 'send' | 'reminder' }
   const [msg,           setMsg]           = useState(null);
 
   useEffect(() => { loadRecords(); }, [tab]);
@@ -753,6 +821,13 @@ export default function Payments({ tab }) {
         />
       )}
       {showImport && <ImportModal type={tab} onClose={() => setShowImport(false)} onImported={loadRecords} />}
+      {emailModal && (
+        <EmailInvoiceModal
+          rec={emailModal.rec} mode={emailModal.mode}
+          onClose={() => setEmailModal(null)}
+          onSent={(text) => { setMsg({ type: 'success', text }); loadRecords(); }}
+        />
+      )}
       <div className="page-header">
         <div>
           <div className="page-title">{isAR ? 'Incoming Payments' : 'Pending Payments'}</div>
@@ -886,6 +961,22 @@ export default function Payments({ tab }) {
                               style={{ display:'inline-flex', alignItems:'center', gap:4 }}
                               onClick={() => triggerBinaryDownload(`/api/invoices/receivable/${rec.id}`, `Invoice-${rec.invoice_number || rec.id}.pdf`)}>
                               <FileText size={13} strokeWidth={2} />PDF
+                            </button>
+                          )}
+                          {isAR && !rec.pending_approval && can('manager') && (
+                            <button className="btn btn-ghost btn-sm"
+                              title="Email invoice to customer"
+                              style={{ display:'inline-flex', alignItems:'center', gap:4 }}
+                              onClick={() => setEmailModal({ rec, mode: 'send' })}>
+                              <Mail size={13} strokeWidth={2} />Email
+                            </button>
+                          )}
+                          {isAR && !rec.pending_approval && rec.status !== 'paid' && can('manager') && (
+                            <button className="btn btn-ghost btn-sm"
+                              title="Send payment reminder"
+                              style={{ display:'inline-flex', alignItems:'center', gap:4 }}
+                              onClick={() => setEmailModal({ rec, mode: 'reminder' })}>
+                              <Bell size={13} strokeWidth={2} />Remind
                             </button>
                           )}
                           {!rec.pending_deletion && !rec.pending_approval && (

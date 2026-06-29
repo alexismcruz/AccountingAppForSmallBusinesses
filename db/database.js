@@ -592,6 +592,11 @@ async function initDB() {
   `);
   await pool.query(`CREATE INDEX IF NOT EXISTS idx_email_log_sent_at ON email_log (sent_at DESC)`);
 
+  // Customer email — recipient for emailed invoices and AR reminders
+  // (placed here, after both tables are created above)
+  await pool.query(`ALTER TABLE receivables        ADD COLUMN IF NOT EXISTS customer_email TEXT`);
+  await pool.query(`ALTER TABLE recurring_invoices ADD COLUMN IF NOT EXISTS customer_email TEXT`);
+
   // Suppression list — addresses we must not email (bounced / complained / manual)
   await pool.query(`
     CREATE TABLE IF NOT EXISTS email_suppressions (
