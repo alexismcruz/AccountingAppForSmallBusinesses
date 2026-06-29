@@ -162,6 +162,9 @@ async function initDB() {
       DEFAULT '["hr","inventory","payments","tax"]'
   `);
 
+  // Business email — used as the Reply-To on outgoing customer email
+  await pool.query(`ALTER TABLE business_settings ADD COLUMN IF NOT EXISTS business_email TEXT DEFAULT ''`);
+
   // ── Tax tables ──────────────────────────────────────────────────────────────
   await pool.query(`
     CREATE TABLE IF NOT EXISTS tax_rates (
@@ -570,6 +573,24 @@ async function initDB() {
   await pool.query(`ALTER TABLE business_settings ADD COLUMN IF NOT EXISTS multi_branch_last_push_error  TEXT`);
   // HQ stale-branch alert recipient (UI-configurable; HQ_ALERT_EMAIL env overrides it)
   await pool.query(`ALTER TABLE business_settings ADD COLUMN IF NOT EXISTS multi_branch_alert_email      TEXT`);
+
+  // ── Outgoing email audit log ──────────────────────────────────────────────
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS email_log (
+      id           SERIAL PRIMARY KEY,
+      to_email     TEXT,
+      subject      TEXT,
+      template     TEXT,
+      status       TEXT,            -- sent | failed | skipped
+      error        TEXT,
+      related_type TEXT,
+      related_id   INTEGER,
+      provider_id  TEXT,
+      sent_by      TEXT,
+      sent_at      TIMESTAMPTZ DEFAULT NOW()
+    )
+  `);
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_email_log_sent_at ON email_log (sent_at DESC)`);
 
   // ── Seed accounts if table is empty ────────────────────────────────────────
   const { rowCount: accountCount } = await pool.query('SELECT 1 FROM accounts LIMIT 1');

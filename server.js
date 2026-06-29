@@ -234,6 +234,7 @@ if (!IS_LANDING) {
   app.use('/api/integrations',       require('./routes/integrations/index'));
   app.use('/api/recurring-invoices', require('./routes/recurringInvoices'));
   app.use('/api/branch-sync',        require('./routes/branchSync'));
+  app.use('/api/email-log',          require('./routes/emailLog'));
 }
 
 // ── Serve built React app in production ──────────────────────────────────────

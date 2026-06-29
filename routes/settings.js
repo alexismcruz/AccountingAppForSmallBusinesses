@@ -61,14 +61,14 @@ router.put('/modules', async (req, res) => {
 });
 
 router.put('/', async (req, res) => {
-  const { business_name, registration_number, address, tax_id, currency, currency_symbol, fiscal_year_start } = req.body;
+  const { business_name, registration_number, address, tax_id, business_email, currency, currency_symbol, fiscal_year_start } = req.body;
   try {
     await query(`
       UPDATE business_settings
       SET business_name=$1, registration_number=$2, address=$3, tax_id=$4,
-          currency=$5, currency_symbol=$6, fiscal_year_start=$7, updated_at=NOW()
+          business_email=$5, currency=$6, currency_symbol=$7, fiscal_year_start=$8, updated_at=NOW()
       WHERE id=1
-    `, [business_name, registration_number, address, tax_id, currency, currency_symbol, fiscal_year_start]);
+    `, [business_name, registration_number, address, tax_id, business_email || '', currency, currency_symbol, fiscal_year_start]);
     const { rows: [settings] } = await query('SELECT * FROM business_settings WHERE id = 1');
     res.json(settings);
   } catch (e) { res.status(500).json({ error: e.message }); }

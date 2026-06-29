@@ -2,6 +2,7 @@ const router = require('express').Router();
 const crypto = require('crypto');
 const cron   = require('node-cron');
 const { query } = require('../db/database');
+const { sendEmail } = require('../utils/email');
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -485,37 +486,21 @@ async function sendStaleAlert(stale, { force = false, to } = {}) {
   if (!isValidEmail(to)) return { ok: false, reason: 'No alert recipient configured' };
   if (!force && stale.length === 0) return { ok: true, sent: false, reason: 'No stale branches' };
 
-  if (!process.env.RESEND_API_KEY) {
-    console.log('[BranchSync] RESEND_API_KEY not set — would alert', to, 'for', stale.map(b => b.name));
-    return { ok: false, reason: 'RESEND_API_KEY not set' };
-  }
-
   const subject = stale.length === 0
     ? 'CuentaIQ HQ — branch sync test (all branches healthy)'
     : `⚠ CuentaIQ HQ — ${stale.length} branch${stale.length > 1 ? 'es' : ''} overdue for sync`;
 
-  try {
-    const response = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: { 'Authorization': `Bearer ${process.env.RESEND_API_KEY}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        from:    'CuentaIQ HQ <hello@cuentaiq.com>',
-        to:      [to],
-        subject,
-        html:    staleAlertHtml(stale),
-      }),
-    });
-    if (!response.ok) {
-      const err = await response.text();
-      console.error('[BranchSync] Stale alert email failed:', err);
-      return { ok: false, reason: 'Email send failed' };
-    }
-    console.log(`[BranchSync] Stale alert emailed to ${to} (${stale.length} branch(es))`);
-    return { ok: true, sent: true, count: stale.length };
-  } catch (err) {
-    console.error('[BranchSync] Stale alert email error:', err.message);
-    return { ok: false, reason: err.message };
-  }
+  const result = await sendEmail({
+    to,
+    subject,
+    html:     staleAlertHtml(stale),
+    fromName: 'CuentaIQ HQ',
+    template: 'branch-stale-alert',
+  });
+
+  if (!result.ok) return { ok: false, reason: result.error || 'Email send failed' };
+  console.log(`[BranchSync] Stale alert emailed to ${to} (${stale.length} branch(es))`);
+  return { ok: true, sent: true, count: stale.length };
 }
 
 // Run the stale check (HQ instances only) and email if anything is overdue

@@ -30,44 +30,52 @@ function fmtDate(d) {
   });
 }
 
-// ── GET /api/invoices/receivable/:id ─────────────────────────────────────────
-router.get('/receivable/:id', async (req, res) => {
-  try {
-    const { rows: [rec] } = await query('SELECT * FROM receivables WHERE id = $1', [req.params.id]);
-    if (!rec) return res.status(404).json({ error: 'Invoice not found' });
+// ── Load a receivable + everything its invoice needs ─────────────────────────
+// Returns null if the receivable doesn't exist.
+async function loadInvoiceData(id) {
+  const { rows: [rec] } = await query('SELECT * FROM receivables WHERE id = $1', [id]);
+  if (!rec) return null;
 
-    const { rows: [biz] } = await query('SELECT * FROM business_settings LIMIT 1');
-    const bizData = biz || {};
-    const sym = bizData.currency_symbol || '$';
+  const { rows: [biz] } = await query('SELECT * FROM business_settings LIMIT 1');
+  const bizData = biz || {};
 
-    const fmt = (v) =>
-      `${sym}${parseFloat(v || 0).toLocaleString('en-US', {
-        minimumFractionDigits: 2, maximumFractionDigits: 2,
-      })}`;
+  const { rows: taxes } = await query(`
+    SELECT ta.tax_amount, tr.name AS tax_name, tr.code AS tax_code, tr.rate, tr.type
+    FROM tax_applications ta
+    JOIN tax_rates tr ON tr.id = ta.tax_rate_id
+    WHERE ta.entity_type = 'receivable' AND ta.entity_id = $1
+    ORDER BY ta.created_at
+  `, [id]);
 
-    const { rows: taxes } = await query(`
-      SELECT ta.tax_amount, tr.name AS tax_name, tr.code AS tax_code, tr.rate, tr.type
-      FROM tax_applications ta
-      JOIN tax_rates tr ON tr.id = ta.tax_rate_id
-      WHERE ta.entity_type = 'receivable' AND ta.entity_id = $1
-      ORDER BY ta.created_at
-    `, [req.params.id]);
+  const totalTax    = taxes.reduce((s, t) => s + (parseFloat(t.tax_amount) || 0), 0);
+  const grandTotal  = (rec.amount || 0) + totalTax;
+  const balance     = grandTotal - (rec.paid_amount || 0);
+  const invNum      = rec.invoice_number || String(rec.id);
 
-    const totalTax  = taxes.reduce((s, t) => s + (parseFloat(t.tax_amount) || 0), 0);
-    const grandTotal = (rec.amount || 0) + totalTax;
-    const balance   = grandTotal - (rec.paid_amount || 0);
-    const invNum   = rec.invoice_number || String(rec.id);
-    const filename = `Invoice-${invNum}.pdf`.replace(/[^a-zA-Z0-9.\-_]/g, '-');
+  return { rec, bizData, taxes, totalTax, grandTotal, balance, invNum };
+}
 
-    res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+// ── Render the invoice PDF to a Buffer ───────────────────────────────────────
+// Shared by the download route and (future) email sending.
+function renderInvoicePdf(data) {
+  const { rec, bizData, taxes, grandTotal, balance, invNum } = data;
+  const sym = bizData.currency_symbol || '$';
+  const fmt = (v) =>
+    `${sym}${parseFloat(v || 0).toLocaleString('en-US', {
+      minimumFractionDigits: 2, maximumFractionDigits: 2,
+    })}`;
 
+  return new Promise((resolve, reject) => {
     const doc = new PDFDocument({ size: 'LETTER', margin: MAR, info: {
       Title:   `Invoice ${invNum}`,
       Author:  bizData.business_name || 'My Business',
       Subject: `Invoice for ${rec.customer_name}`,
     }});
-    doc.pipe(res);
+
+    const chunks = [];
+    doc.on('data',  c => chunks.push(c));
+    doc.on('end',   () => resolve(Buffer.concat(chunks)));
+    doc.on('error', reject);
 
     // ── HEADER — business info (left) ─────────────────────────────────────────
     doc.fontSize(22).font('Helvetica-Bold').fillColor(C.dark)
@@ -207,7 +215,24 @@ router.get('/receivable/:id', async (req, res) => {
        );
 
     doc.end();
+  });
+}
+
+// ── GET /api/invoices/receivable/:id ─────────────────────────────────────────
+router.get('/receivable/:id', async (req, res) => {
+  try {
+    const data = await loadInvoiceData(req.params.id);
+    if (!data) return res.status(404).json({ error: 'Invoice not found' });
+
+    const filename = `Invoice-${data.invNum}.pdf`.replace(/[^a-zA-Z0-9.\-_]/g, '-');
+    const pdf = await renderInvoicePdf(data);
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.send(pdf);
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 module.exports = router;
+module.exports.loadInvoiceData  = loadInvoiceData;
+module.exports.renderInvoicePdf = renderInvoicePdf;

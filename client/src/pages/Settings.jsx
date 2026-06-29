@@ -148,6 +148,16 @@ export default function Settings() {
             </div>
           </div>
           <div className="form-group">
+            <label className="form-label">Business Email</label>
+            <input className="form-input" type="email" value={form.business_email || ''}
+              maxLength={120}
+              onChange={e => setForm(f => ({ ...f, business_email: e.target.value }))}
+              placeholder="billing@yourbusiness.com" />
+            <div className="text-muted text-sm mt-8">
+              Used as the reply-to address on emails CuentaIQ sends on your behalf (e.g. invoices). Customer replies go here.
+            </div>
+          </div>
+          <div className="form-group">
             <label className="form-label">Business Address</label>
             <textarea className="form-textarea" value={form.address || ''}
               maxLength={600}
