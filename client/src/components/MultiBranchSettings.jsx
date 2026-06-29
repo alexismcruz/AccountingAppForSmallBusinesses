@@ -70,6 +70,10 @@ export default function MultiBranchSettings() {
   const [testingAlert, setTestingAlert] = useState(false);
   const [testResult,   setTestResult]   = useState(null);
 
+  // HQ alert recipient editing
+  const [alertEmail,       setAlertEmail]       = useState('');
+  const [savingAlertEmail, setSavingAlertEmail] = useState(false);
+
   // Help panel
   const [helpOpen, setHelpOpen] = useState(false);
 
@@ -81,6 +85,8 @@ export default function MultiBranchSettings() {
         const data = await res.json();
         setStatus(data);
         setSyncTime(data.sync_time || '18:00');
+        // Seed the editable recipient field from the DB-stored value (not env overrides)
+        if (data.alert_source !== 'env') setAlertEmail(data.alert_email || '');
       }
     } catch {}
     setLoading(false);
@@ -175,6 +181,26 @@ export default function MultiBranchSettings() {
         : (data.reason || data.error || 'Failed to send test alert.') });
     } catch { setTestResult({ ok: false, text: 'Network error.' }); }
     setTestingAlert(false);
+  };
+
+  const saveAlertEmail = async () => {
+    setSavingAlertEmail(true); setTestResult(null);
+    try {
+      const res  = await fetch('/api/branch-sync/alert-email', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ email: alertEmail.trim() }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        await load();
+        flash('success', alertEmail.trim() ? 'Alert recipient saved.' : 'Stale-branch alerts disabled.');
+      } else {
+        flash('error', data.error || 'Failed to save alert email.');
+      }
+    } catch { flash('error', 'Network error.'); }
+    setSavingAlertEmail(false);
   };
 
   const openAdd = () => {
@@ -361,25 +387,58 @@ export default function MultiBranchSettings() {
           <p style={{ fontSize: 12.5, color: 'var(--color-ink-mid)', lineHeight: 1.6, marginBottom: 12 }}>
             HQ emails a daily digest when any branch hasn't synced in over 48 hours.
           </p>
-          {status?.alert_enabled ? (
+
+          {/* Nag: alerts off while branches are connected */}
+          {!status?.alert_enabled && status?.branches?.length > 0 && (
+            <div style={{
+              background: '#fff7ed', border: '1px solid #fed7aa', borderRadius: 8,
+              padding: '10px 12px', marginBottom: 12, fontSize: 12.5, color: '#92400e', lineHeight: 1.6,
+            }}>
+              ⚠ Stale-branch alerts are <strong>off</strong>. You have {status.branches.length} branch{status.branches.length > 1 ? 'es' : ''} connected but no alert recipient — you won't be notified if one stops syncing. Add an email below to turn them on.
+            </div>
+          )}
+
+          {status?.alert_source === 'env' ? (
+            /* Locked: recipient comes from the HQ_ALERT_EMAIL env var */
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
               <span style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
                 <span style={{ color: 'var(--color-success)', fontWeight: 700 }}>✓</span>
                 Alerts to <code style={{ background: 'var(--color-surface-2)', padding: '1px 5px', borderRadius: 3 }}>{status.alert_email}</code>
+                <span style={{ color: 'var(--color-ink-mid)' }}>(set via HQ_ALERT_EMAIL)</span>
               </span>
               <button className="btn btn-ghost" style={{ fontSize: 12 }}
                 onClick={sendTestAlert} disabled={testingAlert}>
                 {testingAlert ? '⏳ Sending…' : '✉ Send Test Alert'}
               </button>
-              {testResult && (
-                <span style={{ fontSize: 12, color: testResult.ok ? 'var(--color-success)' : 'var(--color-danger)' }}>
-                  {testResult.ok ? '✓ ' : ''}{testResult.text}
-                </span>
-              )}
             </div>
           ) : (
-            <div className="alert alert-info" style={{ fontSize: 12 }}>
-              Set <code>HQ_ALERT_EMAIL</code> in Railway Variables to receive stale-branch alerts.
+            /* Editable recipient */
+            <div>
+              <div style={{ display: 'flex', alignItems: 'flex-end', gap: 10, flexWrap: 'wrap' }}>
+                <div className="form-group" style={{ margin: 0, flex: 1, minWidth: 220 }}>
+                  <label className="form-label">Alert recipient email</label>
+                  <input type="email" className="form-input" placeholder="name@company.com"
+                    value={alertEmail}
+                    onChange={e => setAlertEmail(e.target.value)} />
+                </div>
+                <button className="btn btn-primary" style={{ fontSize: 12 }}
+                  onClick={saveAlertEmail} disabled={savingAlertEmail}>
+                  {savingAlertEmail ? 'Saving…' : 'Save'}
+                </button>
+                <button className="btn btn-ghost" style={{ fontSize: 12 }}
+                  onClick={sendTestAlert} disabled={testingAlert || !status?.alert_enabled}>
+                  {testingAlert ? '⏳ Sending…' : '✉ Send Test'}
+                </button>
+              </div>
+              <div style={{ fontSize: 11, color: 'var(--color-ink-mid)', marginTop: 6 }}>
+                Leave blank and Save to turn alerts off.
+              </div>
+            </div>
+          )}
+
+          {testResult && (
+            <div style={{ fontSize: 12, marginTop: 8, color: testResult.ok ? 'var(--color-success)' : 'var(--color-danger)' }}>
+              {testResult.ok ? '✓ ' : ''}{testResult.text}
             </div>
           )}
         </div>

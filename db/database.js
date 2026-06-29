@@ -568,6 +568,8 @@ async function initDB() {
   await pool.query(`ALTER TABLE business_settings ADD COLUMN IF NOT EXISTS multi_branch_last_push_at     TIMESTAMPTZ`);
   await pool.query(`ALTER TABLE business_settings ADD COLUMN IF NOT EXISTS multi_branch_last_push_status TEXT`);
   await pool.query(`ALTER TABLE business_settings ADD COLUMN IF NOT EXISTS multi_branch_last_push_error  TEXT`);
+  // HQ stale-branch alert recipient (UI-configurable; HQ_ALERT_EMAIL env overrides it)
+  await pool.query(`ALTER TABLE business_settings ADD COLUMN IF NOT EXISTS multi_branch_alert_email      TEXT`);
 
   // ── Seed accounts if table is empty ────────────────────────────────────────
   const { rowCount: accountCount } = await pool.query('SELECT 1 FROM accounts LIMIT 1');

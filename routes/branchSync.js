@@ -11,10 +11,21 @@ const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 async function getInstanceRole() {
   const { rows } = await query(`
     SELECT multi_branch_role, multi_branch_sync_time,
-           multi_branch_last_push_at, multi_branch_last_push_status, multi_branch_last_push_error
+           multi_branch_last_push_at, multi_branch_last_push_status, multi_branch_last_push_error,
+           multi_branch_alert_email
     FROM business_settings WHERE id = 1
   `);
   return rows[0] || { multi_branch_role: 'standalone', multi_branch_sync_time: '18:00' };
+}
+
+const isValidEmail = (e) => typeof e === 'string' && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e.trim());
+
+// Resolve the active stale-alert recipient. Env var overrides the DB value.
+// Returns { email, source } where source is 'env' | 'db' | null.
+function resolveAlertEmail(settings) {
+  if (isValidEmail(process.env.HQ_ALERT_EMAIL)) return { email: process.env.HQ_ALERT_EMAIL.trim(), source: 'env' };
+  if (isValidEmail(settings?.multi_branch_alert_email)) return { email: settings.multi_branch_alert_email.trim(), source: 'db' };
+  return { email: null, source: null };
 }
 
 // Persist the outcome of the most recent branch->HQ push so the UI can show health
@@ -65,11 +76,14 @@ router.get('/status', requireAdmin, async (req, res) => {
         WHERE br.status = 'active'
         ORDER BY br.name
       `);
+      const alert = resolveAlertEmail(settings);
       return res.json({
         role,
-        sync_time:       settings.multi_branch_sync_time,
-        alert_email:     process.env.HQ_ALERT_EMAIL || null,
-        alert_enabled:   !!process.env.HQ_ALERT_EMAIL,
+        sync_time:      settings.multi_branch_sync_time,
+        alert_email:    alert.email,
+        alert_enabled:  !!alert.email,
+        alert_source:   alert.source,      // 'env' | 'db' | null
+        alert_editable: alert.source !== 'env', // env var locks the field
         branches,
       });
     }
@@ -150,7 +164,38 @@ router.put('/role', requireAdmin, async (req, res) => {
     return res.status(400).json({ error: 'role must be standalone, hq, or branch' });
   try {
     await query('UPDATE business_settings SET multi_branch_role = $1 WHERE id = 1', [role]);
-    res.json({ ok: true, role });
+
+    // Switching to HQ: default the stale-alert recipient to this admin's email so
+    // monitoring is on by default. Skips if an env override exists or a value is already set.
+    let alert_email_defaulted = null;
+    if (role === 'hq') {
+      const settings = await getInstanceRole();
+      const adminEmail = req.session?.user?.email;
+      if (!resolveAlertEmail(settings).email && isValidEmail(adminEmail)) {
+        await query('UPDATE business_settings SET multi_branch_alert_email = $1 WHERE id = 1', [adminEmail.trim()]);
+        alert_email_defaulted = adminEmail.trim();
+      }
+    }
+
+    res.json({ ok: true, role, alert_email_defaulted });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── PUT /api/branch-sync/alert-email ─────────────────────────────────────────
+// Set or clear the stale-alert recipient (HQ). Empty string disables alerts.
+// No effect while HQ_ALERT_EMAIL env override is in place.
+
+router.put('/alert-email', requireAdmin, async (req, res) => {
+  const raw = (req.body?.email ?? '').trim();
+  if (raw && !isValidEmail(raw))
+    return res.status(400).json({ error: 'Please enter a valid email address.' });
+  if (isValidEmail(process.env.HQ_ALERT_EMAIL))
+    return res.status(400).json({ error: 'Alert email is managed by the HQ_ALERT_EMAIL environment variable.' });
+  try {
+    await query('UPDATE business_settings SET multi_branch_alert_email = $1 WHERE id = 1', [raw || null]);
+    res.json({ ok: true, alert_email: raw || null, alert_enabled: !!raw });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -435,10 +480,9 @@ function staleAlertHtml(stale) {
   </div>`;
 }
 
-// Email the configured HQ_ALERT_EMAIL. `force` sends even when nothing is stale (test pings).
-async function sendStaleAlert(stale, { force = false } = {}) {
-  const to = process.env.HQ_ALERT_EMAIL;
-  if (!to) return { ok: false, reason: 'HQ_ALERT_EMAIL not set' };
+// Email the resolved recipient. `force` sends even when nothing is stale (test pings).
+async function sendStaleAlert(stale, { force = false, to } = {}) {
+  if (!isValidEmail(to)) return { ok: false, reason: 'No alert recipient configured' };
   if (!force && stale.length === 0) return { ok: true, sent: false, reason: 'No stale branches' };
 
   if (!process.env.RESEND_API_KEY) {
@@ -476,8 +520,11 @@ async function sendStaleAlert(stale, { force = false } = {}) {
 
 // Run the stale check (HQ instances only) and email if anything is overdue
 async function checkStaleBranches() {
-  const { multi_branch_role: role } = await getInstanceRole();
-  if (role !== 'hq') return;
+  const settings = await getInstanceRole();
+  if (settings.multi_branch_role !== 'hq') return;
+
+  const { email } = resolveAlertEmail(settings);
+  if (!email) return; // alerts disabled — nothing to do
 
   const stale = await findStaleBranches();
   if (stale.length === 0) {
@@ -485,12 +532,12 @@ async function checkStaleBranches() {
     return;
   }
   console.warn(`[BranchSync] Stale check: ${stale.length} branch(es) overdue`);
-  await sendStaleAlert(stale);
+  await sendStaleAlert(stale, { to: email });
 }
 
+// Always scheduled — the daily job resolves role + recipient at run time and
+// no-ops on non-HQ instances or when no recipient is set (recipient lives in the DB).
 function startHQAlertCron() {
-  if (!process.env.HQ_ALERT_EMAIL) return;
-
   const alertTime = process.env.HQ_ALERT_TIME || '07:00';
   const [hh, mm] = alertTime.split(':').map(Number);
   const h = isNaN(hh) ? 7 : hh;
@@ -509,15 +556,18 @@ function startHQAlertCron() {
 
 router.post('/test-alert', requireAdmin, async (req, res) => {
   try {
-    const { multi_branch_role: role } = await getInstanceRole();
-    if (role !== 'hq') return res.status(403).json({ error: 'This instance is not configured as HQ' });
-    if (!process.env.HQ_ALERT_EMAIL)
-      return res.status(400).json({ error: 'Set HQ_ALERT_EMAIL in Railway Variables to enable alerts.' });
+    const settings = await getInstanceRole();
+    if (settings.multi_branch_role !== 'hq')
+      return res.status(403).json({ error: 'This instance is not configured as HQ' });
+
+    const { email } = resolveAlertEmail(settings);
+    if (!email)
+      return res.status(400).json({ error: 'No alert recipient set. Add an email below (or set HQ_ALERT_EMAIL).' });
 
     const stale  = await findStaleBranches();
-    const result = await sendStaleAlert(stale, { force: true });
+    const result = await sendStaleAlert(stale, { force: true, to: email });
     if (!result.ok) return res.status(400).json(result);
-    res.json({ ...result, stale_count: stale.length, alert_email: process.env.HQ_ALERT_EMAIL });
+    res.json({ ...result, stale_count: stale.length, alert_email: email });
   } catch (err) {
     console.error('[BranchSync] test-alert error:', err.message);
     res.status(500).json({ error: err.message });
