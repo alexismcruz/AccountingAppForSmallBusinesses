@@ -108,6 +108,15 @@ const FEATURES = [
       { src: '/screenshots/06/cuentaIQ-AI.png', alt: 'AI Assistant — chat interface with drafted journal entry' },
     ],
   },
+  {
+    number: '07',
+    title: 'Multi-Branch HQ Sync',
+    desc: 'Running more than one location? Connect each branch’s CuentaIQ to a central HQ. Every branch pushes a daily financial summary — revenue, expenses, AR, AP, and payroll — so you see consolidated totals and per-branch performance in one place.',
+    tags: ['HQ Consolidated View', 'Per-Branch Summaries', 'Daily Auto-Sync', 'Multi-Location'],
+    images: [
+      { src: '/screenshots/07/multi-branch-sync.png', alt: 'Multi-Branch Sync — set an instance as Standalone, Headquarters, or Branch' },
+    ],
+  },
 ];
 
 export default function FeaturesPage() {
