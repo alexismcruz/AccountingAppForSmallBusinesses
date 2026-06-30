@@ -139,7 +139,8 @@ app.post('/api/auth/logout', (req, res) => {
 });
 
 // ── Public routes (no auth required) ─────────────────────────────────────────
-app.use('/api/contact', require('./routes/contact'));
+app.use('/api/contact',    require('./routes/contact'));
+app.use('/api/onboarding', require('./routes/onboarding'));
 
 // ── Auth guard ────────────────────────────────────────────────────────────────
 app.use('/api', (req, res, next) => {

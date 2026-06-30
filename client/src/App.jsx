@@ -30,6 +30,7 @@ import AboutPage     from './landing/AboutPage.jsx';
 import FeaturesPage  from './landing/FeaturesPage.jsx';
 import SubscribePage from './landing/SubscribePage.jsx';
 import LegalPage     from './landing/LegalPage.jsx';
+import OnboardingPage from './landing/OnboardingPage.jsx';
 
 const IS_LANDING =
   import.meta.env.VITE_LANDING_SITE === 'true' ||
@@ -55,6 +56,7 @@ function LandingSite() {
         <Route path="/about-us"        element={<AboutPage />} />
         <Route path="/features"        element={<FeaturesPage />} />
         <Route path="/subscribe"       element={<SubscribePage />} />
+        <Route path="/onboarding"      element={<OnboardingPage />} />
         <Route path="/terms"           element={<LegalPage type="terms" />} />
         <Route path="/privacy"         element={<LegalPage type="privacy" />} />
         <Route path="/refund-policy"   element={<LegalPage type="refund" />} />
