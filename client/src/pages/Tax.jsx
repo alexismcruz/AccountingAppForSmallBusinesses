@@ -515,12 +515,13 @@ function FilingModal({ filing, taxRates, onClose, onSaved }) {
     period_type:      filing.period_type,
     period_start:     filing.period_start,
     period_end:       filing.period_end,
+    due_date:         filing.due_date || '',
     total_tax_amount: String(filing.total_tax_amount || ''),
     reference:        filing.reference || '',
     notes:            filing.notes || '',
   } : {
     tax_rate_id: '', period_type: 'monthly',
-    period_start: '', period_end: '',
+    period_start: '', period_end: '', due_date: '',
     total_tax_amount: '', reference: '', notes: '',
   });
   const [saving, setSaving] = useState(false);
@@ -577,6 +578,11 @@ function FilingModal({ filing, taxRates, onClose, onSaved }) {
               <label className="form-label">Period End *</label>
               <input type="date" className="form-input" value={form.period_end}
                 onChange={e => setForm(f => ({ ...f, period_end: e.target.value }))} />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Filing Due Date <span style={{ fontWeight: 400, color: 'var(--text-muted)', fontSize: 11 }}>(optional)</span></label>
+              <input type="date" className="form-input" value={form.due_date}
+                onChange={e => setForm(f => ({ ...f, due_date: e.target.value }))} />
             </div>
             <div className="form-group">
               <label className="form-label">Total Tax Amount</label>
@@ -638,6 +644,8 @@ export default function Tax({ tab = 'rates' }) {
   const [showApplyModal,  setShowApplyModal]  = useState(false);
   const [showFilingModal, setShowFilingModal] = useState(false);
   const [editFiling,      setEditFiling]      = useState(null);
+  const [scheduleYear,    setScheduleYear]    = useState(new Date().getFullYear());
+  const [generating,      setGenerating]      = useState(false);
   const [jeApp,           setJeApp]           = useState(null); // pending JE after apply
 
   const [seeding, setSeeding] = useState(false);
@@ -737,6 +745,23 @@ export default function Tax({ tab = 'rates' }) {
     if (!confirm('Delete this filing record?')) return;
     const res = await fetch(`/api/tax/filings/${filing.id}`, { method: 'DELETE', credentials: 'include' });
     if (res.ok) { loadFilings(); setMsg({ type: 'success', text: 'Filing deleted.' }); }
+  };
+
+  const handleGenerateSchedule = async () => {
+    if (!confirm(`Generate the standard BIR filing schedule for ${scheduleYear}?\n\nThis adds any missing filing deadlines for the year. Existing records are left untouched, and every date stays editable.`)) return;
+    setGenerating(true);
+    try {
+      const res  = await fetch('/api/tax/filings/generate', {
+        method: 'POST', credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ year: scheduleYear }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setMsg({ type: 'error', text: data.error || 'Failed to generate schedule.' }); return; }
+      loadFilings();
+      setMsg({ type: 'success', text: `Schedule for ${data.year}: ${data.generated} added${data.skipped ? `, ${data.skipped} already existed` : ''}.` });
+    } catch { setMsg({ type: 'error', text: 'Network error.' }); }
+    finally { setGenerating(false); }
   };
 
   const exportProjectionsCSV = () => {
@@ -1161,10 +1186,26 @@ export default function Tax({ tab = 'rates' }) {
               })}
             </div>
             {can('finance') && (
-              <button className="btn btn-primary" onClick={() => { setEditFiling(null); setShowFilingModal(true); }}>
-                + Add Filing
-              </button>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <select className="form-input" style={{ width: 100, height: 34, padding: '4px 8px' }}
+                  value={scheduleYear} onChange={e => setScheduleYear(parseInt(e.target.value))}>
+                  {[0, 1, -1].map(off => new Date().getFullYear() + off)
+                    .sort((a, b) => a - b)
+                    .map(y => <option key={y} value={y}>{y}</option>)}
+                </select>
+                <button className="btn btn-ghost" onClick={handleGenerateSchedule} disabled={generating}>
+                  {generating ? 'Generating…' : '📅 Generate BIR Schedule'}
+                </button>
+                <button className="btn btn-primary" onClick={() => { setEditFiling(null); setShowFilingModal(true); }}>
+                  + Add Filing
+                </button>
+              </div>
             )}
+          </div>
+
+          <div className="alert alert-info mb-16" style={{ fontSize: 12 }}>
+            ⚠ Due dates follow standard BIR rules and are <strong>guidance only</strong> — verify against the BIR
+            and your filing method (eFPS/eBIRForms). Every date is editable, and holidays may move a deadline to the next business day.
           </div>
 
           <div className="card">
@@ -1179,9 +1220,10 @@ export default function Tax({ tab = 'rates' }) {
                 <table>
                   <thead>
                     <tr>
-                      <th>Tax Rate</th>
+                      <th>Form / Tax</th>
                       <th>Period Type</th>
                       <th>Period</th>
+                      <th>Due Date</th>
                       <th className="td-right">Tax Amount</th>
                       <th>Reference</th>
                       <th>Status</th>
@@ -1191,13 +1233,25 @@ export default function Tax({ tab = 'rates' }) {
                     </tr>
                   </thead>
                   <tbody>
-                    {filings.map(f => (
+                    {filings.map(f => {
+                      const todayStr = new Date().toISOString().slice(0, 10);
+                      const soonStr  = (() => { const d = new Date(); d.setDate(d.getDate() + 14); return d.toISOString().slice(0, 10); })();
+                      const isPending = f.status === 'pending';
+                      const overdue   = isPending && f.due_date && f.due_date < todayStr;
+                      const dueSoon   = isPending && f.due_date && !overdue && f.due_date <= soonStr;
+                      const dueColor  = overdue ? 'var(--danger)' : dueSoon ? 'var(--warning, #7A5C0A)' : 'var(--text-muted)';
+                      return (
                         <tr key={f.id}>
-                          <td style={{ fontWeight: 500 }}>{f.tax_name || <span style={{ color: 'var(--color-ink-mid)' }}>— General —</span>}</td>
+                          <td style={{ fontWeight: 500 }}>{f.form_name || f.tax_name || <span style={{ color: 'var(--color-ink-mid)' }}>— General —</span>}</td>
                           <td style={{ fontSize: 12 }}>{FREQ_LABELS[f.period_type] || f.period_type}</td>
                           <td style={{ fontSize: 12 }}>
                             {fmtDate(f.period_start)} → {fmtDate(f.period_end)}
                             {f.notes && <div style={{ fontSize: 11, color: 'var(--color-ink-mid)', marginTop: 2 }}>{f.notes}</div>}
+                          </td>
+                          <td style={{ fontSize: 12, color: dueColor, fontWeight: overdue || dueSoon ? 600 : 400, whiteSpace: 'nowrap' }}>
+                            {f.due_date ? fmtDate(f.due_date) : '—'}
+                            {overdue && <div style={{ fontSize: 10, fontWeight: 700 }}>OVERDUE</div>}
+                            {dueSoon && <div style={{ fontSize: 10, fontWeight: 700 }}>DUE SOON</div>}
                           </td>
                           <td className="td-right tabular" style={{ fontWeight: 700 }}>{fmt(f.total_tax_amount)}</td>
                           <td style={{ fontSize: 12, color: 'var(--color-ink-mid)' }}>{f.reference || '—'}</td>
@@ -1224,7 +1278,8 @@ export default function Tax({ tab = 'rates' }) {
                             </div>
                           </td>
                         </tr>
-                    ))}
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>

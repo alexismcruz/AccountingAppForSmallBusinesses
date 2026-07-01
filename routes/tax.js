@@ -603,16 +603,19 @@ router.get('/filings', async (req, res) => {
 // ── POST /api/tax/filings ─────────────────────────────────────────────────────
 router.post('/filings', async (req, res) => {
   const user = req.session.user;
-  const { tax_rate_id, period_type, period_start, period_end, total_tax_amount, reference, notes } = req.body;
+  const { tax_rate_id, period_type, period_start, period_end, total_tax_amount, reference, notes,
+          due_date, form_code, form_name } = req.body;
   if (!period_type || !period_start || !period_end)
     return res.status(400).json({ error: 'period_type, period_start, and period_end are required' });
   try {
     const { rows: [filing] } = await query(
       `INSERT INTO tax_filings
-         (tax_rate_id, period_type, period_start, period_end, total_tax_amount, reference, notes)
-       VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *`,
+         (tax_rate_id, period_type, period_start, period_end, total_tax_amount, reference, notes,
+          due_date, form_code, form_name)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING *`,
       [tax_rate_id || null, period_type, period_start, period_end,
-       parseFloat(total_tax_amount) || 0, reference || null, notes || null]
+       parseFloat(total_tax_amount) || 0, reference || null, notes || null,
+       due_date || null, form_code || null, form_name || null]
     );
     logAction(user, 'CREATE_TAX_FILING', 'tax_filing', filing.id, null);
     res.json({ ...filing, total_tax_amount: parseFloat(filing.total_tax_amount) || 0 });
@@ -622,7 +625,7 @@ router.post('/filings', async (req, res) => {
 // ── PUT /api/tax/filings/:id ──────────────────────────────────────────────────
 router.put('/filings/:id', async (req, res) => {
   const user = req.session.user;
-  const { status, notes, reference, total_tax_amount } = req.body;
+  const { status, notes, reference, total_tax_amount, due_date } = req.body;
   try {
     const { rows: [cur] } = await query('SELECT * FROM tax_filings WHERE id = $1', [req.params.id]);
     if (!cur) return res.status(404).json({ error: 'Filing not found' });
@@ -633,12 +636,13 @@ router.put('/filings/:id', async (req, res) => {
 
     const { rows: [filing] } = await query(
       `UPDATE tax_filings
-         SET status=$1, filed_at=$2, paid_at=$3, notes=$4, reference=$5, total_tax_amount=$6
-       WHERE id=$7 RETURNING *`,
+         SET status=$1, filed_at=$2, paid_at=$3, notes=$4, reference=$5, total_tax_amount=$6, due_date=$7
+       WHERE id=$8 RETURNING *`,
       [newStatus, filedAt, paidAt,
        notes !== undefined ? notes : cur.notes,
        reference !== undefined ? reference : cur.reference,
        total_tax_amount !== undefined ? parseFloat(total_tax_amount) : cur.total_tax_amount,
+       due_date !== undefined ? (due_date || null) : cur.due_date,
        req.params.id]
     );
     logAction(user, 'UPDATE_TAX_FILING', 'tax_filing', filing.id, null, { status: newStatus });
@@ -655,6 +659,153 @@ router.delete('/filings/:id', async (req, res) => {
     await query('DELETE FROM tax_filings WHERE id = $1', [req.params.id]);
     logAction(user, 'DELETE_TAX_FILING', 'tax_filing', filing.id, null);
     res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── BIR filing-schedule generator ────────────────────────────────────────────
+// Builds the standard BIR filing calendar for a year. Deadlines mirror the rules
+// shown on the BIR Forms page — they are guidance (verify against BIR + your
+// filing method), and every generated row stays editable/deletable.
+
+const pad2   = (n) => String(n).padStart(2, '0');
+const ymd    = (y, m, d) => `${y}-${pad2(m)}-${pad2(d)}`;
+const lastDay = (y, m) => new Date(Date.UTC(y, m, 0)).getUTCDate(); // m is 1-12
+const addDaysStr = (dateStr, days) => {
+  const d = new Date(dateStr + 'T00:00:00Z');
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+};
+const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+
+// Produce the list of filing obligations for `year` given the business context.
+function buildBirSchedule(year, { businessType, hasHR }) {
+  const rows = [];
+  const quarters = [
+    { q: 1, sM: 1, eM: 3 }, { q: 2, sM: 4, eM: 6 },
+    { q: 3, sM: 7, eM: 9 }, { q: 4, sM: 10, eM: 12 },
+  ];
+  const qStart = (sM) => ymd(year, sM, 1);
+  const qEnd   = (eM) => ymd(year, eM, lastDay(year, eM));
+
+  // Percentage tax (2551Q) — all four quarters, due 25th of the month after quarter close
+  quarters.forEach(({ q, sM, eM }) => {
+    rows.push({
+      form_code: '2551Q', form_name: `Percentage Tax (2551Q) — Q${q} ${year}`,
+      period_type: 'quarterly', period_start: qStart(sM), period_end: qEnd(eM),
+      due_date: q === 4 ? ymd(year + 1, 1, 25) : ymd(year, eM + 1, 25),
+    });
+  });
+
+  // Quarterly + annual income tax, by entity type
+  if (businessType === 'individual') {
+    const dues = { 1: ymd(year, 5, 15), 2: ymd(year, 8, 15), 3: ymd(year, 11, 15) };
+    [1, 2, 3].forEach((q) => {
+      const { sM, eM } = quarters[q - 1];
+      rows.push({
+        form_code: '1701Q', form_name: `Income Tax (1701Q) — Q${q} ${year}`,
+        period_type: 'quarterly', period_start: qStart(sM), period_end: qEnd(eM), due_date: dues[q],
+      });
+    });
+    rows.push({
+      form_code: '1701', form_name: `Annual Income Tax (1701) — ${year}`,
+      period_type: 'annual', period_start: ymd(year, 1, 1), period_end: ymd(year, 12, 31),
+      due_date: ymd(year + 1, 4, 15),
+    });
+  } else {
+    [1, 2, 3].forEach((q) => {
+      const { sM, eM } = quarters[q - 1];
+      const end = qEnd(eM);
+      rows.push({
+        form_code: '1702Q', form_name: `Income Tax (1702Q) — Q${q} ${year}`,
+        period_type: 'quarterly', period_start: qStart(sM), period_end: end,
+        due_date: addDaysStr(end, 60), // 60 days after quarter close
+      });
+    });
+    rows.push({
+      form_code: '1702', form_name: `Annual Income Tax (1702) — ${year}`,
+      period_type: 'annual', period_start: ymd(year, 1, 1), period_end: ymd(year, 12, 31),
+      due_date: ymd(year + 1, 4, 15),
+    });
+  }
+
+  // Payroll forms — only when the HR module is in use
+  if (hasHR) {
+    for (let m = 1; m <= 12; m++) {
+      rows.push({
+        form_code: '1601-C', form_name: `Withholding on Compensation (1601-C) — ${MONTHS[m - 1]} ${year}`,
+        period_type: 'monthly', period_start: ymd(year, m, 1), period_end: ymd(year, m, lastDay(year, m)),
+        due_date: m === 12 ? ymd(year + 1, 1, 10) : ymd(year, m + 1, 10), // 10th of following month
+      });
+    }
+    rows.push({
+      form_code: '1604-C', form_name: `Annual Info Return of Withholding on Comp (1604-C) — ${year}`,
+      period_type: 'annual', period_start: ymd(year, 1, 1), period_end: ymd(year, 12, 31),
+      due_date: ymd(year + 1, 1, 31),
+    });
+    rows.push({
+      form_code: '2316', form_name: `Certificate of Compensation (2316) — ${year}`,
+      period_type: 'annual', period_start: ymd(year, 1, 1), period_end: ymd(year, 12, 31),
+      due_date: ymd(year + 1, 2, 28),
+    });
+  }
+
+  return rows;
+}
+
+// ── POST /api/tax/filings/generate ───────────────────────────────────────────
+router.post('/filings/generate', async (req, res) => {
+  const user = req.session.user;
+  if (!['finance', 'super_admin', 'admin'].includes(user?.role))
+    return res.status(403).json({ error: 'Finance role or above required' });
+
+  const year = parseInt(req.body?.year) || new Date().getFullYear();
+  if (year < 2000 || year > 2100) return res.status(400).json({ error: 'Invalid year' });
+
+  try {
+    const { rows: [biz] } = await query('SELECT business_type, enabled_modules FROM business_settings WHERE id = 1');
+    const businessType = req.session?.business_type || biz?.business_type || 'corporate';
+    let hasHR = true;
+    try { hasHR = !biz?.enabled_modules || JSON.parse(biz.enabled_modules).includes('hr'); } catch { hasHR = true; }
+
+    const schedule = buildBirSchedule(year, { businessType, hasHR });
+    let generated = 0, skipped = 0;
+
+    for (const s of schedule) {
+      // Idempotent: skip if an obligation for this form + period already exists
+      const { rowCount } = await query(
+        'SELECT 1 FROM tax_filings WHERE form_code = $1 AND period_start = $2 LIMIT 1',
+        [s.form_code, s.period_start]
+      );
+      if (rowCount) { skipped++; continue; }
+      await query(
+        `INSERT INTO tax_filings
+           (period_type, period_start, period_end, status, due_date, form_code, form_name)
+         VALUES ($1,$2,$3,'pending',$4,$5,$6)`,
+        [s.period_type, s.period_start, s.period_end, s.due_date, s.form_code, s.form_name]
+      );
+      generated++;
+    }
+
+    logAction(user, 'GENERATE_TAX_SCHEDULE', 'tax_filing', null, String(year), { generated, skipped });
+    res.json({ ok: true, year, generated, skipped });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── GET /api/tax/filings/alerts ──────────────────────────────────────────────
+// Pending filings that are overdue or due within 14 days — used by the dashboard.
+router.get('/filings/alerts', async (req, res) => {
+  const today   = new Date().toISOString().slice(0, 10);
+  const horizon = addDaysStr(today, 14);
+  try {
+    const { rows } = await query(`
+      SELECT id, form_code, form_name, period_type, period_end, due_date, status
+      FROM tax_filings
+      WHERE status = 'pending' AND due_date IS NOT NULL
+      ORDER BY due_date ASC
+    `);
+    const overdue  = rows.filter(r => r.due_date <  today);
+    const upcoming = rows.filter(r => r.due_date >= today && r.due_date <= horizon);
+    res.json({ today, horizon, overdue, upcoming });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 

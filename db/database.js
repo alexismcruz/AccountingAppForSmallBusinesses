@@ -221,6 +221,11 @@ async function initDB() {
     )
   `);
 
+  // Filing scheduler: due date + which BIR form this obligation is for
+  await pool.query(`ALTER TABLE tax_filings ADD COLUMN IF NOT EXISTS due_date  TEXT`);
+  await pool.query(`ALTER TABLE tax_filings ADD COLUMN IF NOT EXISTS form_code TEXT`);
+  await pool.query(`ALTER TABLE tax_filings ADD COLUMN IF NOT EXISTS form_name TEXT`);
+
   // ── Migrate business_settings ──────────────────────────────────────────────
   await pool.query(`ALTER TABLE business_settings ADD COLUMN IF NOT EXISTS tax_system     TEXT DEFAULT 'generic'`);
   await pool.query(`ALTER TABLE business_settings ADD COLUMN IF NOT EXISTS business_type  TEXT DEFAULT 'corporate'`);

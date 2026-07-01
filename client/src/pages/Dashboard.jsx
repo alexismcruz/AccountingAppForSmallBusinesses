@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useSettings } from '../context/SettingsContext.jsx';
 import {
   Landmark, Wallet, ArrowDownToLine, ArrowUpFromLine,
-  CheckSquare, CheckCircle2, Package, BookOpen, BarChart3, AlertTriangle,
+  CheckSquare, CheckCircle2, Package, BookOpen, BarChart3, AlertTriangle, Receipt,
 } from 'lucide-react';
 
 const BRAND = {
@@ -43,6 +43,7 @@ export default function Dashboard() {
   const [data,           setData]           = useState(null);
   const [loading,        setLoading]        = useState(true);
   const [pendingApprove, setPendingApprove] = useState(0);
+  const [filingAlerts,   setFilingAlerts]   = useState({ overdue: [], upcoming: [] });
 
   useEffect(() => {
     fetch('/api/reports/dashboard')
@@ -54,12 +55,22 @@ export default function Dashboard() {
       .then(r => r.json())
       .then(d => setPendingApprove(d.count || 0))
       .catch(() => {});
+
+    if (hasModule('tax')) {
+      fetch('/api/tax/filings/alerts', { credentials: 'include' })
+        .then(r => r.json())
+        .then(d => setFilingAlerts({ overdue: d.overdue || [], upcoming: d.upcoming || [] }))
+        .catch(() => {});
+    }
   }, []);
 
   if (loading) return <div className="page-loading">Loading…</div>;
   if (!data)   return <div className="alert alert-error">Could not load dashboard data.</div>;
 
-  const hasAlerts = (data.lowStock > 0 && hasModule('inventory')) || data.overdueAR > 0 || data.overdueAP > 0;
+  const filingOverdue  = filingAlerts.overdue.length;
+  const filingDueSoon  = filingAlerts.upcoming.length;
+  const hasAlerts = (data.lowStock > 0 && hasModule('inventory')) || data.overdueAR > 0 || data.overdueAP > 0
+    || filingOverdue > 0 || filingDueSoon > 0;
 
   return (
     <div>
@@ -132,6 +143,24 @@ export default function Dashboard() {
               <ArrowUpFromLine size={16} strokeWidth={2} style={{ flexShrink: 0, marginTop: 1 }} />
               <span>
                 <strong>{data.overdueAP} overdue bill{data.overdueAP > 1 ? 's' : ''}</strong> — you owe suppliers money
+              </span>
+            </div>
+          )}
+          {filingOverdue > 0 && (
+            <div className="alert alert-error" style={{ flex: 1, minWidth: 240, cursor: 'pointer' }}
+              onClick={() => navigate('/tax/filings')}>
+              <Receipt size={16} strokeWidth={2} style={{ flexShrink: 0, marginTop: 1 }} />
+              <span>
+                <strong>{filingOverdue} BIR filing{filingOverdue > 1 ? 's' : ''} overdue</strong> — file as soon as possible to avoid penalties
+              </span>
+            </div>
+          )}
+          {filingDueSoon > 0 && (
+            <div className="alert alert-warning" style={{ flex: 1, minWidth: 240, cursor: 'pointer' }}
+              onClick={() => navigate('/tax/filings')}>
+              <Receipt size={16} strokeWidth={2} style={{ flexShrink: 0, marginTop: 1 }} />
+              <span>
+                <strong>{filingDueSoon} BIR filing{filingDueSoon > 1 ? 's' : ''} due soon</strong> — {filingAlerts.upcoming[0]?.form_code} due {filingAlerts.upcoming[0]?.due_date}
               </span>
             </div>
           )}
