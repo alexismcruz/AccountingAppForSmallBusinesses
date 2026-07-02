@@ -51,7 +51,7 @@ function PrivacyPage() {
           <Section num="Section 1" heading="Who We Are">
             <p>CuentaIQ is a product of <strong>Application Alley Information Technology Solutions</strong>, a sole proprietorship registered in the Republic of the Philippines ("Application Alley," "we," "us," or "our"). CuentaIQ is an accounting and financial management software platform designed for Philippine micro, small, and medium enterprises (MSMEs).</p>
             <p>Application Alley acts as a <strong>Personal Information Controller (PIC)</strong> under the Data Privacy Act of 2012 (RA 10173) with respect to the personal data of its subscribers and their authorized personnel.</p>
-            <table className="l-legal-table">
+            <div className="l-legal-table-wrap"><table className="l-legal-table">
               <thead><tr><th>Detail</th><th>Information</th></tr></thead>
               <tbody>
                 <tr><td className="l-col-label">Business name</td><td>Application Alley Information Technology Solutions</td></tr>
@@ -60,7 +60,7 @@ function PrivacyPage() {
                 <tr><td className="l-col-label">Contact email</td><td>hello@cuentaiq.com</td></tr>
                 <tr><td className="l-col-label">Address</td><td>Makati City, Philippines</td></tr>
               </tbody>
-            </table>
+            </table></div>
           </Section>
 
           <Section num="Section 2" heading="What Data We Collect">
@@ -123,7 +123,7 @@ function PrivacyPage() {
           </Section>
 
           <Section num="Section 3" heading="Why We Collect Your Data">
-            <table className="l-legal-table">
+            <div className="l-legal-table-wrap"><table className="l-legal-table">
               <thead><tr><th>Purpose</th><th>Legal Basis (RA 10173)</th></tr></thead>
               <tbody>
                 <tr><td className="l-col-label">To provide and operate the CuentaIQ platform</td><td>Contractual necessity</td></tr>
@@ -137,11 +137,11 @@ function PrivacyPage() {
                 <tr><td className="l-col-label">To maintain audit logs for compliance oversight (Pro plan)</td><td>Legitimate interest / Legal obligation</td></tr>
                 <tr><td className="l-col-label">To comply with applicable Philippine laws and BIR regulations</td><td>Legal obligation</td></tr>
               </tbody>
-            </table>
+            </table></div>
           </Section>
 
           <Section num="Section 4" heading="Data Retention">
-            <table className="l-legal-table">
+            <div className="l-legal-table-wrap"><table className="l-legal-table">
               <thead><tr><th>Data Type</th><th>Retention Period</th><th>Action at End</th></tr></thead>
               <tbody>
                 <tr><td className="l-col-label">All business and financial data</td><td>Duration of active subscription</td><td>15-day migration window after end of billing period, then permanently deleted</td></tr>
@@ -151,7 +151,7 @@ function PrivacyPage() {
                 <tr><td className="l-col-label">Audit log records (Pro plan)</td><td>Duration of active subscription + 90 days</td><td>Permanently deleted</td></tr>
                 <tr><td className="l-col-label">Technical and session log data</td><td>90 days from collection</td><td>Automatically purged</td></tr>
               </tbody>
-            </table>
+            </table></div>
             <Notice>
               <strong>Data migration window:</strong> After cancellation, your subscription access continues until the end of your current billing period. A 15-day migration window then opens during which you retain full read access to export and migrate your own data. After 15 days, all business and financial data is permanently and irreversibly deleted and cannot be recovered.
             </Notice>
@@ -231,7 +231,7 @@ function TermsPage() {
             </div>
 
             <H3>2.2 Feature Comparison</H3>
-            <table className="l-legal-table l-legal-plan-table">
+            <div className="l-legal-table-wrap"><table className="l-legal-table l-legal-plan-table">
               <thead>
                 <tr>
                   <th>Feature</th>
@@ -274,7 +274,7 @@ function TermsPage() {
                 <tr><td>User accounts per instance</td><td>Up to 10 users</td><td>Up to 25 users</td></tr>
                 <tr><td>Role-based access control (Staff, Manager, Finance, Admin)</td><td className="l-cross">—</td><td className="l-check">✓</td></tr>
               </tbody>
-            </table>
+            </table></div>
 
             <H3>2.3 AI Assistant Message Cap — How It Works</H3>
             <p>The CuentaIQ AI Assistant is available to all paid subscribers, scoped to CuentaIQ platform guidance, the Subscriber's own financial data, and accounting entry questions. The following rules apply to message cap counting and enforcement:</p>
@@ -289,13 +289,13 @@ function TermsPage() {
 
             <H3>2.4 Multi-Branch Businesses</H3>
             <p>Billing is <strong>per branch per month.</strong> Businesses with multiple locations subscribe to a separate CuentaIQ instance for each branch. Each branch instance is billed at the same monthly (or annual) rate as the Subscriber's chosen plan — there is no separate or discounted multi-branch rate.</p>
-            <table className="l-legal-table">
+            <div className="l-legal-table-wrap"><table className="l-legal-table">
               <thead><tr><th>Plan</th><th>Per branch / month</th><th>Per branch / year</th><th>User limit per instance</th></tr></thead>
               <tbody>
                 <tr><td className="l-col-label">Starter</td><td>$39 USD</td><td>$390 USD</td><td>Up to 10 users</td></tr>
                 <tr><td className="l-col-label">Pro</td><td>$59 USD</td><td>$590 USD</td><td>Up to 25 users</td></tr>
               </tbody>
-            </table>
+            </table></div>
             <p>Each branch instance has its own dedicated, isolated database and subdomain. The one-time setup fee ($150 USD) and Year 2+ annual fee ($150 USD) apply separately to each branch instance. The main business entity remains responsible for all fees across all instances registered under their account.</p>
 
             <H3>2.5 Module Visibility</H3>
@@ -311,13 +311,13 @@ function TermsPage() {
 
             <H3>3.2 Billing Cycles</H3>
             <p>Both the Starter and Pro plans are available on monthly or annual billing:</p>
-            <table className="l-legal-table">
+            <div className="l-legal-table-wrap"><table className="l-legal-table">
               <thead><tr><th>Plan</th><th>Monthly</th><th>Annual</th><th>Annual saving</th></tr></thead>
               <tbody>
                 <tr><td className="l-col-label">Starter</td><td>$39 USD / month</td><td>$390 USD / year</td><td>$78 USD (2 months free)</td></tr>
                 <tr><td className="l-col-label">Pro</td><td>$59 USD / month</td><td>$590 USD / year</td><td>$118 USD (2 months free)</td></tr>
               </tbody>
-            </table>
+            </table></div>
 
             <H3>3.3 One-Time Setup Fee</H3>
             <Highlight>A <strong>one-time setup fee of $150 USD</strong> applies to every new Starter or Pro subscription, charged at the time of initial signup, in addition to the first subscription payment.</Highlight>
@@ -332,14 +332,14 @@ function TermsPage() {
             <H3>3.4 Annual Fee (Year 2 Onward)</H3>
             <Highlight>Beginning on the Subscriber's <strong>first annual anniversary</strong> of their initial signup date, an <strong>annual fee of $150 USD</strong> applies, billed once per year alongside the Subscriber's regular subscription renewal.</Highlight>
             <p>The annual fee covers ongoing maintenance of the Subscriber's dedicated subdomain and database infrastructure. This fee does not apply during the Subscriber's first 12 months, since those costs are covered by the one-time setup fee described in Section 3.3.</p>
-            <table className="l-legal-table">
+            <div className="l-legal-table-wrap"><table className="l-legal-table">
               <thead><tr><th>Period</th><th>Fee charged</th></tr></thead>
               <tbody>
                 <tr><td className="l-col-label">Signup (Year 1)</td><td>$150 USD one-time setup fee + first subscription payment</td></tr>
                 <tr><td className="l-col-label">Year 1 renewals (monthly or annual)</td><td>Subscription fee only — no setup or annual fee</td></tr>
                 <tr><td className="l-col-label">Year 2 anniversary onward</td><td>$150 USD annual fee + subscription renewal fee</td></tr>
               </tbody>
-            </table>
+            </table></div>
 
             <H3>3.5 Payment Processing</H3>
             <p>Payments are processed through PayPal. By subscribing, you authorize PayPal to charge your selected payment method on each billing date, including the one-time setup fee at signup and the annual fee from Year 2 onward. Application Alley does not store your full card or banking credentials.</p>
@@ -422,14 +422,14 @@ function TermsPage() {
           </Section>
 
           <Section num="Section 10" heading="Service Level and Support">
-            <table className="l-legal-table">
+            <div className="l-legal-table-wrap"><table className="l-legal-table">
               <thead><tr><th>Support type</th><th>Starter</th><th>Pro</th></tr></thead>
               <tbody>
                 <tr><td className="l-col-label">Email support response time</td><td>2 business days</td><td>2 business days</td></tr>
                 <tr><td className="l-col-label">Platform uptime target</td><td colSpan={2}>99% monthly, excluding scheduled maintenance</td></tr>
                 <tr><td className="l-col-label">Scheduled maintenance notice</td><td colSpan={2}>At least 24 hours advance email notice</td></tr>
               </tbody>
-            </table>
+            </table></div>
           </Section>
 
           <Section num="Section 11" heading="Governing Law and Dispute Resolution">
@@ -461,7 +461,7 @@ function RefundPage() {
           </Section>
 
           <Section num="Details" heading="Full Refund Table">
-            <table className="l-legal-table">
+            <div className="l-legal-table-wrap"><table className="l-legal-table">
               <thead><tr><th>Scenario</th><th>Plan</th><th>Refund outcome</th></tr></thead>
               <tbody>
                 <tr><td className="l-col-label">Request within 7 days, platform not used (zero logins or no data entered)</td><td>Starter or Pro — first subscription only</td><td>Subscription fee refunded ✓ — setup fee not refunded</td></tr>
@@ -476,7 +476,7 @@ function RefundPage() {
                 <tr><td className="l-col-label">Upgrade from Starter to Pro</td><td>—</td><td>Subject to PayPal proration — not covered by 7-day window. No second setup fee charged on upgrade.</td></tr>
                 <tr><td className="l-col-label">Platform technical failure preventing any meaningful access</td><td>Any</td><td>Evaluated case by case at Application Alley's discretion</td></tr>
               </tbody>
-            </table>
+            </table></div>
           </Section>
 
           <Section num="Process" heading="How to Request a Refund">
@@ -505,7 +505,7 @@ function DPAPage() {
 
           <Section num="Preamble" heading="Purpose and Parties">
             <p>This Data Processing Agreement ("DPA") governs the processing of personal data that Subscribers enter into the CuentaIQ platform. It supplements and is incorporated into the CuentaIQ Terms and Conditions (Paid Tiers).</p>
-            <table className="l-legal-table">
+            <div className="l-legal-table-wrap"><table className="l-legal-table">
               <thead><tr><th>Role</th><th>Party</th><th>Defined as</th></tr></thead>
               <tbody>
                 <tr><td className="l-col-label">Personal Information Controller (PIC)</td><td>The Subscriber — the business owner using CuentaIQ</td><td>"Controller"</td></tr>
@@ -513,7 +513,7 @@ function DPAPage() {
                 <tr><td className="l-col-label">Data Subjects (Starter)</td><td>The Subscriber's customers and counterparties whose data appears in financial records</td><td>"Data Subjects"</td></tr>
                 <tr><td className="l-col-label">Data Subjects (Pro — additional)</td><td>The Subscriber's employees whose payroll and personal data is entered into the HR module</td><td>"Employee Data Subjects"</td></tr>
               </tbody>
-            </table>
+            </table></div>
           </Section>
 
           <Section num="Section 1" heading="Scope of Processing — Both Plans">
@@ -579,13 +579,13 @@ function DPAPage() {
           </Section>
 
           <Section num="Section 6" heading="Sub-Processors">
-            <table className="l-legal-table">
+            <div className="l-legal-table-wrap"><table className="l-legal-table">
               <thead><tr><th>Sub-processor</th><th>Role</th><th>Data processed</th></tr></thead>
               <tbody>
                 <tr><td className="l-col-label">Vercel (application layer) and Railway — Singapore region (database infrastructure)</td><td>Cloud infrastructure and storage</td><td>All platform data including employee records (Pro)</td></tr>
                 <tr><td className="l-col-label">PayPal</td><td>Payment processing</td><td>Billing data only — no personal or employee data</td></tr>
               </tbody>
-            </table>
+            </table></div>
             <p>Application Alley will notify the Controller of any sub-processor changes at least 14 days before the new sub-processor begins processing personal data.</p>
           </Section>
 
