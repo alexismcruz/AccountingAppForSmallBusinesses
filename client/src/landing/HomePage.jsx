@@ -207,8 +207,8 @@ export default function HomePage() {
             <div className="l-pricing-standard">
               <div className="l-plan-card" style={{ display: 'flex', flexDirection: 'column' }}>
                 <div className="l-plan-name">Starter</div>
-                <div className="l-plan-price"><sup>$</sup>30</div>
-                <div className="l-plan-period">per month</div>
+                <div className="l-plan-price"><sup>$</sup>39</div>
+                <div className="l-plan-period">per company / month</div>
                 <ul className="l-plan-features" style={{ flex: 1 }}>
                   {['Journal Entries & Approvals','Payments & Invoicing','Tax Management','Inventory Tracking','Financial Reports','AI Assistant'].map(f => (
                     <li key={f}><span className="l-plan-check"><CheckCircle size={11} /></span>{f}</li>
@@ -221,8 +221,8 @@ export default function HomePage() {
               <div className="l-plan-card featured" style={{ display: 'flex', flexDirection: 'column' }}>
                 <div className="l-plan-badge">Most Popular</div>
                 <div className="l-plan-name">Pro</div>
-                <div className="l-plan-price"><sup>$</sup>50</div>
-                <div className="l-plan-period">per month</div>
+                <div className="l-plan-price"><sup>$</sup>59</div>
+                <div className="l-plan-period">per company / month</div>
                 <ul className="l-plan-features" style={{ flex: 1 }}>
                   {['Everything in Starter','Payroll Management','HR & Employee Records','Leave Management','BIR Forms (2316, 1601-C)','Government Remittances'].map(f => (
                     <li key={f}><span className="l-plan-check"><CheckCircle size={11} /></span>{f}</li>
