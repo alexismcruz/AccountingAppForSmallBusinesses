@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import LandingLayout from './LandingLayout.jsx';
 import DemoModal from './DemoModal.jsx';
+import { trackLeadConversion } from './track.js';
 import { CheckCircle, ArrowRight, Zap, Info } from 'lucide-react';
 
 const STARTER_FEATURES = [
@@ -174,7 +175,7 @@ export default function SubscribePage() {
 
                 <div style={{ marginTop: 'auto' }}>
                   <hr className="l-plan-divider" />
-                  <a href="https://form.typeform.com/to/FgwZydmg" target="_blank" rel="noopener noreferrer" className="l-btn l-btn-pioneer" style={{ width: '100%', justifyContent: 'center' }}>
+                  <a href="https://form.typeform.com/to/FgwZydmg" target="_blank" rel="noopener noreferrer" onClick={trackLeadConversion} className="l-btn l-btn-pioneer" style={{ width: '100%', justifyContent: 'center' }}>
                     Apply for Pioneer Access <ArrowRight size={15} />
                   </a>
                   <div className="l-pioneer-cta-footer">Intake closes 15 days after launch · Max 5 pioneers</div>

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import LandingLayout from './LandingLayout.jsx';
 import DemoModal from './DemoModal.jsx';
+import { trackLeadConversion } from './track.js';
 import { BookOpen, Users, Sparkles, BarChart2, FileCheck, Package, ArrowRight, CheckCircle } from 'lucide-react';
 
 const FEATURES = [
@@ -195,6 +196,7 @@ export default function HomePage() {
                 </ul>
                 <div style={{ marginTop: 'auto', paddingTop: 16 }}>
                   <a href="https://form.typeform.com/to/FgwZydmg" target="_blank" rel="noopener noreferrer"
+                    onClick={trackLeadConversion}
                     className="l-btn l-btn-pioneer" style={{ width: '100%', justifyContent: 'center' }}>
                     Apply for Pioneer Access <ArrowRight size={15} />
                   </a>

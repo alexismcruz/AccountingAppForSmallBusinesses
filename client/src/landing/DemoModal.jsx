@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { X } from 'lucide-react';
+import { trackLeadConversion } from './track.js';
 
 const EMPTY_FORM = { name: '', company: '', email: '', phone: '', message: '' };
 
@@ -21,7 +22,7 @@ export default function DemoModal({ onClose }) {
         body: JSON.stringify(form),
       });
       const data = await res.json();
-      if (res.ok) { setResult('success'); setForm(EMPTY_FORM); }
+      if (res.ok) { setResult('success'); setForm(EMPTY_FORM); trackLeadConversion(); }
       else setResult(data.error || 'error');
     } catch {
       setResult('error');
