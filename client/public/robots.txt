@@ -2,4 +2,4 @@ User-agent: *
 Allow: /
 Disallow: /onboarding
 
-Sitemap: https://cuentaiq.com/sitemap.xml
+Sitemap: https://www.cuentaiq.com/sitemap.xml
