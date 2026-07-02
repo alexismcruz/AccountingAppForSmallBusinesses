@@ -792,10 +792,10 @@ router.post('/filings/generate', async (req, res) => {
 });
 
 // ── GET /api/tax/filings/alerts ──────────────────────────────────────────────
-// Pending filings that are overdue or due within 14 days — used by the dashboard.
+// Pending filings that are overdue or due within 60 days — used by the dashboard.
 router.get('/filings/alerts', async (req, res) => {
   const today   = new Date().toISOString().slice(0, 10);
-  const horizon = addDaysStr(today, 14);
+  const horizon = addDaysStr(today, 60);
   try {
     const { rows } = await query(`
       SELECT id, form_code, form_name, period_type, period_end, due_date, status

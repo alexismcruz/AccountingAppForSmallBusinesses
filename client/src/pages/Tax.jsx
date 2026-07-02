@@ -1235,7 +1235,7 @@ export default function Tax({ tab = 'rates' }) {
                   <tbody>
                     {filings.map(f => {
                       const todayStr = new Date().toISOString().slice(0, 10);
-                      const soonStr  = (() => { const d = new Date(); d.setDate(d.getDate() + 14); return d.toISOString().slice(0, 10); })();
+                      const soonStr  = (() => { const d = new Date(); d.setDate(d.getDate() + 60); return d.toISOString().slice(0, 10); })();
                       const isPending = f.status === 'pending';
                       const overdue   = isPending && f.due_date && f.due_date < todayStr;
                       const dueSoon   = isPending && f.due_date && !overdue && f.due_date <= soonStr;

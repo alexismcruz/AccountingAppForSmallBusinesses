@@ -160,7 +160,7 @@ export default function Dashboard() {
               onClick={() => navigate('/tax/filings')}>
               <Receipt size={16} strokeWidth={2} style={{ flexShrink: 0, marginTop: 1 }} />
               <span>
-                <strong>{filingDueSoon} BIR filing{filingDueSoon > 1 ? 's' : ''} due soon</strong> — {filingAlerts.upcoming[0]?.form_code} due {filingAlerts.upcoming[0]?.due_date}
+                <strong>{filingDueSoon} BIR filing{filingDueSoon > 1 ? 's' : ''} due within 60 days</strong> — next: {filingAlerts.upcoming[0]?.form_code} on {filingAlerts.upcoming[0]?.due_date}
               </span>
             </div>
           )}
