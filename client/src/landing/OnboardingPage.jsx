@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import LandingLayout from './LandingLayout.jsx';
-import { CheckCircle2, ArrowRight } from 'lucide-react';
+import { CheckCircle2, ArrowRight, Download } from 'lucide-react';
 
 // Required unless marked optional
 const CHECKLIST = [
@@ -127,6 +127,34 @@ export default function OnboardingPage() {
                     <option value="Pioneer">Pioneer Program</option>
                     <option value="Not sure yet">Not sure yet</option>
                   </select>
+                </div>
+              </div>
+
+              {/* Migration templates */}
+              <div className="l-card" style={{ padding: 28, marginBottom: 20 }}>
+                <h3 style={{ fontFamily: "'DM Serif Display',serif", fontSize: 20, color: 'var(--l-ink)', marginBottom: 6 }}>
+                  Moving from another system?
+                </h3>
+                <p style={{ fontSize: 13, color: 'var(--l-ink-mid)', marginBottom: 16, lineHeight: 1.6 }}>
+                  Download the template that matches your current setup, fill it in — it has step-by-step
+                  instructions and built-in checks — and email it to{' '}
+                  <a href="mailto:support@cuentaiq.com" style={{ color: 'var(--l-green)', fontWeight: 600 }}>support@cuentaiq.com</a>.
+                  It covers your chart of accounts, opening balances, customers, suppliers, and inventory.
+                </p>
+                <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                  {[
+                    { label: 'Xero', file: 'CuentaIQ_Migration_Xero.xlsx' },
+                    { label: 'QuickBooks', file: 'CuentaIQ_Migration_QuickBooks.xlsx' },
+                    { label: 'Excel / Other', file: 'CuentaIQ_Migration_Generic.xlsx' },
+                  ].map(t => (
+                    <a key={t.file} href={`/migration/${t.file}`} download
+                      className="l-btn l-btn-outline" style={{ fontSize: 13 }}>
+                      <Download size={15} /> {t.label} template
+                    </a>
+                  ))}
+                </div>
+                <div style={{ fontSize: 11, color: 'var(--l-ink-light)', marginTop: 10 }}>
+                  Excel (.xlsx) format. Not sure which one? Choose “Excel / Other”.
                 </div>
               </div>
 
