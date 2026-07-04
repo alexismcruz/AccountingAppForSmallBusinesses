@@ -7,6 +7,8 @@ const { addSuppression } = require('../utils/email');
 // ── Connector registry (mirrors integrations/index.js) ────────────────────────
 const CONNECTORS = {
   bigcommerce: require('./integrations/bigcommerce'),
+  shopify:     require('./integrations/shopify'),
+  woocommerce: require('./integrations/woocommerce'),
 };
 
 // ── Resend email events (Svix-signed) ─────────────────────────────────────────
@@ -98,26 +100,34 @@ router.post('/:provider', async (req, res) => {
 
   const credentials = integration.credentials || {};
 
-  // ── Token verification ─────────────────────────────────────────────────────
-  // We check the custom header we set when registering the webhook in BC
-  const tokenHeader = req.headers['x-bc-webhook-token'];
-  if (credentials.webhook_secret) {
-    if (!connector.verifyWebhookToken(tokenHeader, credentials.webhook_secret)) {
+  // ── Verification — each connector owns its scheme ──────────────────────────
+  // BigCommerce: custom token header. Shopify / WooCommerce: HMAC of the raw
+  // body (captured in server.js) against their signing secret.
+  if (typeof connector.verifyWebhook === 'function') {
+    if (!connector.verifyWebhook(req, credentials)) {
+      console.warn(`Webhook: verification failed for provider "${provider}"`);
+      return res.status(401).json({ error: 'Invalid webhook signature' });
+    }
+  } else if (credentials.webhook_secret && typeof connector.verifyWebhookToken === 'function') {
+    if (!connector.verifyWebhookToken(req.headers['x-bc-webhook-token'], credentials.webhook_secret)) {
       console.warn(`Webhook: invalid token for provider "${provider}"`);
       return res.status(401).json({ error: 'Invalid webhook token' });
     }
   }
 
-  // ── Dispatch ───────────────────────────────────────────────────────────────
-  const { scope, data } = req.body || {};
+  // ── Extract the event — each connector normalizes its payload ──────────────
+  const { scope, data } = typeof connector.parseWebhook === 'function'
+    ? connector.parseWebhook(req)
+    : { scope: req.body?.scope, data: req.body?.data };
+
   if (!scope) {
-    return res.status(400).json({ error: 'Missing scope in webhook payload' });
+    return res.status(400).json({ error: 'Missing scope/topic in webhook payload' });
   }
 
-  // Respond immediately — BigCommerce expects a fast 200
+  // Respond immediately — providers expect a fast 200
   res.json({ ok: true });
 
-  // Process async so we don't block BC's delivery retry timer
+  // Process async so we don't block the provider's delivery retry timer
   setImmediate(async () => {
     try {
       await connector.handleWebhook(scope, data || {}, credentials);

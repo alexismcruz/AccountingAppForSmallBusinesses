@@ -5,8 +5,8 @@ const { query } = require('../../db/database');
 // ── Connector registry — add future connectors here ───────────────────────────
 const CONNECTORS = {
   bigcommerce: require('./bigcommerce'),
-  // shopify:  require('./shopify'),   // future
-  // woocommerce: require('./woocommerce'), // future
+  shopify:     require('./shopify'),
+  woocommerce: require('./woocommerce'),
 };
 
 // Mask sensitive credential fields for API responses

@@ -7,6 +7,7 @@ const MANIFEST = {
   slug:        'bigcommerce',
   description: 'Sync orders and inventory from your BigCommerce store into CuentaIQ automatically.',
   icon:        '🛍️',
+  helpText:    'Find your Store Hash, Client ID and Access Token in your BigCommerce admin under Settings → API → API Accounts. Create a V2/V3 API account with Orders (read) and Products (read/write) scope. The Webhook Token can be any strong random string.',
   credentialFields: [
     { key: 'store_hash',     label: 'Store Hash',     type: 'text',     placeholder: 'abc123xyz — found in your BC store URL' },
     { key: 'client_id',     label: 'Client ID',       type: 'text',     placeholder: 'From your BC API Account' },

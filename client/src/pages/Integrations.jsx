@@ -230,11 +230,11 @@ function ConnectorCard({ connector, onRefresh }) {
                   onChange={val => setCreds(c => ({ ...c, [field.key]: val }))} />
               ))}
             </div>
-            <div className="alert alert-info" style={{ fontSize: 12, marginTop: 8 }}>
-              💡 Find your Store Hash, Client ID, and Access Token in your BigCommerce admin under
-              <strong> Settings → API → API Accounts</strong>. Create a V2/V3 API account with
-              Orders (read) and Products (read/write) scope.
-            </div>
+            {(detail?.helpText || connector.helpText) && (
+              <div className="alert alert-info" style={{ fontSize: 12, marginTop: 8 }}>
+                💡 {detail?.helpText || connector.helpText}
+              </div>
+            )}
           </div>
 
           {/* Save button */}
@@ -257,7 +257,7 @@ function ConnectorCard({ connector, onRefresh }) {
               Webhook Setup
             </div>
             <div className="alert alert-info" style={{ fontSize: 12, marginBottom: 12 }}>
-              Click <strong>Register Webhooks</strong> to auto-register all required webhooks in your BigCommerce store.
+              Click <strong>Register Webhooks</strong> to auto-register all required webhooks in your {connector.name} store.
               Orders and product changes will then sync automatically in real time.
             </div>
             <div className="form-group" style={{ marginBottom: 12 }}>
@@ -266,14 +266,14 @@ function ConnectorCard({ connector, onRefresh }) {
                 <input className="form-input" value={webhookUrl} style={{ flex: 1 }}
                   onChange={e => setWebhookUrl(e.target.value)}
                   placeholder="https://yourstore.cuentaiq.com" />
-                <CopyButton text={`${webhookUrl}/api/webhooks/bigcommerce`} />
+                <CopyButton text={`${webhookUrl}/api/webhooks/${connector.slug}`} />
               </div>
               <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>
-                Webhook endpoint: <code>{webhookUrl}/api/webhooks/bigcommerce</code>
+                Webhook endpoint: <code>{webhookUrl}/api/webhooks/{connector.slug}</code>
               </div>
             </div>
             <button className="btn btn-ghost" onClick={handleRegisterWebhooks} disabled={registering}>
-              {registering ? 'Registering…' : '🔗 Register Webhooks in BigCommerce'}
+              {registering ? 'Registering…' : `🔗 Register Webhooks in ${connector.name}`}
             </button>
           </div>
 
@@ -287,7 +287,7 @@ function ConnectorCard({ connector, onRefresh }) {
               Manual Sync
             </div>
             <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 12 }}>
-              Pulls the most recent 50 records from BigCommerce. Use this for the initial import or if a webhook was missed.
+              Pulls the most recent 50 records from {connector.name}. Use this for the initial import or if a webhook was missed.
               Existing records are matched by invoice number / SKU and updated — no duplicates.
             </div>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
