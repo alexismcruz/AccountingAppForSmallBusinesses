@@ -1,5 +1,15 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
+/* Inter draws the Philippine Peso sign (₱, U+20B1) with bars that protrude
+   left of the stem — at small table sizes it reads like a strikethrough.
+   Render ONLY that glyph from a system font that draws it cleanly; everything
+   else stays in Inter. Falls back to Inter if none are installed (no regression). */
+@font-face {
+  font-family: 'PesoGlyph';
+  src: local('Segoe UI'), local('Tahoma'), local('Helvetica Neue'), local('Arial');
+  unicode-range: U+20B1;
+}
+
 :root {
   /* ── Brand tokens ───────────────────────────────────────────────────── */
   --color-primary:       #2D6A4F;
@@ -45,7 +55,7 @@
 
   /* ── Typography ─────────────────────────────────────────────────────── */
   --font-heading: 'DM Serif Display', Georgia, serif;
-  --font-body:    'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-body:    'PesoGlyph', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --font:         var(--font-body);
 
   /* ── Radius ─────────────────────────────────────────────────────────── */
