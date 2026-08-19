@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import LandingLayout from './LandingLayout.jsx';
 import DemoModal from './DemoModal.jsx';
 import { trackLeadConversion } from './track.js';
+import { pioneerIntakeLine } from './pioneerConfig.js';
 import { CheckCircle, ArrowRight, Zap, Info } from 'lucide-react';
 
 const STARTER_FEATURES = [
@@ -178,7 +179,7 @@ export default function SubscribePage() {
                   <a href="https://form.typeform.com/to/FgwZydmg" target="_blank" rel="noopener noreferrer" onClick={trackLeadConversion} className="l-btn l-btn-pioneer" style={{ width: '100%', justifyContent: 'center' }}>
                     Apply for Pioneer Access <ArrowRight size={15} />
                   </a>
-                  <div className="l-pioneer-cta-footer">Intake closes 15 days after launch · Max 5 pioneers</div>
+                  <div className="l-pioneer-cta-footer">{pioneerIntakeLine()}</div>
                   <div className="l-pioneer-notice">
                     <strong>Conversion notice:</strong> You'll receive a notice 15 days before your pioneer period ends — choose to continue, upgrade, downgrade, or cancel. No automatic charges beyond what you've already paid.
                   </div>

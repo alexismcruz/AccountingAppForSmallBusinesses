@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import LandingLayout from './LandingLayout.jsx';
 import DemoModal from './DemoModal.jsx';
 import { trackLeadConversion } from './track.js';
+import { pioneerIntakeLine } from './pioneerConfig.js';
 import { BookOpen, Users, Sparkles, BarChart2, FileCheck, Package, ArrowRight, CheckCircle } from 'lucide-react';
 
 const FEATURES = [
@@ -200,7 +201,7 @@ export default function HomePage() {
                     className="l-btn l-btn-pioneer" style={{ width: '100%', justifyContent: 'center' }}>
                     Apply for Pioneer Access <ArrowRight size={15} />
                   </a>
-                  <div className="l-pioneer-cta-footer">Max 5 pioneers · Intake closes 15 days after launch</div>
+                  <div className="l-pioneer-cta-footer">{pioneerIntakeLine()}</div>
                 </div>
               </div>
             </div>
