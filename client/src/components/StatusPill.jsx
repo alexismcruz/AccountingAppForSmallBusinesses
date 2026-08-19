@@ -19,9 +19,11 @@ const MAP = {
   // Neutral / inactive
   inactive:  'pill pill-neutral',
   cancelled: 'pill pill-neutral',
-  rejected:  'pill pill-neutral',
   void:      'pill pill-neutral',
   n_a:       'pill pill-neutral',
+
+  // Rejected — distinct red so it can't be mistaken for Posted/Approved
+  rejected:  'pill pill-danger',
 
   // Danger
   danger:    'pill pill-danger',
@@ -33,12 +35,19 @@ const MAP = {
   scheduled:  'pill pill-accent',
 };
 
+// Turn a raw status ("posted", "pending_approval") into a display label
+// ("Posted", "Pending Approval"). Display only — the underlying status value
+// passed in is untouched, so filtering/logic keyed on it still works.
+function prettify(status) {
+  return (status || '').replace(/[-_]/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+}
+
 export default function StatusPill({ status, label }) {
   const key = (status || '').toLowerCase().replace(/[- ]/g, '_');
   const cls = MAP[key] || 'pill pill-neutral';
   return (
     <span className={cls}>
-      {label ?? status}
+      {label ?? prettify(status)}
     </span>
   );
 }

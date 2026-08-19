@@ -86,7 +86,7 @@ export default function Dashboard() {
 
       {/* KPI grid */}
       <div className="grid-4" style={{ marginBottom: 24 }}>
-        <StatCard label="Total Assets"     value={fmt(data.totalAssets)} color={BRAND.blue}    icon={Landmark} />
+        <StatCard label="Total Assets"     value={fmt(data.totalAssets)} color={BRAND.primary} icon={Landmark} />
         <StatCard label="Cash & Bank"      value={fmt(data.cashBalance)} color={BRAND.primary} icon={Wallet} />
         <StatCard
           label="Receivable (AR)" value={fmt(data.arBalance)}
