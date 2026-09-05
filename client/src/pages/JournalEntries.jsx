@@ -6,7 +6,8 @@ import CharCount from '../components/CharCount.jsx';
 import { useSettings } from '../context/SettingsContext.jsx';
 import { useUser } from '../context/UserContext.jsx';
 import StatusPill from '../components/StatusPill.jsx';
-import { X, Download, Trash2, FileText } from 'lucide-react';
+import SnapToRecord from '../components/SnapToRecord.jsx';
+import { X, Download, Trash2, FileText, Paperclip } from 'lucide-react';
 
 const TEMPLATES = [
   { name: 'Owner Investment',       desc: 'Owner puts money into the business',           lines: [{ code: '1010', side: 'debit' }, { code: '3000', side: 'credit' }] },
@@ -52,6 +53,45 @@ function EntryStatusBadge({ entry }) {
         : <StatusPill status="posted" />;
     default: return <StatusPill status={entry.status} />;
   }
+}
+
+// ── Attached-receipt viewer (Snap to Record audit reference) ──────────────────
+function ReceiptViewer({ entryId }) {
+  const [meta, setMeta] = useState(null);
+  const [show, setShow] = useState(false);
+
+  useEffect(() => {
+    let alive = true;
+    fetch(`/api/receipts/${entryId}/meta`, { credentials: 'include' })
+      .then(r => r.json())
+      .then(d => { if (alive) setMeta(d); })
+      .catch(() => {});
+    return () => { alive = false; };
+  }, [entryId]);
+
+  if (!meta?.exists) return null;
+  const isPdf = meta.media_type === 'application/pdf';
+  const src   = `/api/receipts/${entryId}`;
+
+  return (
+    <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px dashed var(--border)' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 600, color: 'var(--color-primary, #2D6A4F)', marginBottom: 8 }}>
+        <Paperclip size={13} /> Attached receipt
+      </div>
+      {isPdf ? (
+        <a href={src} target="_blank" rel="noopener noreferrer" className="btn btn-ghost btn-sm"
+          style={{ border: '1px solid var(--border)' }}>Open receipt (PDF) →</a>
+      ) : !show ? (
+        <button className="btn btn-ghost btn-sm" style={{ border: '1px solid var(--border)' }} onClick={() => setShow(true)}>
+          View receipt image
+        </button>
+      ) : (
+        <a href={src} target="_blank" rel="noopener noreferrer">
+          <img src={src} alt="Attached receipt" style={{ maxWidth: 280, maxHeight: 360, borderRadius: 8, border: '1px solid var(--border)', display: 'block' }} />
+        </a>
+      )}
+    </div>
+  );
 }
 
 // ── Import modal ──────────────────────────────────────────────────────────────
@@ -503,6 +543,12 @@ export default function JournalEntries() {
               ⬆ Import CSV
             </button>
           )}
+          {canCreate && (
+            <SnapToRecord
+              variant="ghost"
+              onPosted={text => { setMsg({ type: 'success', text }); loadEntries(1); }}
+            />
+          )}
           {canCreate && !showForm && (
             <button className="btn btn-primary" onClick={() => { setShowForm(true); setMsg(null); }}>
               + New Entry
@@ -852,6 +898,7 @@ export default function JournalEntries() {
                                   ))}
                                 </tbody>
                               </table>
+                              <ReceiptViewer entryId={entry.id} />
                             </div>
                           </td>
                         </tr>

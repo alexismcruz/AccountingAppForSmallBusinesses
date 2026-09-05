@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSettings } from '../context/SettingsContext.jsx';
+import SnapToRecord from '../components/SnapToRecord.jsx';
 import {
   Landmark, Wallet, ArrowDownToLine, ArrowUpFromLine,
   CheckSquare, CheckCircle2, Package, BookOpen, BarChart3, AlertTriangle, Receipt,
@@ -79,9 +80,12 @@ export default function Dashboard() {
           <div className="page-title">Welcome back</div>
           <div className="page-subtitle">{settings.business_name} — Overview</div>
         </div>
-        <button className="btn btn-primary" onClick={() => navigate('/journal')}>
-          + New Journal Entry
-        </button>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <SnapToRecord variant="ghost" />
+          <button className="btn btn-primary" onClick={() => navigate('/journal')}>
+            + New Journal Entry
+          </button>
+        </div>
       </div>
 
       {/* KPI grid */}

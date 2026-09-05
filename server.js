@@ -17,8 +17,10 @@ const PORT = process.env.PORT || 3001;
 
 app.set('trust proxy', 1);
 app.use(cors({ origin: ['http://localhost:5173', 'http://localhost:3001'], credentials: true }));
-// Capture raw body for webhook signature verification before JSON parsing
+// Capture raw body for webhook signature verification before JSON parsing.
+// Limit raised to 12mb to allow base64-encoded receipt images (Snap to Record).
 app.use(express.json({
+  limit: '12mb',
   verify: (req, _res, buf) => { req.rawBody = buf; },
 }));
 
@@ -232,6 +234,7 @@ if (!IS_LANDING) {
   app.use('/api/payroll',         require('./routes/payroll'));
   app.use('/api/leaves',          require('./routes/leaves'));
   app.use('/api/chatbot',         require('./routes/chatbot'));
+  app.use('/api/receipts',        require('./routes/receipts'));
   app.use('/api/integrations',       require('./routes/integrations/index'));
   app.use('/api/recurring-invoices', require('./routes/recurringInvoices'));
   app.use('/api/branch-sync',        require('./routes/branchSync'));
