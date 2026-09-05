@@ -82,7 +82,9 @@ body {
 }
 
 /* ── Layout ──────────────────────────────────────────────────────────── */
-.app-shell   { display: flex; height: 100vh; overflow: hidden; }
+/* 100dvh tracks the visible viewport on mobile (iOS Safari's toolbar changes the
+   height); 100vh is the fallback for browsers without dvh support. */
+.app-shell   { display: flex; height: 100vh; height: 100dvh; overflow: hidden; }
 .sidebar     { width: 240px; min-width: 240px; background: var(--color-surface);
                border-right: 1px solid var(--color-border);
                display: flex; flex-direction: column; overflow-y: auto; }
@@ -442,13 +444,15 @@ tbody tr:hover td { background: var(--color-primary-light); }
   .modal-lg      { max-width: 100%; }
   .modal-header  { padding: 16px 18px 0; }
   .modal-body    { padding: 14px 18px; }
-  .modal-footer  { padding: 0 18px 20px; flex-direction: column; }
+  .modal-footer  { padding: 0 18px max(20px, env(safe-area-inset-bottom)); flex-direction: column; }
   .modal-footer .btn { width: 100%; justify-content: center; }
   .modal .grid-2, .modal .grid-3 { grid-template-columns: 1fr; }
 
+  /* 16px min prevents iOS Safari from auto-zooming the page on input focus.
+     !important so inline font-size on individual inputs can't drop below 16px. */
   .form-input,
   .form-select,
-  .form-textarea { padding: 10px 12px; font-size: 14px; }
+  .form-textarea { padding: 10px 12px; font-size: 16px !important; }
 
   .page-title    { font-size: 20px; }
   .section-title { font-size: 11px; }

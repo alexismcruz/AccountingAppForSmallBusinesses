@@ -47,7 +47,8 @@ export default function Login({ onLogin }) {
   const disabled = loading || !email || !password;
 
   const inputStyle = {
-    width: '100%', padding: '11px 14px', fontSize: 14,
+    // 16px avoids iOS Safari auto-zooming the page when the field is focused
+    width: '100%', padding: '11px 14px', fontSize: 16,
     fontFamily: 'var(--font-body, Inter, sans-serif)',
     background: '#FFFFFF',
     border: '1px solid #E2DDD4', borderRadius: 6,

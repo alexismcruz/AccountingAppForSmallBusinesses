@@ -560,7 +560,7 @@ export default function ChatbotWidget() {
                 style={{
                   flex: 1, resize: 'none',
                   border: '1px solid var(--color-border)', borderRadius: 10,
-                  padding: '8px 12px', fontSize: 13, fontFamily: 'inherit',
+                  padding: '8px 12px', fontSize: isMobile ? 16 : 13, fontFamily: 'inherit',
                   outline: 'none', lineHeight: 1.5, transition: 'border-color 0.15s',
                   background: loading ? 'var(--color-surface-2)' : '#fff',
                   color: 'var(--color-ink)',

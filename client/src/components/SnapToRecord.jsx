@@ -277,7 +277,7 @@ function SnapModal({ onClose, onPosted }) {
                 </div>
               )}
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <div className="grid-2">
                 <div className="form-group">
                   <label className="form-label">Vendor</label>
                   <input className="form-input" style={flagBox(lowSet.has('vendor') && !form.vendor)} value={form.vendor}
@@ -291,7 +291,7 @@ function SnapModal({ onClose, onPosted }) {
                 </div>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: isForeign ? '1fr 1fr 1fr' : '1fr 1fr', gap: 12 }}>
+              <div className={isForeign ? 'grid-3' : 'grid-2'}>
                 <div className="form-group">
                   <label className="form-label">Amount *</label>
                   <div style={flagBox(lowSet.has('total_amount') && !form.amount)}>

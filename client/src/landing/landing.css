@@ -393,7 +393,7 @@
 .l-label { font-size: 12px; font-weight: 600; color: var(--l-ink-mid); letter-spacing: 0.02em; }
 .l-label .req { color: var(--l-gold-dark); }
 .l-input, .l-textarea {
-  padding: 11px 14px; font-size: 14px; font-family: 'Inter', sans-serif;
+  padding: 11px 14px; font-size: 16px; font-family: 'Inter', sans-serif;
   border: 1.5px solid var(--l-border); border-radius: 8px;
   outline: none; background: white; color: var(--l-ink);
   transition: border-color 0.15s, box-shadow 0.15s;
