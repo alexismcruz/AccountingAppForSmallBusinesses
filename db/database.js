@@ -613,9 +613,13 @@ async function initDB() {
     )
   `);
 
-  // ── Seed accounts if table is empty ────────────────────────────────────────
-  const { rowCount: accountCount } = await pool.query('SELECT 1 FROM accounts LIMIT 1');
-  if (accountCount === 0) await seedAccounts();
+  // ── Seed the main Chart of Accounts if it hasn't been seeded yet ────────────
+  // The payroll/tax accounts above are inserted unconditionally, so the table is
+  // never empty here — test for a core account (Cash = 1000) instead, otherwise a
+  // fresh database would skip the entire main Chart of Accounts. seedAccounts()
+  // uses ON CONFLICT DO NOTHING, so this is safe on existing databases too.
+  const { rowCount: coaSeeded } = await pool.query("SELECT 1 FROM accounts WHERE code = '1000' LIMIT 1");
+  if (coaSeeded === 0) await seedAccounts();
 
   // ── Ensure business_settings row exists ────────────────────────────────────
   await pool.query('INSERT INTO business_settings (id) VALUES (1) ON CONFLICT DO NOTHING');

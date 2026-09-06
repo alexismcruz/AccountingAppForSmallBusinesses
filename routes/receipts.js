@@ -123,12 +123,13 @@ async function loadContext() {
 
   let companyName = 'the business', currency = 'PHP';
   try {
-    const { rows } = await query(
-      `SELECT key, value FROM settings WHERE key IN ('business_name','currency')`
+    const { rows: [s] } = await query(
+      `SELECT business_name, currency FROM business_settings WHERE id = 1`
     );
-    const s = Object.fromEntries(rows.map(r => [r.key, r.value]));
-    companyName = s.business_name || companyName;
-    currency    = s.currency      || currency;
+    if (s) {
+      companyName = s.business_name || companyName;
+      currency    = s.currency      || currency;
+    }
   } catch (_) { /* use defaults */ }
 
   return { accounts, companyName, currency };

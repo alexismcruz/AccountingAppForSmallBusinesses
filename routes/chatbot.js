@@ -139,13 +139,14 @@ router.post('/message', async (req, res) => {
     let currency    = 'PHP';
     let taxSystem   = 'VAT';
     try {
-      const { rows: settingRows } = await query(
-        `SELECT key, value FROM settings WHERE key IN ('business_name','currency','tax_system')`
+      const { rows: [s] } = await query(
+        `SELECT business_name, currency, tax_system FROM business_settings WHERE id = 1`
       );
-      const s = Object.fromEntries(settingRows.map(r => [r.key, r.value]));
-      companyName = s.business_name || companyName;
-      currency    = s.currency      || currency;
-      taxSystem   = s.tax_system    || taxSystem;
+      if (s) {
+        companyName = s.business_name || companyName;
+        currency    = s.currency      || currency;
+        taxSystem   = s.tax_system    || taxSystem;
+      }
     } catch (_) { /* table may not exist yet — use defaults */ }
 
     const today = new Date().toISOString().split('T')[0];
@@ -313,9 +314,9 @@ router.post('/post', async (req, res) => {
     let currency = 'PHP';
     try {
       const { rows: currRows } = await query(
-        `SELECT value FROM settings WHERE key = 'currency'`
+        `SELECT currency FROM business_settings WHERE id = 1`
       );
-      currency = currRows[0]?.value || 'PHP';
+      currency = currRows[0]?.currency || 'PHP';
     } catch (_) { /* settings table not yet migrated — use PHP default */ }
 
     const isSuperAdmin = user.role === 'super_admin';
